@@ -7,6 +7,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { generateMountingBlock } from "./cadKernel";
 import { createMountingBlockConfiguration, getValidatedStepExport, listConfigurations, markConfigurationStale, reviseMountingBlockConfiguration } from "./cadAgent";
 import { runRuthlessEngineeringReview } from "./engineeringReview";
+import { getEngineeringMemory, runEngineeringIntelligence } from "./engineeringIntelligence";
 import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
 
 const mountingBlockInput = z.object({
@@ -56,6 +57,21 @@ export const appRouter = router({
         configurationId: z.string().trim().min(1).max(160).optional(),
       }))
       .mutation(({ input }) => runRuthlessEngineeringReview(input)),
+  }),
+
+  intelligence: router({
+    analyze: publicProcedure
+      .input(z.object({
+        sourceText: z.string().trim().min(1).max(8000),
+        mode: z.enum(["NORMAL", "DEEP_ENGINEERING", "EXPLORATION", "SPECULATIVE", "CHALLENGE"]).optional(),
+        projectId: z.string().trim().min(1).max(160).optional(),
+        requestMajorInnovation: z.boolean().optional(),
+        geometryStatus: z.enum(["NOT_GENERATED", "GEOMETRICALLY_GENERATED", "GEOMETRICALLY_VALIDATED"]).optional(),
+      }))
+      .mutation(({ input }) => runEngineeringIntelligence(input)),
+    memory: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(160).optional() }).optional())
+      .query(({ input }) => getEngineeringMemory(input?.projectId)),
   }),
 
   cad: router({

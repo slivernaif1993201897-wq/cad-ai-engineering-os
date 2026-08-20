@@ -3,9 +3,11 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 
 import { CADViewer, type ViewerSelection } from "@/components/cad-viewer";
 import { EngineeringReviewPanel } from "@/components/engineering-review-panel";
+import { EngineeringIntelligencePanel } from "@/components/engineering-intelligence-panel";
 import { trpc } from "@/lib/trpc";
 import type { MountingBlockInput } from "@/shared/cad";
 import type { CADAgentResult, CADConfiguration, CADModelStatus } from "@/shared/cadAgent";
+import type { EngineeringMode } from "@/shared/engineeringIntelligence";
 
 const DEFAULTS: MountingBlockInput = { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true };
 const INITIAL_PROMPT = "Create a 100 mm × 50 mm × 20 mm mounting block. Add four 10 mm holes near the corners. Add a 3 mm fillet.";
@@ -56,17 +58,20 @@ export function CADWorkspace() {
   const [bodyVisible, setBodyVisible] = useState(true);
   const [exportMessage, setExportMessage] = useState<string>();
   const [exploratoryMode, setExploratoryMode] = useState(false);
+  const [intelligenceMode, setIntelligenceMode] = useState<EngineeringMode>("NORMAL");
 
   const requirements = trpc.requirements.parse.useMutation();
   const create = trpc.cadAgent.createConfiguration.useMutation();
   const revise = trpc.cadAgent.reviseConfiguration.useMutation();
   const exportStep = trpc.cadAgent.exportStep.useMutation();
   const engineeringReview = trpc.engineering.review.useMutation();
+  const intelligence = trpc.intelligence.analyze.useMutation();
   const configurations = trpc.cadAgent.listConfigurations.useQuery();
 
   const input = useMemo<MountingBlockInput>(() => ({ ...DEFAULTS, width: Number(width) || 0, holeEdgeOffset: Number(offset) || 0, approveAssumption: approved }), [approved, offset, width]);
   const requirementSet = active?.configuration.requirementSet ?? requirements.data?.requirementSet;
   const review = active?.configuration.engineeringReview ?? engineeringReview.data;
+  const intelligenceResult = active?.configuration.engineeringIntelligence ?? intelligence.data;
   const modelStatus: CADModelStatus | "CONCEPTUAL" = dirty ? "STALE" : active?.configuration.modelStatus ?? "CONCEPTUAL";
   const activeId = active?.configuration.id;
   const configs = configurations.data ?? (active ? [active.configuration] : []);
@@ -100,7 +105,7 @@ export function CADWorkspace() {
       }
     } });
   };
-  const error = create.error?.message ?? revise.error?.message ?? exportStep.error?.message ?? active?.error;
+  const error = create.error?.message ?? revise.error?.message ?? exportStep.error?.message ?? engineeringReview.error?.message ?? intelligence.error?.message ?? active?.error;
   const features = active?.plan.features ?? [];
 
   return <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -109,6 +114,8 @@ export function CADWorkspace() {
     <View style={styles.truth}><View style={styles.row}><Text style={styles.cardKicker}>GEOMETRY TRUTH · SEPARATE FROM ENGINEERING VALIDITY</Text><Pill label={modelStatus} /></View><Text style={styles.cardCopy}>{modelStatus === "VALIDATED" ? "OpenCascade.js validated the BRep, derived the viewer tessellation, and serialized a STEP artifact. Physical behavior, manufacturability, safety, and production readiness remain separate review states." : modelStatus === "STALE" ? "A parameter changed. Regenerate and validate before export." : "Only deterministic requirements validation and kernel evidence can create a trusted geometric model."}</Text></View>
 
     <Section title="PHASE 3.6 · TRUTH, RIGOR & RADICAL PROBLEM SOLVING"><EngineeringReviewPanel review={review} exploratoryMode={exploratoryMode} onToggleExploration={() => setExploratoryMode((value) => !value)} onRunReview={() => engineeringReview.mutate({ sourceText: prompt, exploratoryMode, geometryStatus: active?.configuration.engineeringReview.reality.geometry, requirementSetId: requirementSet?.id, configurationId: activeId })} pending={engineeringReview.isPending} /></Section>
+
+    <Section title="PHASE 3.5 · GENIUS ENGINEERING CORE"><EngineeringIntelligencePanel result={intelligenceResult} mode={intelligenceMode} onModeChange={setIntelligenceMode} onRun={() => intelligence.mutate({ sourceText: prompt, mode: intelligenceMode, projectId: activeId ?? "WORKSPACE-EXPLORATION", requestMajorInnovation: /major innovation|revolutionary|breakthrough/i.test(prompt), geometryStatus: active?.configuration.engineeringReview.reality.geometry })} pending={intelligence.isPending} /></Section>
 
     <Section title="NATURAL-LANGUAGE INTENT"><TextInput value={prompt} onChangeText={(value) => { setPrompt(value); setDirty(true); }} multiline style={styles.prompt} placeholderTextColor="#80909A" /><View style={styles.row}><Pressable style={styles.secondary} onPress={() => requirements.mutate({ sourceText: prompt, revision: requirementSet?.revision ?? 1 })}><Text style={styles.secondaryText}>{requirements.isPending ? "CHECKING…" : "VALIDATE REQUIREMENTS"}</Text></Pressable><Pressable style={({ pressed }) => [styles.approval, pressed && styles.pressed]} onPress={() => { setApproved(!approved); setDirty(true); }}><Text style={styles.approvalText}>{approved ? "✓ OFFSET APPROVED" : "APPROVE OFFSET"}</Text></Pressable></View></Section>
 

@@ -26,4 +26,11 @@
 - [x] Phase 3.6: Integrate review truth states with CAD gating and expose the workflow through tRPC.
 - [x] Phase 3.6: Build the engineering review workspace with truth labels, evidence, risks, alternatives, limitations, and explicit exploration gating.
 - [x] Phase 3.6: Add truth-status, evidence-chain, honesty, contradiction, alternative, self-critique, CAD-gating, and regression acceptance tests.
-- [ ] Phase 3.6: Save a verified checkpoint and report the final test status without starting Phase 4.
+- [x] Phase 3.6: Save a verified checkpoint and report the final test status without starting Phase 4.
+
+- [x] Phase 3.5: Define engineering intelligence modes, problem decomposition, concept candidates, specialist reviews, self-correction, ranking, memory, and benchmark contracts.
+- [x] Phase 3.5: Implement deterministic multi-concept generation, adversarial specialist review, self-correction, alternative search, ranking, and maximum-effort unresolved reporting without fabricating evidence.
+- [x] Phase 3.5: Integrate the intelligence core with the Requirements Agent, Phase 3.6 truth review, CAD planning eligibility, and tRPC API.
+- [x] Phase 3.5: Build a mobile engineering intelligence workspace with mode controls, decomposition, candidate comparison, specialist findings, memory, and CAD-handoff status.
+- [x] Phase 3.5: Add benchmarks and acceptance tests for decomposition, diversity, physics consistency, failure detection, alternatives, self-correction, traceability, manufacturing reasoning, and CAD handoff.
+- [ ] Phase 3.5: Save a verified checkpoint and report final outcomes without starting Phase 4.

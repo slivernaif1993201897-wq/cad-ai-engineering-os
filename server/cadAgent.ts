@@ -1,5 +1,6 @@
 import { generateMountingBlock } from "./cadKernel";
 import { runRuthlessEngineeringReview } from "./engineeringReview";
+import { runEngineeringIntelligence } from "./engineeringIntelligence";
 import { planMountingBlockFeatures } from "./featurePlanner";
 import { applyRequirementRevision, parseRequirements } from "./requirementsAgent";
 import type { MountingBlockInput } from "../shared/cad";
@@ -74,7 +75,8 @@ export async function createMountingBlockConfiguration(args: {
     executionStatus: modelStatus === "VALIDATED" ? "EXECUTED" : "FAILED",
   }));
   const engineeringReview = runRuthlessEngineeringReview({ sourceText: args.sourceText, exploratoryMode: args.conceptual, geometryStatus: modelStatus === "VALIDATED" ? "GEOMETRICALLY_VALIDATED" : "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: id });
-  const configuration: CADConfiguration = { ...baseConfiguration, requirementSet, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, modelStatus, engineeringReview };
+  const engineeringIntelligence = runEngineeringIntelligence({ sourceText: args.sourceText, mode: args.conceptual ? "EXPLORATION" : "NORMAL", projectId: id, geometryStatus: engineeringReview.reality.geometry });
+  const configuration: CADConfiguration = { ...baseConfiguration, requirementSet, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, modelStatus, engineeringReview, engineeringIntelligence };
   configurations.set(id, configuration);
   return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error };
 }
@@ -107,7 +109,8 @@ export async function reviseMountingBlockConfiguration(args: {
   plan.requirement_set_id = revisedRequirementSet.id;
   plan.features = plan.features.map((feature) => ({ ...feature, executionStatus: modelStatus === "VALIDATED" ? "EXECUTED" : "FAILED" }));
   const engineeringReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: modelStatus === "VALIDATED" ? "GEOMETRICALLY_VALIDATED" : "NOT_GENERATED", requirementSetId: revisedRequirementSet.id, configurationId: id });
-  const configuration: CADConfiguration = { id, name, revision, createdAt: new Date().toISOString(), sourceText, input, requirementSet: revisedRequirementSet, engineeringReview, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, modelStatus };
+  const engineeringIntelligence = runEngineeringIntelligence({ sourceText, mode: "NORMAL", projectId: id, geometryStatus: engineeringReview.reality.geometry });
+  const configuration: CADConfiguration = { id, name, revision, createdAt: new Date().toISOString(), sourceText, input, requirementSet: revisedRequirementSet, engineeringReview, engineeringIntelligence, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, modelStatus };
   configurations.set(id, configuration);
   return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error };
 }

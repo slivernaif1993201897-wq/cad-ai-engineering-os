@@ -38,6 +38,7 @@ describe("CAD Agent and Feature Planner", () => {
     expect(result.viewerMesh?.faceRanges.length).toBeGreaterThan(0);
     expect(result.viewerMesh?.faceRanges.every((range) => range.featureId === "FEATURE-005")).toBe(true);
     expect(result.viewerMesh?.boundingBox.size).toEqual([100, 50, 20]);
+    expect(result.configuration.engineeringIntelligence?.cadHandoff.eligibility).toBeDefined();
   }, 30_000);
 
   it("marks an unregenerated configuration stale only when explicitly requested", async () => {
