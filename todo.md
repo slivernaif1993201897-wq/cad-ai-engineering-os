@@ -87,3 +87,11 @@
 - [x] Phase 4.7: Extend the mobile Feature Tree and Inspector with circle controls, topology status, fillet gate, and geometry-export reporting.
 - [x] Phase 4.7: Add real-kernel circle, extrusion, unit, parameter, regeneration, reference, invalidation, failure, branch, repeatability, export, readiness, CAD Agent, and full-regression tests.
 - [x] Phase 4.7: Save a verified checkpoint and report circle implementation, topology results, export, CAD Agent support, UI, tests, FILLET_READY, limits, and next milestone without starting Phase 5.
+
+- [x] Phase 4.8: Define deterministic topology manifests, matching evidence, ambiguity and invalidation statuses, fillet readiness, guarded circular pattern, export provenance, and truth contracts.
+- [x] Phase 4.8: Implement revision-safe topology naming and matching with real-kernel proof tests for survival, change, deletion, addition, ambiguity, repeatability, branch isolation, and revision isolation.
+- [x] Phase 4.8: Implement guarded real OpenCascade CIRCULAR_PATTERN for valid offset circle extrusions, controlled count/angle/axis regeneration, immutable graph lineage, validation, and failure preservation.
+- [x] Phase 4.8: Implement validated STEP geometry-export provenance, download/share metadata, capability-safe topology/pattern/export APIs, and explicit CAD Agent circular-pattern planning.
+- [x] Phase 4.8: Build mobile topology-matching, circular-pattern inspection/editing, export/share metadata, and strict fillet-gate controls.
+- [x] Phase 4.8: Add real-kernel topology, matching, ambiguity, invalidation, repeatability, isolation, pattern, regeneration, failure, export provenance, CAD Agent, and full-regression acceptance tests.
+- [x] Phase 4.8: Save a verified checkpoint and report topology architecture, proof-test results, pattern implementation, feature history, STEP export/provenance, CAD Agent, UI, FILLET_READY, regression, limitations, and next milestone without starting Phase 5.

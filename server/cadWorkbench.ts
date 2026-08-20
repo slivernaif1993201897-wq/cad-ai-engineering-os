@@ -1,5 +1,6 @@
 import { runEngineeringIntelligence } from "./engineeringIntelligence";
 import { WORKBENCH_COMMANDS } from "../shared/cadWorkbench";
+import { planCircularPattern } from "./featureHistory";
 import type {
   CADAgentContext,
   CADAgentMessage,
@@ -145,8 +146,9 @@ function conceptsFromIntelligence(input: WorkbenchInput): WorkbenchConceptCard[]
   }));
 }
 
-function responseText(action: WorkbenchActionKind, context: CADAgentContext, proposal?: CADChangeProposal, conceptCount = 0): string {
+function responseText(action: WorkbenchActionKind, context: CADAgentContext, proposal?: CADChangeProposal, conceptCount = 0, patternPlan?: ReturnType<typeof planCircularPattern>): string {
   const selection = context.selectedGeometry.kind === "NONE" ? "No geometry is selected." : `Active selection: ${context.selectedGeometry.kind.toLowerCase()} “${context.selectedGeometry.label}”.`;
+  if (patternPlan) return `${selection} ${patternPlan.status === "READY_FOR_PREVIEW" ? `The guarded CIRCULAR_PATTERN plan is ready for review: source ${patternPlan.input?.sourceRevisionId}, feature ${patternPlan.input?.sourceFeatureId}, axis ${patternPlan.input?.axis}, ${patternPlan.input?.instanceCount} instances, ${patternPlan.input?.angleDegrees}°. Review and submit it through the Circular Pattern panel; no geometry has changed.` : `Circular Pattern is blocked pending explicit evidence: ${patternPlan.questions.join(" ")}`} FILLET_READY remains FALSE and no fillet is proposed or executed.`;
   if (/circular boss|circle sketch|cylinder boss/i.test(context.modelName ?? "") || /circular boss|circle sketch|cylinder boss/i.test((proposal?.title ?? ""))) return `${selection} The supported circular-boss route is CIRCLE_SKETCH → EXTRUDE only. Supply explicit radius, extrusion distance, and center X/Y units; the deterministic circular-boss planner then yields a previewable plan. FILLET_READY remains FALSE, so no fillet will be proposed or executed.`;
   if (context.selectedGeometry.source === "FEATURE_TREE") return `${selection} This is a declared feature-history context, not an arbitrary BRep target. Review the Feature Inspector’s parent dependencies and explicit parameter, then use its controlled edit → preview regeneration → approval flow. If the selected feature or reference is unavailable, I will preserve REFERENCE_INVALIDATED rather than silently remapping geometry.`;
   if (action === "GENERATE_CONCEPT") return `${selection} I generated ${conceptCount} distinct architecture families using the existing Phase 3.5 intelligence core. They are conceptual candidates with explicit evidence gaps, not proven solutions.`;
@@ -163,11 +165,12 @@ export function runWorkbenchMessage(input: WorkbenchInput): WorkbenchConversatio
   const context = contextFor(input);
   const state = getState(input.projectId);
   const action = classifyCommand(input.message);
+  const patternPlan = /circular\s+pattern|(?:place|pattern)\s+(?:\d+|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+(?:identical\s+)?bosses|identical\s+bosses\s+around/i.test(input.message) ? planCircularPattern(input.message) : undefined;
   const proposal = proposalFor(input, context, action);
   const concepts = action === "GENERATE_CONCEPT" ? conceptsFromIntelligence(input) : [];
   const evidence = defaultEvidence(context);
   const userMessage: CADAgentMessage = { id: id("MESSAGE"), role: "USER", text: input.message, createdAt: new Date().toISOString(), context, actionKind: action, truthStatus: "FACT" };
-  const agentMessage: CADAgentMessage = { id: id("MESSAGE"), role: "CAD_AGENT", text: responseText(action, context, proposal, concepts.length), createdAt: new Date().toISOString(), context, actionKind: action, truthStatus: proposal?.truthStatus ?? (action === "ANALYZE" ? "UNVERIFIED" : "DERIVED") };
+  const agentMessage: CADAgentMessage = { id: id("MESSAGE"), role: "CAD_AGENT", text: responseText(action, context, proposal, concepts.length, patternPlan), createdAt: new Date().toISOString(), context, actionKind: action, truthStatus: proposal?.truthStatus ?? (action === "ANALYZE" ? "UNVERIFIED" : patternPlan?.status === "READY_FOR_PREVIEW" ? "DERIVED" : "UNKNOWN") };
   const events = [history("CONVERSATION", `CAD Agent · ${action.replaceAll("_", " ")}`, agentMessage.text, context.validationStage, agentMessage.truthStatus)];
   if (proposal) events.push(history("PROPOSAL", proposal.title, proposal.rationale, proposal.validationStage, proposal.truthStatus, true));
   if (concepts.length) events.push(history("CONCEPT", `${concepts.length} candidate architectures generated`, "Candidates remain conceptual until their requirements and evidence are established.", "CONCEPTUAL", concepts[0].truthStatus, true));

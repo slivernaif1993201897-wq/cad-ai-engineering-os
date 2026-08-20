@@ -1,17 +1,18 @@
 import type { KernelViewerMesh } from "./cadAgent";
+import type { StepGeometryExportProvenance, TopologyManifest } from "./topologyNaming";
 
-export const SUPPORTED_FEATURE_TYPES = ["RECTANGLE_SKETCH", "CIRCLE_SKETCH", "EXTRUDE"] as const;
+export const SUPPORTED_FEATURE_TYPES = ["RECTANGLE_SKETCH", "CIRCLE_SKETCH", "EXTRUDE", "CIRCULAR_PATTERN"] as const;
 export type SupportedFeatureType = (typeof SUPPORTED_FEATURE_TYPES)[number];
 export type CADFeatureHistoryType = SupportedFeatureType | "REVOLVE" | "SWEEP" | "LOFT" | "BOOLEAN_UNION" | "BOOLEAN_CUT" | "BOOLEAN_INTERSECTION" | "FILLET" | "CHAMFER" | "SHELL" | "DRAFT" | "PATTERN" | "MIRROR";
 export type FeatureImplementationStatus = "KERNEL_BACKED" | "UNSUPPORTED";
 export type FeatureHistoryStatus = "PLANNED" | "PREVIEW_READY" | "KERNEL_VALIDATED" | "PARAMETRICALLY_VALID" | "FAILED" | "STALE" | "REFERENCE_INVALIDATED" | "SUPPRESSED";
 export type FeatureTruth = "FACT" | "CALCULATED" | "KERNEL_VALIDATED" | "ENGINEERINGALLY_UNVERIFIED" | "PHYSICALLY_UNVERIFIED" | "MANUFACTURING_UNVERIFIED" | "UNKNOWN";
-export type FeatureParameterName = "width" | "height" | "radius" | "centerX" | "centerY" | "extrudeDistance";
+export type FeatureParameterName = "width" | "height" | "radius" | "centerX" | "centerY" | "extrudeDistance" | "instanceCount" | "angleDegrees";
 
 export interface FeatureParameter {
   name: FeatureParameterName;
   value: number;
-  unit: "mm";
+  unit: "mm" | "count" | "deg";
   normalizedValueMm: number;
   editable: boolean;
   provenance: "USER" | "CAD_AGENT" | "DERIVED";
@@ -40,6 +41,8 @@ export interface CADFeatureHistoryNode {
   units: "mm";
   constraints: FeatureConstraint[];
   dependencies: string[];
+  operationData?: Record<string, string | number | boolean>;
+  generatedInstances?: Array<{ instanceId: string; index: number; sourceFeatureId: string; angleDegrees: number; status: "KERNEL_VALIDATED" }>;
   sourceRevision: string;
   resultRevision?: string;
   status: FeatureHistoryStatus;
@@ -53,7 +56,8 @@ export interface FeatureHistoryGeometry {
   boundingBox?: KernelViewerMesh["boundingBox"];
   kernel: "OpenCascade.js";
   topology?: TopologyInspection;
-  export?: { status: "AVAILABLE" | "UNAVAILABLE"; format: "STEP_GEOMETRY"; featureHistory: "NOT_PRESERVED"; storageKey?: string; url?: string; note: string };
+  topologyManifest?: TopologyManifest;
+  export?: { status: "AVAILABLE" | "UNAVAILABLE"; format: "STEP_GEOMETRY"; featureHistory: "NOT_PRESERVED"; storageKey?: string; url?: string; note: string; provenance?: StepGeometryExportProvenance };
 }
 export interface TopologyInspection {
   revisionId: string;
@@ -106,6 +110,21 @@ export interface CircleFeatureInput {
   extrudeDistance: number;
   unit: "mm" | "cm" | "m";
 }
+export interface CircularPatternInput {
+  title: string;
+  sourceRevisionId: string;
+  sourceFeatureId: "EXTRUDE-CIRCLE-001";
+  axis: "GLOBAL_Z";
+  instanceCount: number;
+  angleDegrees: number;
+  direction: "COUNTERCLOCKWISE" | "CLOCKWISE";
+}
+export interface CircularPatternEdit {
+  instanceCount?: number;
+  angleDegrees?: number;
+  axis?: "GLOBAL_Z";
+  direction?: "COUNTERCLOCKWISE" | "CLOCKWISE";
+}
 export interface FeatureHistoryComparison {
   baseRevision: string;
   comparedRevision: string;
@@ -120,5 +139,6 @@ export const FEATURE_CATALOG: Array<{ type: CADFeatureHistoryType; supported: bo
   { type: "RECTANGLE_SKETCH", supported: true, description: "Kernel-backed closed rectangular wire on the XY plane with declared horizontal, vertical, coincident, and dimensional constraints." },
   { type: "CIRCLE_SKETCH", supported: true, description: "Kernel-backed closed circular edge on the XY plane with explicit center, radius, and dimensional constraints." },
   { type: "EXTRUDE", supported: true, description: "Kernel-backed prism generated only from a valid rectangular sketch profile and positive normal distance." },
+  { type: "CIRCULAR_PATTERN", supported: true, description: "Guarded kernel-backed compound of rotated instances from a valid offset CIRCLE_SKETCH → EXTRUDE source, with explicit Global Z axis, count, angle, direction, and instance provenance." },
   { type: "REVOLVE", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "SWEEP", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "LOFT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_UNION", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_CUT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_INTERSECTION", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "FILLET", supported: false, description: "Not implemented as a feature-history operation; existing mounting-block filleting is not exposed here." }, { type: "CHAMFER", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "SHELL", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "DRAFT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "PATTERN", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "MIRROR", supported: false, description: "Not implemented or tested through the current feature-history kernel route." },
 ];
