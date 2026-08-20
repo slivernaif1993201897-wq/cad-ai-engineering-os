@@ -33,4 +33,12 @@
 - [x] Phase 3.5: Integrate the intelligence core with the Requirements Agent, Phase 3.6 truth review, CAD planning eligibility, and tRPC API.
 - [x] Phase 3.5: Build a mobile engineering intelligence workspace with mode controls, decomposition, candidate comparison, specialist findings, memory, and CAD-handoff status.
 - [x] Phase 3.5: Add benchmarks and acceptance tests for decomposition, diversity, physics consistency, failure detection, alternatives, self-correction, traceability, manufacturing reasoning, and CAD handoff.
-- [ ] Phase 3.5: Save a verified checkpoint and report final outcomes without starting Phase 4.
+- [x] Phase 3.5: Save a verified checkpoint and report final outcomes without starting Phase 4.
+
+- [x] Phase 3.7: Define CAD Agent conversational context, messages, transparent proposals, concept-card, evidence, history, command-palette, and attachment contracts.
+- [x] Phase 3.7: Implement deterministic context-aware CAD Agent commands, proposed changes, reversible history actions, concept actions, and truthful evidence reporting.
+- [x] Phase 3.7: Add safe attachment type validation, metadata extraction, project/conversation association, and honest unsupported parsing outcomes.
+- [x] Phase 3.7: Integrate the workbench with selected viewer geometry, active configuration, requirements, intelligence, CAD actions, and server APIs.
+- [x] Phase 3.7: Build responsive mobile-first conversational workbench panels, command palette, context bar, accessibility labels, and keyboard shortcuts where supported.
+- [x] Phase 3.7: Add conversation, selection context, proposal transparency, reversibility, concept, evidence, attachment, command, and regression acceptance tests.
+- [ ] Phase 3.7: Save a verified checkpoint and report final results without starting Phase 4.

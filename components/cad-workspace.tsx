@@ -2,12 +2,14 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { CADViewer, type ViewerSelection } from "@/components/cad-viewer";
+import { CADAgentWorkbench } from "@/components/cad-agent-workbench";
 import { EngineeringReviewPanel } from "@/components/engineering-review-panel";
 import { EngineeringIntelligencePanel } from "@/components/engineering-intelligence-panel";
 import { trpc } from "@/lib/trpc";
 import type { MountingBlockInput } from "@/shared/cad";
 import type { CADAgentResult, CADConfiguration, CADModelStatus } from "@/shared/cadAgent";
 import type { EngineeringMode } from "@/shared/engineeringIntelligence";
+import type { CADChangeProposal, GeometrySelectionContext, WorkbenchValidationStage } from "@/shared/cadWorkbench";
 
 const DEFAULTS: MountingBlockInput = { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true };
 const INITIAL_PROMPT = "Create a 100 mm × 50 mm × 20 mm mounting block. Add four 10 mm holes near the corners. Add a 3 mm fillet.";
@@ -76,6 +78,12 @@ export function CADWorkspace() {
   const activeId = active?.configuration.id;
   const configs = configurations.data ?? (active ? [active.configuration] : []);
   const pending = create.isPending || revise.isPending;
+  const workbenchSelection = useMemo<GeometrySelectionContext>(() => {
+    if (selection) return { kind: selection.mode, id: selection.faceId, label: `${selection.mode} ${selection.faceId}`, featureId: selection.featureId, viewerFaceId: selection.faceId, source: "VIEWER" };
+    if (selectedFeature) return { kind: "FEATURE", id: selectedFeature, label: selectedFeature, featureId: selectedFeature, source: "FEATURE_TREE" };
+    return { kind: "NONE", label: "No geometry selected", source: "NONE" };
+  }, [selectedFeature, selection]);
+  const workbenchValidationStage: WorkbenchValidationStage = modelStatus === "VALIDATED" ? "GEOMETRICALLY_VALIDATED" : modelStatus === "CONCEPTUAL" ? "CONCEPTUAL" : "ESTIMATED";
 
   const adopt = (result: CADAgentResult) => { setActive(result); setDirty(false); setHidden([]); setIsolated(undefined); setExportMessage(undefined); configurations.refetch(); };
   const generate = () => {
@@ -105,6 +113,12 @@ export function CADWorkspace() {
       }
     } });
   };
+  const applyWorkbenchProposal = async (proposal: CADChangeProposal): Promise<boolean> => {
+    const widthChange = proposal.parameters.find((parameter) => parameter.name === "width" && parameter.after);
+    const nextWidth = widthChange?.after ? Number(widthChange.after) : Number.NaN;
+    if (!activeId || !Number.isFinite(nextWidth) || nextWidth <= 0) return false;
+    return new Promise((resolve) => revise.mutate({ configurationId: activeId, inputPatch: { width: nextWidth }, updateText: `Apply reviewed CAD Agent proposal: change width to ${nextWidth} mm.` }, { onSuccess: (result) => { adopt(result); setWidth(String(nextWidth)); resolve(true); }, onError: () => resolve(false) }));
+  };
   const error = create.error?.message ?? revise.error?.message ?? exportStep.error?.message ?? engineeringReview.error?.message ?? intelligence.error?.message ?? active?.error;
   const features = active?.plan.features ?? [];
 
@@ -112,6 +126,8 @@ export function CADWorkspace() {
     <View style={styles.header}><View><Text style={styles.eyebrow}>CAD-AI / CAD AGENT</Text><Text style={styles.title}>{active?.configuration.name ?? "Mounting Block"}</Text><Text style={styles.subtitle}>{active ? `REVISION ${active.configuration.revision} · ${active.plan.plan_id}` : "Requirements → Feature Plan → OpenCascade.js"}</Text></View><View style={styles.thread}><Text style={styles.threadKicker}>DIGITAL THREAD</Text><Text style={styles.threadValue}>{active?.configuration.id ?? "AWAITING PLAN"}</Text></View></View>
 
     <View style={styles.truth}><View style={styles.row}><Text style={styles.cardKicker}>GEOMETRY TRUTH · SEPARATE FROM ENGINEERING VALIDITY</Text><Pill label={modelStatus} /></View><Text style={styles.cardCopy}>{modelStatus === "VALIDATED" ? "OpenCascade.js validated the BRep, derived the viewer tessellation, and serialized a STEP artifact. Physical behavior, manufacturability, safety, and production readiness remain separate review states." : modelStatus === "STALE" ? "A parameter changed. Regenerate and validate before export." : "Only deterministic requirements validation and kernel evidence can create a trusted geometric model."}</Text></View>
+
+    <Section title="PHASE 3.7 · CAD AGENT CONVERSATIONAL WORKBENCH"><CADAgentWorkbench projectId={activeId ?? "WORKSPACE-EXPLORATION"} projectName={active?.configuration.name ?? "Mounting Block Study"} modelName={active?.configuration.name} configurationId={activeId} selectedGeometry={workbenchSelection} requirementSummary={requirementSet ? `${requirementSet.requirements.length} requirements · ${requirementSet.validation_status}` : "Requirements not validated"} featureSummary={selectedFeature ? `Selected feature ${selectedFeature}` : `${features.length} planned features`} parameterSummary={`Width ${input.width} mm · Depth ${input.depth} mm · Height ${input.height} mm · Hole Ø ${input.holeDiameter} mm · Offset ${input.holeEdgeOffset} mm · Fillet ${input.filletRadius} mm`} conceptSummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.candidates.length} engineering candidates attached` : "No intelligence candidates attached"} memorySummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.memory.length} project-session memory records` : "No project memory attached"} validationStage={workbenchValidationStage} onApplyProposal={applyWorkbenchProposal} /></Section>
 
     <Section title="PHASE 3.6 · TRUTH, RIGOR & RADICAL PROBLEM SOLVING"><EngineeringReviewPanel review={review} exploratoryMode={exploratoryMode} onToggleExploration={() => setExploratoryMode((value) => !value)} onRunReview={() => engineeringReview.mutate({ sourceText: prompt, exploratoryMode, geometryStatus: active?.configuration.engineeringReview.reality.geometry, requirementSetId: requirementSet?.id, configurationId: activeId })} pending={engineeringReview.isPending} /></Section>
 

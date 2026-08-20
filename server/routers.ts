@@ -8,6 +8,7 @@ import { generateMountingBlock } from "./cadKernel";
 import { createMountingBlockConfiguration, getValidatedStepExport, listConfigurations, markConfigurationStale, reviseMountingBlockConfiguration } from "./cadAgent";
 import { runRuthlessEngineeringReview } from "./engineeringReview";
 import { getEngineeringMemory, runEngineeringIntelligence } from "./engineeringIntelligence";
+import { attachWorkbenchFile, getWorkbenchProject, runWorkbenchMessage, updateProposal } from "./cadWorkbench";
 import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
 
 const mountingBlockInput = z.object({
@@ -72,6 +73,44 @@ export const appRouter = router({
     memory: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(160).optional() }).optional())
       .query(({ input }) => getEngineeringMemory(input?.projectId)),
+  }),
+
+  workbench: router({
+    message: publicProcedure
+      .input(z.object({
+        projectId: z.string().trim().min(1).max(160),
+        projectName: z.string().trim().min(1).max(160).optional(),
+        message: z.string().trim().min(1).max(8000),
+        mode: z.enum(["NORMAL", "DEEP_ENGINEERING", "EXPLORATION", "SPECULATIVE", "CHALLENGE"]),
+        configurationId: z.string().trim().min(1).max(160).optional(),
+        modelName: z.string().trim().min(1).max(160).optional(),
+        selectedGeometry: z.object({
+          kind: z.enum(["FACE", "EDGE", "VERTEX", "FEATURE", "BODY", "ASSEMBLY", "REGION", "NONE"]),
+          id: z.string().trim().min(1).max(160).optional(),
+          label: z.string().trim().min(1).max(320),
+          featureId: z.string().trim().min(1).max(160).optional(),
+          bodyId: z.string().trim().min(1).max(160).optional(),
+          viewerFaceId: z.string().trim().min(1).max(160).optional(),
+          source: z.enum(["VIEWER", "FEATURE_TREE", "WORKBENCH", "NONE"]),
+        }).optional(),
+        requirementSummary: z.string().trim().max(1000).optional(),
+        featureSummary: z.string().trim().max(1000).optional(),
+        parameterSummary: z.string().trim().max(1000).optional(),
+        conceptSummary: z.string().trim().max(1000).optional(),
+        memorySummary: z.string().trim().max(1000).optional(),
+        validationStage: z.enum(["CONCEPTUAL", "ESTIMATED", "CALCULATED", "GEOMETRICALLY_VALIDATED", "PHYSICALLY_PLAUSIBLE", "CAE_VERIFIED", "EXPERIMENTALLY_VALIDATED", "PRODUCTION_READY"]).optional(),
+        attachedFileIds: z.array(z.string().trim().min(1).max(160)).max(20).optional(),
+      }))
+      .mutation(({ input }) => runWorkbenchMessage(input)),
+    proposal: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(160), proposalId: z.string().trim().min(1).max(160), status: z.enum(["PREVIEWED", "APPLIED", "REJECTED", "EDIT_REQUESTED", "REVERTED"]) }))
+      .mutation(({ input }) => updateProposal(input.projectId, input.proposalId, input.status)),
+    project: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(160) }))
+      .query(({ input }) => getWorkbenchProject(input.projectId)),
+    attach: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(160), conversationId: z.string().trim().min(1).max(160).optional(), name: z.string().trim().min(1).max(512), sizeBytes: z.number().int().nonnegative().max(1024 * 1024 * 1024).optional(), mimeType: z.string().trim().min(1).max(160).optional() }))
+      .mutation(({ input }) => attachWorkbenchFile(input)),
   }),
 
   cad: router({
