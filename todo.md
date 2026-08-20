@@ -79,3 +79,11 @@
 - [x] Phase 4.6: Build a mobile Feature Tree, Feature Inspector, operation-plan editor, regeneration controls, and immutable Branch Comparison workspace.
 - [x] Phase 4.6: Add real-kernel sketch, extrude, dependency, parameter, unit, regeneration, invalid-reference, failure, revision, branch-comparison, and full-regression acceptance tests.
 - [x] Phase 4.6: Save a verified checkpoint and report feature-history architecture, supported types, kernel execution, parameters, units, dependency graph, regeneration, references, branch comparison, UI, tests, unsupported types, and limits without starting Phase 5.
+
+- [x] Phase 4.7: Define real circle feature, topology-reference stability, explicit invalidation, fillet-readiness, repeatability, and geometry-export contracts with no unsupported topology remapping.
+- [x] Phase 4.7: Implement real OpenCascade CIRCLE_SKETCH → EXTRUDE history with center/radius/distance units, validation, controlled regeneration, immutable branches, and feature-history-aware STEP geometry export.
+- [x] Phase 4.7: Implement topology inspection for body/face/edge/vertex references, invalidation detection, repeatability checks, failure preservation, and formal FILLET_READY evaluation without executing fillets.
+- [x] Phase 4.7: Expose capability-safe circle-history, topology, readiness, export, and CAD Agent APIs with durable evidence and project isolation.
+- [x] Phase 4.7: Extend the mobile Feature Tree and Inspector with circle controls, topology status, fillet gate, and geometry-export reporting.
+- [x] Phase 4.7: Add real-kernel circle, extrusion, unit, parameter, regeneration, reference, invalidation, failure, branch, repeatability, export, readiness, CAD Agent, and full-regression tests.
+- [x] Phase 4.7: Save a verified checkpoint and report circle implementation, topology results, export, CAD Agent support, UI, tests, FILLET_READY, limits, and next milestone without starting Phase 5.

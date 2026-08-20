@@ -12,7 +12,7 @@ import { attachWorkbenchFile, getWorkbenchProject, runWorkbenchMessage, updatePr
 import { analyzeCadFile, getCadFileContext, ingestCadFile, listCadFiles, removeCadFile } from "./cadFileIntelligence";
 import { createEngineeringViewerBranch, getEngineeringViewerScene, getViewerProposalPreview } from "./engineeringViewer";
 import { executeCadOperation, listCadOperationHistory, planCadOperation, previewCadOperation, rejectCadOperation, revertCadOperation } from "./cadExecution";
-import { compareFeatureRevisions, createFeatureHistory, diagnoseFeatureHistoryFailure, executeFeatureRegeneration, listFeatureHistory, previewFeatureRegeneration } from "./featureHistory";
+import { assessCircleRepeatability, compareFeatureRevisions, createCircleFeatureHistory, createFeatureHistory, diagnoseFeatureHistoryFailure, executeCircleFeatureRegeneration, executeFeatureRegeneration, getCircleFilletReadiness, getCircleGeometryExport, inspectCircleTopology, listFeatureHistory, planCircularBoss, previewCircleFeatureRegeneration, previewFeatureRegeneration } from "./featureHistory";
 import { FEATURE_CATALOG } from "../shared/featureHistory";
 import { createPersistentConversation, listPersistentConversations, openPersistentProject, projectMemorySnapshot, retrievePersistentMemory, updatePersistentConversation } from "./persistentMemory";
 import { persistWorkbenchAttachment, recordPersistentConceptDecision, recordPersistentProposalDecision, restoreWorkbenchConversation, runPersistentWorkbenchMessage } from "./persistentWorkbench";
@@ -218,24 +218,48 @@ export const appRouter = router({
 
   featureHistory: router({
     catalog: publicProcedure.query(() => FEATURE_CATALOG),
+    planCircularBoss: publicProcedure
+      .input(z.object({ message: z.string().trim().min(1).max(2000) }))
+      .query(({ input }) => planCircularBoss(input.message)),
     create: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), width: z.number().finite(), height: z.number().finite(), extrudeDistance: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }) }))
       .mutation(({ input }) => createFeatureHistory(input)),
+    createCircle: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), centerX: z.number().finite(), centerY: z.number().finite(), radius: z.number().finite(), extrudeDistance: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }) }))
+      .mutation(({ input }) => createCircleFeatureHistory(input)),
     list: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128) }))
       .query(({ input }) => listFeatureHistory(input)),
     preview: publicProcedure
-      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ featureId: z.string().trim().min(1).max(96), parameter: z.object({ name: z.enum(["width", "height", "extrudeDistance"]), value: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }).optional(), targetReferenceId: z.string().trim().min(1).max(160).optional(), direction: z.literal("NORMAL").optional(), featureType: z.enum(["RECTANGLE_SKETCH", "EXTRUDE", "REVOLVE", "SWEEP", "LOFT", "BOOLEAN_UNION", "BOOLEAN_CUT", "BOOLEAN_INTERSECTION", "FILLET", "CHAMFER", "SHELL", "DRAFT", "PATTERN", "MIRROR"]).optional(), operationOrder: z.number().int().min(0).max(32).optional() }) }))
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ featureId: z.string().trim().min(1).max(96), parameter: z.object({ name: z.enum(["width", "height", "radius", "centerX", "centerY", "extrudeDistance"]), value: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }).optional(), targetReferenceId: z.string().trim().min(1).max(160).optional(), direction: z.literal("NORMAL").optional(), featureType: z.enum(["RECTANGLE_SKETCH", "CIRCLE_SKETCH", "EXTRUDE", "REVOLVE", "SWEEP", "LOFT", "BOOLEAN_UNION", "BOOLEAN_CUT", "BOOLEAN_INTERSECTION", "FILLET", "CHAMFER", "SHELL", "DRAFT", "PATTERN", "MIRROR"]).optional(), operationOrder: z.number().int().min(0).max(32).optional() }) }))
       .mutation(({ input }) => previewFeatureRegeneration(input)),
+    previewCircle: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ featureId: z.string().trim().min(1).max(96), parameter: z.object({ name: z.enum(["radius", "centerX", "centerY", "extrudeDistance"]), value: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }).optional(), targetReferenceId: z.string().trim().min(1).max(200).optional(), direction: z.literal("NORMAL").optional(), featureType: z.enum(["CIRCLE_SKETCH", "EXTRUDE", "FILLET", "REVOLVE", "SWEEP", "LOFT", "BOOLEAN_UNION", "BOOLEAN_CUT", "BOOLEAN_INTERSECTION", "CHAMFER", "SHELL", "DRAFT", "PATTERN", "MIRROR"]).optional(), operationOrder: z.number().int().min(0).max(32).optional() }) }))
+      .mutation(({ input }) => previewCircleFeatureRegeneration(input)),
     execute: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), previewRevisionId: z.string().trim().min(1).max(160) }))
       .mutation(({ input }) => executeFeatureRegeneration(input)),
+    executeCircle: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), previewRevisionId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => executeCircleFeatureRegeneration(input)),
     compare: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), baseRevisionId: z.string().trim().min(1).max(160), comparedRevisionId: z.string().trim().min(1).max(160) }))
       .query(({ input }) => compareFeatureRevisions(input)),
     diagnoseFailure: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128) }))
       .query(({ input }) => diagnoseFeatureHistoryFailure(input)),
+    topology: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), revisionId: z.string().trim().min(1).max(160) }))
+      .query(({ input }) => inspectCircleTopology(input)),
+    repeatability: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), revisionId: z.string().trim().min(1).max(160) }))
+      .query(({ input }) => assessCircleRepeatability(input)),
+    filletReadiness: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), revisionId: z.string().trim().min(1).max(160).optional() }))
+      .query(({ input }) => getCircleFilletReadiness(input)),
+    geometryExport: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), revisionId: z.string().trim().min(1).max(160) }))
+      .query(({ input }) => getCircleGeometryExport(input)),
   }),
 
   cad: router({
