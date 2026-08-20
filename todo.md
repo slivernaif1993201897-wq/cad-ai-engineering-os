@@ -48,4 +48,4 @@
 - [x] Phase 3.8: Integrate persistent memory with CAD Agent workbench messages, proposals, concept actions, requirements, validation states, and typed server APIs.
 - [x] Phase 3.8: Build mobile workbench panels for conversation history, engineering memory, decisions, concept/revision lineage, rejected concepts, and source evidence inspection.
 - [x] Phase 3.8: Add persistence, lineage, retrieval, project-isolation, archive, restore, delete, missing-history, and context-restoration acceptance tests.
-- [ ] Phase 3.8: Save a verified checkpoint and report final results without starting Phase 4.
+- [x] Phase 3.8: Save a verified checkpoint and report final results without starting Phase 4.
