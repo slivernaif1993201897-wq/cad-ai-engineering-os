@@ -64,6 +64,16 @@ describe("Phase 3.7 CAD Agent conversational workbench", () => {
     expect(oversized.parseStatus).toBe("PARSE_FAILED");
   });
 
+  it("returns an explicit guarded rectangular-pattern plan or targeted questions without inventing a source, direction, count, spacing, or unit", () => {
+    const incomplete = runWorkbenchMessage({ projectId: "WORKBENCH-RECTANGULAR-INCOMPLETE", message: "Create a rectangular pattern of these bosses.", mode: "NORMAL" });
+    expect(incomplete.agentMessage.text).toContain("Rectangular Pattern is blocked pending explicit evidence");
+    expect(incomplete.agentMessage.text).toContain("source revision");
+    const ready = runWorkbenchMessage({ projectId: "WORKBENCH-RECTANGULAR-READY", message: "Create a rectangular pattern: source: CIRCLE-REVISION-abcdef; feature: EXTRUDE-CIRCLE-001; direction x: GLOBAL_X_POSITIVE; direction y: GLOBAL_Y_POSITIVE; 3 x 2 bosses; spacing x: 20mm; spacing y: 25mm", mode: "NORMAL" });
+    expect(ready.agentMessage.text).toContain("RECTANGULAR_PATTERN plan is ready for review");
+    expect(ready.agentMessage.text).toContain("3 × 2");
+    expect(ready.agentMessage.text).toContain("FILLET_READY remains FALSE");
+  });
+
   it("exposes contextual conversation and attachment procedures through the mobile-facing API", async () => {
     const caller = appRouter.createCaller(ctx);
     const chat = await caller.workbench.message({ projectId: "WORKBENCH-API", message: "Challenge this design and find weaknesses.", mode: "CHALLENGE", selectedGeometry: { kind: "BODY", label: "Main body", source: "WORKBENCH" } });

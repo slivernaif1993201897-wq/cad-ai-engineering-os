@@ -1,6 +1,7 @@
 import { runEngineeringIntelligence } from "./engineeringIntelligence";
 import { WORKBENCH_COMMANDS } from "../shared/cadWorkbench";
 import { planCircularPattern } from "./featureHistory";
+import { planRectangularPattern } from "./rectangularPattern";
 import type {
   CADAgentContext,
   CADAgentMessage,
@@ -146,9 +147,9 @@ function conceptsFromIntelligence(input: WorkbenchInput): WorkbenchConceptCard[]
   }));
 }
 
-function responseText(action: WorkbenchActionKind, context: CADAgentContext, proposal?: CADChangeProposal, conceptCount = 0, patternPlan?: ReturnType<typeof planCircularPattern>): string {
+function responseText(action: WorkbenchActionKind, context: CADAgentContext, proposal?: CADChangeProposal, conceptCount = 0, patternPlan?: ReturnType<typeof planCircularPattern> | ReturnType<typeof planRectangularPattern>): string {
   const selection = context.selectedGeometry.kind === "NONE" ? "No geometry is selected." : `Active selection: ${context.selectedGeometry.kind.toLowerCase()} “${context.selectedGeometry.label}”.`;
-  if (patternPlan) return `${selection} ${patternPlan.status === "READY_FOR_PREVIEW" ? `The guarded CIRCULAR_PATTERN plan is ready for review: source ${patternPlan.input?.sourceRevisionId}, feature ${patternPlan.input?.sourceFeatureId}, axis ${patternPlan.input?.axis}, ${patternPlan.input?.instanceCount} instances, ${patternPlan.input?.angleDegrees}°. Review and submit it through the Circular Pattern panel; no geometry has changed.` : `Circular Pattern is blocked pending explicit evidence: ${patternPlan.questions.join(" ")}`} FILLET_READY remains FALSE and no fillet is proposed or executed.`;
+  if (patternPlan) { if (patternPlan.status === "READY_FOR_PREVIEW" && patternPlan.operation === "CIRCULAR_PATTERN") { const input = patternPlan.input as { sourceRevisionId: string; sourceFeatureId: string; axis: string; instanceCount: number; angleDegrees: number }; return `${selection} The guarded CIRCULAR_PATTERN plan is ready for review: source ${input.sourceRevisionId}, feature ${input.sourceFeatureId}, axis ${input.axis}, ${input.instanceCount} instances, ${input.angleDegrees}°. Review and submit it through the Pattern Inspector; no geometry has changed. FILLET_READY remains FALSE and no fillet is proposed or executed.`; } if (patternPlan.status === "READY_FOR_PREVIEW") { const input = patternPlan.input as { sourceRevisionId: string; sourceFeatureId: string; countX: number; countY: number; directionX: string; directionY: string; spacingX: number; spacingY: number }; return `${selection} The guarded RECTANGULAR_PATTERN plan is ready for review: source ${input.sourceRevisionId}, feature ${input.sourceFeatureId}, ${input.countX} × ${input.countY}, X ${input.directionX} at ${input.spacingX} mm, Y ${input.directionY} at ${input.spacingY} mm. Review and submit it through the Pattern Inspector; no geometry has changed. FILLET_READY remains FALSE and no fillet is proposed or executed.`; } return `${selection} ${patternPlan.operation === "CIRCULAR_PATTERN" ? "Circular" : "Rectangular"} Pattern is blocked pending explicit evidence: ${patternPlan.questions.join(" ")} FILLET_READY remains FALSE and no fillet is proposed or executed.`; }
   if (/circular boss|circle sketch|cylinder boss/i.test(context.modelName ?? "") || /circular boss|circle sketch|cylinder boss/i.test((proposal?.title ?? ""))) return `${selection} The supported circular-boss route is CIRCLE_SKETCH → EXTRUDE only. Supply explicit radius, extrusion distance, and center X/Y units; the deterministic circular-boss planner then yields a previewable plan. FILLET_READY remains FALSE, so no fillet will be proposed or executed.`;
   if (context.selectedGeometry.source === "FEATURE_TREE") return `${selection} This is a declared feature-history context, not an arbitrary BRep target. Review the Feature Inspector’s parent dependencies and explicit parameter, then use its controlled edit → preview regeneration → approval flow. If the selected feature or reference is unavailable, I will preserve REFERENCE_INVALIDATED rather than silently remapping geometry.`;
   if (action === "GENERATE_CONCEPT") return `${selection} I generated ${conceptCount} distinct architecture families using the existing Phase 3.5 intelligence core. They are conceptual candidates with explicit evidence gaps, not proven solutions.`;
@@ -165,7 +166,7 @@ export function runWorkbenchMessage(input: WorkbenchInput): WorkbenchConversatio
   const context = contextFor(input);
   const state = getState(input.projectId);
   const action = classifyCommand(input.message);
-  const patternPlan = /circular\s+pattern|(?:place|pattern)\s+(?:\d+|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+(?:identical\s+)?bosses|identical\s+bosses\s+around/i.test(input.message) ? planCircularPattern(input.message) : undefined;
+  const patternPlan = /rectangular\s+pattern|grid\s+pattern|(?:\d+)\s*(?:x|×|by)\s*(?:\d+)\s+(?:bosses|instances|pattern)/i.test(input.message) ? planRectangularPattern(input.message) : /circular\s+pattern|(?:place|pattern)\s+(?:\d+|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+(?:identical\s+)?bosses|identical\s+bosses\s+around/i.test(input.message) ? planCircularPattern(input.message) : undefined;
   const proposal = proposalFor(input, context, action);
   const concepts = action === "GENERATE_CONCEPT" ? conceptsFromIntelligence(input) : [];
   const evidence = defaultEvidence(context);

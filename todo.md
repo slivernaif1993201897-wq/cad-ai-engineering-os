@@ -95,3 +95,12 @@
 - [x] Phase 4.8: Build mobile topology-matching, circular-pattern inspection/editing, export/share metadata, and strict fillet-gate controls.
 - [x] Phase 4.8: Add real-kernel topology, matching, ambiguity, invalidation, repeatability, isolation, pattern, regeneration, failure, export provenance, CAD Agent, and full-regression acceptance tests.
 - [x] Phase 4.8: Save a verified checkpoint and report topology architecture, proof-test results, pattern implementation, feature history, STEP export/provenance, CAD Agent, UI, FILLET_READY, regression, limitations, and next milestone without starting Phase 5.
+
+- [x] Phase 4.9: Audit Phase 4.8 circular-pattern, topology, feature-history, CAD Agent, API, UI, and test boundaries against the controlled capability-expansion specification.
+- [x] Phase 4.9: Define validated GLOBAL_X/GLOBAL_Y/GLOBAL_Z axis, RECTANGULAR_PATTERN, regeneration, status, topology-stress, STEP-provenance, and strengthened fillet-readiness contracts.
+- [x] Phase 4.9: Implement real OpenCascade-backed global-axis circular patterns and guarded rectangular patterns with immutable history nodes, controlled preview/apply regeneration, and branch preservation.
+- [x] Phase 4.9: Strengthen topology evidence and refusal behavior through deterministic stress scenarios; preserve FILLET_READY = FALSE unless proven requirements are met.
+- [x] Phase 4.9: Extend capability-safe topology/pattern/export APIs and CAD Agent planners with targeted questions and no invented geometry references.
+- [x] Phase 4.9: Build progressive-disclosure mobile Feature Inspector controls for circle and rectangular patterns, lifecycle state, topology evidence, fillet readiness, and STEP geometry export metadata.
+- [x] Phase 4.9: Add real-kernel GLOBAL_X/GLOBAL_Y/GLOBAL_Z, invalid axis, rectangular-pattern, edit, regeneration, branch, topology, provenance, CAD Agent, UI, and full-regression tests.
+- [x] Phase 4.9: Save a verified checkpoint and report supported patterns, topology stress, fillet gate, exports, CAD Agent, UI, regressions, limitations, and explicit Phase 5 exclusion.

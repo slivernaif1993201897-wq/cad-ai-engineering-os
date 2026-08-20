@@ -13,6 +13,7 @@ import { analyzeCadFile, getCadFileContext, ingestCadFile, listCadFiles, removeC
 import { createEngineeringViewerBranch, getEngineeringViewerScene, getViewerProposalPreview } from "./engineeringViewer";
 import { executeCadOperation, listCadOperationHistory, planCadOperation, previewCadOperation, rejectCadOperation, revertCadOperation } from "./cadExecution";
 import { assessCircleRepeatability, compareFeatureRevisions, createCircularPattern, createCircleFeatureHistory, createFeatureHistory, diagnoseFeatureHistoryFailure, evaluateFilletReadiness, executeCircularPatternRegeneration, executeCircleFeatureRegeneration, executeFeatureRegeneration, getCircleFilletReadiness, getCircleGeometryExport, getTopologyManifest, inspectCircleTopology, listFeatureHistory, matchTopologyRevisions, planCircularBoss, planCircularPattern, previewCircularPatternRegeneration, previewCircleFeatureRegeneration, previewFeatureRegeneration } from "./featureHistory";
+import { createRectangularPattern, executeRectangularPatternRegeneration, planRectangularPattern, previewRectangularPatternRegeneration } from "./rectangularPattern";
 import { FEATURE_CATALOG } from "../shared/featureHistory";
 import { createPersistentConversation, listPersistentConversations, openPersistentProject, projectMemorySnapshot, retrievePersistentMemory, updatePersistentConversation } from "./persistentMemory";
 import { persistWorkbenchAttachment, recordPersistentConceptDecision, recordPersistentProposalDecision, restoreWorkbenchConversation, runPersistentWorkbenchMessage } from "./persistentWorkbench";
@@ -224,6 +225,9 @@ export const appRouter = router({
     planCircularPattern: publicProcedure
       .input(z.object({ message: z.string().trim().min(1).max(2000) }))
       .query(({ input }) => planCircularPattern(input.message)),
+    planRectangularPattern: publicProcedure
+      .input(z.object({ message: z.string().trim().min(1).max(2000) }))
+      .query(({ input }) => planRectangularPattern(input.message)),
     create: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), width: z.number().finite(), height: z.number().finite(), extrudeDistance: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }) }))
       .mutation(({ input }) => createFeatureHistory(input)),
@@ -231,13 +235,16 @@ export const appRouter = router({
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), centerX: z.number().finite(), centerY: z.number().finite(), radius: z.number().finite(), extrudeDistance: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }) }))
       .mutation(({ input }) => createCircleFeatureHistory(input)),
     createCircularPattern: publicProcedure
-      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), sourceRevisionId: z.string().trim().min(1).max(160), sourceFeatureId: z.literal("EXTRUDE-CIRCLE-001"), axis: z.literal("GLOBAL_Z"), instanceCount: z.number().int().min(2).max(24), angleDegrees: z.number().finite().gt(0).max(360), direction: z.enum(["COUNTERCLOCKWISE", "CLOCKWISE"]) }) }))
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), sourceRevisionId: z.string().trim().min(1).max(160), sourceFeatureId: z.literal("EXTRUDE-CIRCLE-001"), axis: z.enum(["GLOBAL_X", "GLOBAL_Y", "GLOBAL_Z"]), instanceCount: z.number().int().min(2).max(24), angleDegrees: z.number().finite().gt(0).max(360), direction: z.enum(["COUNTERCLOCKWISE", "CLOCKWISE"]) }) }))
       .mutation(({ input }) => createCircularPattern(input)),
+    createRectangularPattern: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), sourceRevisionId: z.string().trim().min(1).max(160), sourceFeatureId: z.literal("EXTRUDE-CIRCLE-001"), directionX: z.enum(["GLOBAL_X_POSITIVE", "GLOBAL_X_NEGATIVE"]), directionY: z.enum(["GLOBAL_Y_POSITIVE", "GLOBAL_Y_NEGATIVE"]), countX: z.number().int().min(1).max(24), countY: z.number().int().min(1).max(24), spacingX: z.number().finite().gt(0), spacingY: z.number().finite().gt(0), unit: z.enum(["mm", "cm", "m"]) }) }))
+      .mutation(({ input }) => createRectangularPattern(input)),
     list: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128) }))
       .query(({ input }) => listFeatureHistory(input)),
     preview: publicProcedure
-      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ featureId: z.string().trim().min(1).max(96), parameter: z.object({ name: z.enum(["width", "height", "radius", "centerX", "centerY", "extrudeDistance", "instanceCount", "angleDegrees"]), value: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }).optional(), targetReferenceId: z.string().trim().min(1).max(160).optional(), direction: z.literal("NORMAL").optional(), featureType: z.enum(["RECTANGLE_SKETCH", "CIRCLE_SKETCH", "EXTRUDE", "CIRCULAR_PATTERN", "REVOLVE", "SWEEP", "LOFT", "BOOLEAN_UNION", "BOOLEAN_CUT", "BOOLEAN_INTERSECTION", "FILLET", "CHAMFER", "SHELL", "DRAFT", "PATTERN", "MIRROR"]).optional(), operationOrder: z.number().int().min(0).max(32).optional() }) }))
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ featureId: z.string().trim().min(1).max(96), parameter: z.object({ name: z.enum(["width", "height", "radius", "centerX", "centerY", "extrudeDistance", "instanceCount", "angleDegrees", "countX", "countY", "spacingX", "spacingY"]), value: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }).optional(), targetReferenceId: z.string().trim().min(1).max(160).optional(), direction: z.literal("NORMAL").optional(), featureType: z.enum(["RECTANGLE_SKETCH", "CIRCLE_SKETCH", "EXTRUDE", "CIRCULAR_PATTERN", "RECTANGULAR_PATTERN", "REVOLVE", "SWEEP", "LOFT", "BOOLEAN_UNION", "BOOLEAN_CUT", "BOOLEAN_INTERSECTION", "FILLET", "CHAMFER", "SHELL", "DRAFT", "PATTERN", "MIRROR"]).optional(), operationOrder: z.number().int().min(0).max(32).optional() }) }))
       .mutation(({ input }) => previewFeatureRegeneration(input)),
     previewCircle: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ featureId: z.string().trim().min(1).max(96), parameter: z.object({ name: z.enum(["radius", "centerX", "centerY", "extrudeDistance"]), value: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }).optional(), targetReferenceId: z.string().trim().min(1).max(200).optional(), direction: z.literal("NORMAL").optional(), featureType: z.enum(["CIRCLE_SKETCH", "EXTRUDE", "FILLET", "REVOLVE", "SWEEP", "LOFT", "BOOLEAN_UNION", "BOOLEAN_CUT", "BOOLEAN_INTERSECTION", "CHAMFER", "SHELL", "DRAFT", "PATTERN", "MIRROR"]).optional(), operationOrder: z.number().int().min(0).max(32).optional() }) }))
@@ -249,11 +256,17 @@ export const appRouter = router({
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), previewRevisionId: z.string().trim().min(1).max(160) }))
       .mutation(({ input }) => executeCircleFeatureRegeneration(input)),
     previewCircularPattern: publicProcedure
-      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ instanceCount: z.number().int().min(2).max(24).optional(), angleDegrees: z.number().finite().gt(0).max(360).optional(), axis: z.literal("GLOBAL_Z").optional(), direction: z.enum(["COUNTERCLOCKWISE", "CLOCKWISE"]).optional() }) }))
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ instanceCount: z.number().int().min(2).max(24).optional(), angleDegrees: z.number().finite().gt(0).max(360).optional(), axis: z.enum(["GLOBAL_X", "GLOBAL_Y", "GLOBAL_Z"]).optional(), direction: z.enum(["COUNTERCLOCKWISE", "CLOCKWISE"]).optional() }) }))
       .mutation(({ input }) => previewCircularPatternRegeneration(input)),
     executeCircularPattern: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), previewRevisionId: z.string().trim().min(1).max(160) }))
       .mutation(({ input }) => executeCircularPatternRegeneration(input)),
+    previewRectangularPattern: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ directionX: z.enum(["GLOBAL_X_POSITIVE", "GLOBAL_X_NEGATIVE"]).optional(), directionY: z.enum(["GLOBAL_Y_POSITIVE", "GLOBAL_Y_NEGATIVE"]).optional(), countX: z.number().int().min(1).max(24).optional(), countY: z.number().int().min(1).max(24).optional(), spacingX: z.number().finite().gt(0).optional(), spacingY: z.number().finite().gt(0).optional(), unit: z.enum(["mm", "cm", "m"]).optional() }) }))
+      .mutation(({ input }) => previewRectangularPatternRegeneration(input)),
+    executeRectangularPattern: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), previewRevisionId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => executeRectangularPatternRegeneration(input)),
     compare: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), baseRevisionId: z.string().trim().min(1).max(160), comparedRevisionId: z.string().trim().min(1).max(160) }))
       .query(({ input }) => compareFeatureRevisions(input)),

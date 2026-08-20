@@ -7,7 +7,7 @@ export interface TopologyProvenance {
   sourceRevisionId: string;
   entityType: TopologyEntityType;
   role: string;
-  generator: "CIRCLE_SKETCH_EXTRUDE" | "CIRCULAR_PATTERN";
+  generator: "CIRCLE_SKETCH_EXTRUDE" | "CIRCULAR_PATTERN" | "RECTANGULAR_PATTERN";
 }
 export interface TopologySignature {
   geometryKind: "PLANAR" | "CYLINDRICAL" | "CIRCULAR" | "VERTEX" | "SOLID";
@@ -15,6 +15,7 @@ export interface TopologySignature {
   measurements: Record<string, number>;
   adjacencyRoleCount: number;
   sourceInstanceIndex?: number;
+  sourceInstanceKey?: string;
 }
 export interface NamedTopologyReference {
   referenceId: string;
