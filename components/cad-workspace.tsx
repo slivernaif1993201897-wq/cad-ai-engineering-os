@@ -7,6 +7,7 @@ import { EngineeringReviewPanel } from "@/components/engineering-review-panel";
 import { EngineeringIntelligencePanel } from "@/components/engineering-intelligence-panel";
 import { ImportedModelWorkspace } from "@/components/imported-model-workspace";
 import { CADOperationInspector } from "@/components/cad-operation-inspector";
+import { FeatureHistoryWorkspace } from "@/components/feature-history-workspace";
 import { trpc } from "@/lib/trpc";
 import type { MountingBlockInput } from "@/shared/cad";
 import type { CADAgentResult, CADConfiguration, CADModelStatus } from "@/shared/cadAgent";
@@ -146,6 +147,8 @@ export function CADWorkspace() {
     <View style={styles.truth}><View style={styles.row}><Text style={styles.cardKicker}>GEOMETRY TRUTH · SEPARATE FROM ENGINEERING VALIDITY</Text><Pill label={modelStatus} /></View><Text style={styles.cardCopy}>{modelStatus === "VALIDATED" ? "OpenCascade.js validated the BRep, derived the viewer tessellation, and serialized a STEP artifact. Physical behavior, manufacturability, safety, and production readiness remain separate review states." : modelStatus === "STALE" ? "A parameter changed. Regenerate and validate before export." : "Only deterministic requirements validation and kernel evidence can create a trusted geometric model."}</Text></View>
 
     <Section title="PHASE 4 · NATIVE IMPORTED MODEL VIEWER"><ImportedModelWorkspace onGeometrySelection={setImportedSelection} /></Section>
+
+    <Section title="PHASE 4.6 · GENERIC PARAMETRIC FEATURE HISTORY"><FeatureHistoryWorkspace onFeatureSelection={setImportedSelection} /></Section>
 
     <Section title="PHASE 3.7 · CAD AGENT CONVERSATIONAL WORKBENCH"><CADAgentWorkbench projectId={activeId ?? "WORKSPACE-EXPLORATION"} projectName={active?.configuration.name ?? "Mounting Block Study"} modelName={active?.configuration.name} configurationId={activeId} selectedGeometry={workbenchSelection} requirementSummary={requirementSet ? `${requirementSet.requirements.length} requirements · ${requirementSet.validation_status}` : "Requirements not validated"} featureSummary={selectedFeature ? `Selected feature ${selectedFeature}` : `${features.length} planned features`} parameterSummary={`Width ${input.width} mm · Depth ${input.depth} mm · Height ${input.height} mm · Hole Ø ${input.holeDiameter} mm · Offset ${input.holeEdgeOffset} mm · Fillet ${input.filletRadius} mm`} conceptSummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.candidates.length} engineering candidates attached` : "No intelligence candidates attached"} memorySummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.memory.length} project-session memory records` : "No project memory attached"} validationStage={workbenchValidationStage} onApplyProposal={applyWorkbenchProposal} onPreviewProposal={previewWorkbenchProposal} onProposalCreated={setExecutionProposal} /></Section>
 

@@ -71,3 +71,11 @@
 - [x] Phase 4.5: Build a mobile Operation Inspector with plan review, validation, preview, apply, reject, execution states, history, and recovery guidance.
 - [x] Phase 4.5: Add real-kernel operation, invalid-parameter, invalid-reference, preview, apply, reject, branch, rollback, history, recovery, security, and full-regression acceptance tests.
 - [x] Phase 4.5: Save a verified checkpoint and report supported operations, kernel execution, validation, preview, branching, recovery, UI, security, tests, limitations, and next milestone without starting Phase 5.
+
+- [x] Phase 4.6: Define immutable feature, dependency graph, parameter, topology-reference, regeneration, operation-editing, revision, comparison, and truth contracts without arbitrary BRep manipulation.
+- [x] Phase 4.6: Implement real OpenCascade-backed rectangular sketch and extrusion history with normalized units, dependency validation, geometry validation, and stable declared references.
+- [x] Phase 4.6: Implement controlled operation-plan editing, preview regeneration, invalid-reference handling, failed regeneration events, immutable feature revisions, safe rollback references, and branch comparison.
+- [x] Phase 4.6: Expose capability-safe feature-history APIs and integrate CAD Agent context, evidence, operation history, file limits, and persistent lineage.
+- [x] Phase 4.6: Build a mobile Feature Tree, Feature Inspector, operation-plan editor, regeneration controls, and immutable Branch Comparison workspace.
+- [x] Phase 4.6: Add real-kernel sketch, extrude, dependency, parameter, unit, regeneration, invalid-reference, failure, revision, branch-comparison, and full-regression acceptance tests.
+- [x] Phase 4.6: Save a verified checkpoint and report feature-history architecture, supported types, kernel execution, parameters, units, dependency graph, regeneration, references, branch comparison, UI, tests, unsupported types, and limits without starting Phase 5.
