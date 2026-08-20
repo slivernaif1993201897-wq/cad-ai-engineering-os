@@ -1,10 +1,22 @@
+import { z } from "zod";
+
 import { COOKIE_NAME } from "../shared/const.js";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { generateMountingBlock } from "./cadKernel";
+
+const mountingBlockInput = z.object({
+  width: z.number().positive(),
+  depth: z.number().positive(),
+  height: z.number().positive(),
+  holeDiameter: z.number().positive(),
+  holeEdgeOffset: z.number().positive(),
+  filletRadius: z.number().nonnegative(),
+  approveAssumption: z.boolean(),
+});
 
 export const appRouter = router({
-  // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -17,12 +29,16 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  cad: router({
+    generateMountingBlock: publicProcedure
+      .input(
+        z.object({
+          input: mountingBlockInput,
+          prompt: z.string().trim().min(1).max(2000),
+        }),
+      )
+      .mutation(({ input }) => generateMountingBlock(input.input, input.prompt)),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
