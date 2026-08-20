@@ -24,7 +24,7 @@ const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 let kernelPromise: ReturnType<typeof initOpenCascade> | undefined;
 const getKernel = async () => (kernelPromise ??= initOpenCascade());
 
-type ParserError = NonNullable<CADFileContext["parserError"]>;
+export type ParserError = NonNullable<CADFileContext["parserError"]>;
 type ParseOutcome = Pick<CADFileContext, "format" | "parser" | "parserVersion" | "parseStatus" | "validationStatus" | "units" | "boundingBox" | "step" | "stl" | "limitations" | "parserError">;
 
 function property<T>(value: T | undefined, provenance: CADFileProperty<T>["provenance"], note?: string): CADFileProperty<T> {
@@ -114,7 +114,7 @@ async function parseStep(bytes: Buffer): Promise<ParseOutcome> {
   finally { try { reader?.delete?.(); (oc as any).FS.unlink(path); } catch { /* virtual temporary file cleanup is best effort */ } }
 }
 function vectorArea(a: number[], b: number[], c: number[]) { const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]]; const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]]; const cross = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]]; return { area: Math.hypot(...cross) / 2, signedVolume: (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6 }; }
-function parseStlTriangles(bytes: Buffer): { triangles: Array<[[number, number, number], [number, number, number], [number, number, number]]>; normalsPresent: boolean } | ParserError {
+export function parseStlTriangles(bytes: Buffer): { triangles: Array<[[number, number, number], [number, number, number], [number, number, number]]>; normalsPresent: boolean } | ParserError {
   const ascii = bytes.toString("utf8");
   if (/^\s*solid\b/i.test(ascii) && /facet\s+normal/i.test(ascii)) {
     const vertices = [...ascii.matchAll(/vertex\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)\s+([-+0-9.eE]+)/g)].map((match) => [Number(match[1]), Number(match[2]), Number(match[3])] as [number, number, number]);

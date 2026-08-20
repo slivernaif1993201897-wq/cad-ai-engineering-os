@@ -115,6 +115,31 @@ export async function reviseMountingBlockConfiguration(args: {
   return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error };
 }
 
+/** Computes a real kernel artifact for review without storing a configuration or changing the current branch. */
+export async function previewMountingBlockConfiguration(args: {
+  configurationId: string;
+  inputPatch: Partial<MountingBlockInput>;
+  updateText: string;
+}): Promise<CADAgentResult> {
+  const previous = configurations.get(args.configurationId);
+  if (!previous) throw new Error(`Unknown configuration: ${args.configurationId}`);
+  const input = { ...previous.input, ...args.inputPatch };
+  const requirementSet = applyRequirementRevision(previous.requirementSet, args.updateText);
+  const previewId = `PREVIEW-${previous.id}-${crypto.randomUUID().slice(0, 8)}`;
+  const plan = planMountingBlockFeatures(requirementSet, input, `PLAN-${previewId}`);
+  const sourceText = `${previous.sourceText}\nPreview only: ${args.updateText}`;
+  const initialReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: previewId });
+  const base: CADConfiguration = { id: previewId, name: `${previous.name} · Preview`, revision: previous.revision + 1, createdAt: new Date().toISOString(), sourceText, input, requirementSet, engineeringReview: initialReview, plan, modelStatus: "CONCEPTUAL" };
+  if (requirementSet.validation_status !== "VALIDATED" || initialReview.gate === "BLOCKED") return conceptualResult(base, initialReview.gate === "BLOCKED" ? `Proposal preview blocked: ${initialReview.verdictReason}` : `Proposal preview remains conceptual because RequirementSet is ${requirementSet.validation_status}.`);
+  const kernelResult = await generateMountingBlock(input, canonicalMountingPrompt(input));
+  const modelStatus: CADModelStatus = kernelResult.artifact?.validationStatus === "VALID" && kernelResult.viewerMesh ? "VALIDATED" : "INVALID";
+  plan.model_status = modelStatus; plan.revision = base.revision;
+  plan.features = plan.features.map((feature) => ({ ...feature, executionStatus: modelStatus === "VALIDATED" ? "EXECUTED" : "FAILED" }));
+  const engineeringReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: modelStatus === "VALIDATED" ? "GEOMETRICALLY_VALIDATED" : "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: previewId });
+  const configuration: CADConfiguration = { ...base, modelStatus, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, engineeringReview };
+  return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error };
+}
+
 export function listConfigurations(): CADConfiguration[] {
   return [...configurations.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }

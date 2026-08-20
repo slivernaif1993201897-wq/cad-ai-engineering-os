@@ -5,6 +5,7 @@ import { CADViewer, type ViewerSelection } from "@/components/cad-viewer";
 import { CADAgentWorkbench } from "@/components/cad-agent-workbench";
 import { EngineeringReviewPanel } from "@/components/engineering-review-panel";
 import { EngineeringIntelligencePanel } from "@/components/engineering-intelligence-panel";
+import { ImportedModelWorkspace } from "@/components/imported-model-workspace";
 import { trpc } from "@/lib/trpc";
 import type { MountingBlockInput } from "@/shared/cad";
 import type { CADAgentResult, CADConfiguration, CADModelStatus } from "@/shared/cadAgent";
@@ -55,16 +56,19 @@ export function CADWorkspace() {
   const [dirty, setDirty] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<string>();
   const [selection, setSelection] = useState<ViewerSelection>();
+  const [importedSelection, setImportedSelection] = useState<GeometrySelectionContext>();
   const [hidden, setHidden] = useState<string[]>([]);
   const [isolated, setIsolated] = useState<string>();
   const [bodyVisible, setBodyVisible] = useState(true);
   const [exportMessage, setExportMessage] = useState<string>();
+  const [proposalPreview, setProposalPreview] = useState<{ proposal: CADChangeProposal; result: CADAgentResult }>();
   const [exploratoryMode, setExploratoryMode] = useState(false);
   const [intelligenceMode, setIntelligenceMode] = useState<EngineeringMode>("NORMAL");
 
   const requirements = trpc.requirements.parse.useMutation();
   const create = trpc.cadAgent.createConfiguration.useMutation();
   const revise = trpc.cadAgent.reviseConfiguration.useMutation();
+  const previewConfiguration = trpc.cadAgent.previewConfiguration.useMutation();
   const exportStep = trpc.cadAgent.exportStep.useMutation();
   const engineeringReview = trpc.engineering.review.useMutation();
   const intelligence = trpc.intelligence.analyze.useMutation();
@@ -79,10 +83,11 @@ export function CADWorkspace() {
   const configs = configurations.data ?? (active ? [active.configuration] : []);
   const pending = create.isPending || revise.isPending;
   const workbenchSelection = useMemo<GeometrySelectionContext>(() => {
+    if (importedSelection) return importedSelection;
     if (selection) return { kind: selection.mode, id: selection.faceId, label: `${selection.mode} ${selection.faceId}`, featureId: selection.featureId, viewerFaceId: selection.faceId, source: "VIEWER" };
     if (selectedFeature) return { kind: "FEATURE", id: selectedFeature, label: selectedFeature, featureId: selectedFeature, source: "FEATURE_TREE" };
     return { kind: "NONE", label: "No geometry selected", source: "NONE" };
-  }, [selectedFeature, selection]);
+  }, [importedSelection, selectedFeature, selection]);
   const workbenchValidationStage: WorkbenchValidationStage = modelStatus === "VALIDATED" ? "GEOMETRICALLY_VALIDATED" : modelStatus === "CONCEPTUAL" ? "CONCEPTUAL" : "ESTIMATED";
 
   const adopt = (result: CADAgentResult) => { setActive(result); setDirty(false); setHidden([]); setIsolated(undefined); setExportMessage(undefined); configurations.refetch(); };
@@ -119,7 +124,18 @@ export function CADWorkspace() {
     if (!activeId || !Number.isFinite(nextWidth) || nextWidth <= 0) return false;
     return new Promise((resolve) => revise.mutate({ configurationId: activeId, inputPatch: { width: nextWidth }, updateText: `Apply reviewed CAD Agent proposal: change width to ${nextWidth} mm.` }, { onSuccess: (result) => { adopt(result); setWidth(String(nextWidth)); resolve(true); }, onError: () => resolve(false) }));
   };
-  const error = create.error?.message ?? revise.error?.message ?? exportStep.error?.message ?? engineeringReview.error?.message ?? intelligence.error?.message ?? active?.error;
+  const previewWorkbenchProposal = async (proposal: CADChangeProposal): Promise<boolean> => {
+    const widthChange = proposal.parameters.find((parameter) => parameter.name === "width" && parameter.after);
+    const nextWidth = widthChange?.after ? Number(widthChange.after) : Number.NaN;
+    if (!activeId || !Number.isFinite(nextWidth) || nextWidth <= 0) return false;
+    try {
+      const result = await previewConfiguration.mutateAsync({ configurationId: activeId, inputPatch: { width: nextWidth }, updateText: `Preview CAD Agent proposal only: change width to ${nextWidth} mm.` });
+      if (!result.viewerMesh || result.configuration.modelStatus !== "VALIDATED") return false;
+      setProposalPreview({ proposal, result });
+      return true;
+    } catch { return false; }
+  };
+  const error = create.error?.message ?? revise.error?.message ?? previewConfiguration.error?.message ?? exportStep.error?.message ?? engineeringReview.error?.message ?? intelligence.error?.message ?? active?.error;
   const features = active?.plan.features ?? [];
 
   return <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -127,7 +143,9 @@ export function CADWorkspace() {
 
     <View style={styles.truth}><View style={styles.row}><Text style={styles.cardKicker}>GEOMETRY TRUTH · SEPARATE FROM ENGINEERING VALIDITY</Text><Pill label={modelStatus} /></View><Text style={styles.cardCopy}>{modelStatus === "VALIDATED" ? "OpenCascade.js validated the BRep, derived the viewer tessellation, and serialized a STEP artifact. Physical behavior, manufacturability, safety, and production readiness remain separate review states." : modelStatus === "STALE" ? "A parameter changed. Regenerate and validate before export." : "Only deterministic requirements validation and kernel evidence can create a trusted geometric model."}</Text></View>
 
-    <Section title="PHASE 3.7 · CAD AGENT CONVERSATIONAL WORKBENCH"><CADAgentWorkbench projectId={activeId ?? "WORKSPACE-EXPLORATION"} projectName={active?.configuration.name ?? "Mounting Block Study"} modelName={active?.configuration.name} configurationId={activeId} selectedGeometry={workbenchSelection} requirementSummary={requirementSet ? `${requirementSet.requirements.length} requirements · ${requirementSet.validation_status}` : "Requirements not validated"} featureSummary={selectedFeature ? `Selected feature ${selectedFeature}` : `${features.length} planned features`} parameterSummary={`Width ${input.width} mm · Depth ${input.depth} mm · Height ${input.height} mm · Hole Ø ${input.holeDiameter} mm · Offset ${input.holeEdgeOffset} mm · Fillet ${input.filletRadius} mm`} conceptSummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.candidates.length} engineering candidates attached` : "No intelligence candidates attached"} memorySummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.memory.length} project-session memory records` : "No project memory attached"} validationStage={workbenchValidationStage} onApplyProposal={applyWorkbenchProposal} /></Section>
+    <Section title="PHASE 4 · NATIVE IMPORTED MODEL VIEWER"><ImportedModelWorkspace onGeometrySelection={setImportedSelection} /></Section>
+
+    <Section title="PHASE 3.7 · CAD AGENT CONVERSATIONAL WORKBENCH"><CADAgentWorkbench projectId={activeId ?? "WORKSPACE-EXPLORATION"} projectName={active?.configuration.name ?? "Mounting Block Study"} modelName={active?.configuration.name} configurationId={activeId} selectedGeometry={workbenchSelection} requirementSummary={requirementSet ? `${requirementSet.requirements.length} requirements · ${requirementSet.validation_status}` : "Requirements not validated"} featureSummary={selectedFeature ? `Selected feature ${selectedFeature}` : `${features.length} planned features`} parameterSummary={`Width ${input.width} mm · Depth ${input.depth} mm · Height ${input.height} mm · Hole Ø ${input.holeDiameter} mm · Offset ${input.holeEdgeOffset} mm · Fillet ${input.filletRadius} mm`} conceptSummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.candidates.length} engineering candidates attached` : "No intelligence candidates attached"} memorySummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.memory.length} project-session memory records` : "No project memory attached"} validationStage={workbenchValidationStage} onApplyProposal={applyWorkbenchProposal} onPreviewProposal={previewWorkbenchProposal} /></Section>
 
     <Section title="PHASE 3.6 · TRUTH, RIGOR & RADICAL PROBLEM SOLVING"><EngineeringReviewPanel review={review} exploratoryMode={exploratoryMode} onToggleExploration={() => setExploratoryMode((value) => !value)} onRunReview={() => engineeringReview.mutate({ sourceText: prompt, exploratoryMode, geometryStatus: active?.configuration.engineeringReview.reality.geometry, requirementSetId: requirementSet?.id, configurationId: activeId })} pending={engineeringReview.isPending} /></Section>
 
@@ -145,6 +163,8 @@ export function CADWorkspace() {
 
     <Section title="CAD VIEWER · REAL OPEN CASCADE TESSELLATION"><CADViewer mesh={active?.viewerMesh} selectedFeatureId={selectedFeature} onSelectionChange={setSelection} hiddenFeatureIds={hidden} isolatedFeatureId={isolated} bodyVisible={bodyVisible} /></Section>
 
+    {proposalPreview ? <Section title="PROPOSAL PREVIEW · ORIGINAL PRESERVED"><View style={styles.preview}><Text style={styles.cardKicker}>CURRENT MODEL VERSUS PROPOSED KERNEL MODEL</Text><Text style={styles.meta}>{proposalPreview.proposal.title} · PREVIEW ONLY · The proposed artifact is not saved, exported, or applied.</Text><View style={styles.previewGrid}><View style={{ flex: 1 }}><Text style={styles.previewLabel}>CURRENT · {active?.configuration.id ?? "NONE"}</Text><CADViewer mesh={active?.viewerMesh} /></View><View style={{ flex: 1 }}><Text style={styles.previewLabel}>PROPOSED · {proposalPreview.result.configuration.id}</Text><CADViewer mesh={proposalPreview.result.viewerMesh} /></View></View><View style={styles.row}><Pressable style={styles.secondary} onPress={() => setProposalPreview(undefined)}><Text style={styles.secondaryText}>REJECT PREVIEW</Text></Pressable><Pressable style={styles.primary} onPress={() => { void applyWorkbenchProposal(proposalPreview.proposal).then((applied) => { if (applied) setProposalPreview(undefined); }); }}><Text style={styles.primaryText}>APPLY AS NEW REVISION</Text></Pressable></View></View></Section> : null}
+
     <Section title="FEATURE TREE · ORDERED EXECUTION"><View style={styles.card}>{features.length ? features.map((feature) => <View key={feature.id} style={styles.feature}><View style={styles.featureMain}><Pressable onPress={() => { setSelectedFeature(feature.id); setIsolated(undefined); }}><Text style={styles.cardTitle}>{feature.featureType} · {feature.id}</Text><Text style={styles.meta}>Parents: {feature.parentFeatures.length ? feature.parentFeatures.join(", ") : "ROOT"}</Text><Text style={styles.trace}>WHY · {feature.traceabilityRequirementIds.join(", ") || "No requirement link"}</Text></Pressable></View><View style={styles.featureActions}><Pill label={feature.executionStatus} /><Pressable style={styles.mini} onPress={() => setHidden((items) => items.includes(feature.id) ? items.filter((id) => id !== feature.id) : [...items, feature.id])}><Text style={styles.miniText}>{hidden.includes(feature.id) ? "SHOW" : "HIDE"}</Text></Pressable><Pressable style={styles.mini} onPress={() => setIsolated((id) => id === feature.id ? undefined : feature.id)}><Text style={styles.miniText}>{isolated === feature.id ? "ALL" : "ISO"}</Text></Pressable></View></View>) : <Text style={styles.meta}>Generate a validated configuration to inspect the deterministic plan.</Text>}<Pressable style={styles.bodyButton} onPress={() => setBodyVisible(!bodyVisible)}><Text style={styles.miniText}>{bodyVisible ? "HIDE BODY" : "SHOW BODY"}</Text></Pressable></View></Section>
 
     <Section title="MODEL EVIDENCE · STEP EXPORT"><View style={styles.export}><View style={{ flex: 1 }}><Text style={styles.cardTitle}>{active?.artifact ? "REAL STEP ARTIFACT" : "STEP BLOCKED"}</Text><Text style={styles.meta}>{active?.artifact ? `${active.artifact.stepByteLength?.toLocaleString()} bytes · ${active.artifact.validationStatus} · ${active.artifact.viewerAvailable ? "kernel tessellation" : "viewer unavailable"}` : "Export is enabled only after BRep validation succeeds."}</Text></View><Pressable disabled={modelStatus !== "VALIDATED" || exportStep.isPending} style={[styles.exportButton, (modelStatus !== "VALIDATED" || exportStep.isPending) && styles.disabled]} onPress={downloadStep}><Text style={styles.exportText}>{exportStep.isPending ? "EXPORTING…" : "EXPORT STEP"}</Text></Pressable></View>{exportMessage ? <Text style={styles.success}>{exportMessage}</Text> : null}<Text style={styles.meta}>{Platform.OS === "web" ? "A browser download is created from the validated real STEP bytes." : "The validated STEP artifact is available from the CAD Agent export endpoint."}</Text></Section>
@@ -160,5 +180,5 @@ const styles = StyleSheet.create({
   card: { backgroundColor: "#192831", borderRadius: 14, padding: 13, gap: 9, borderWidth: 1, borderColor: "#2F4652" }, cardTitle: { color: "#F3F1EA", fontSize: 12, fontWeight: "800" }, meta: { color: "#7B8A93", fontSize: 9, lineHeight: 14, marginTop: 3 }, req: { flexDirection: "row", gap: 7, borderTopWidth: 1, borderTopColor: "#2B3A41", paddingTop: 8 }, reqId: { color: "#6EA4CA", fontSize: 8, fontWeight: "800" }, reqText: { color: "#D7E0E3", fontSize: 10, marginTop: 2 }, reqValue: { color: "#F3F1EA", fontSize: 9, fontWeight: "800", textAlign: "right", maxWidth: 80 }, alert: { backgroundColor: "#3A2A1C", borderLeftWidth: 3, borderLeftColor: "#DE6B35", color: "#F6D8C6", fontSize: 10, lineHeight: 15, padding: 8 }, conflict: { backgroundColor: "#3A1E1E", borderLeftColor: "#B3261E" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 }, param: { width: "48%", backgroundColor: "#192831", borderRadius: 10, padding: 10, borderWidth: 1, borderColor: "#2F4652" }, paramLabel: { color: "#7B8A93", fontSize: 8, fontWeight: "800" }, paramValue: { color: "#F3F1EA", fontSize: 17, fontWeight: "700", marginTop: 5 }, paramInput: { color: "#8EC4E8", fontSize: 17, fontWeight: "700", marginTop: 1, padding: 0 }, primary: { minHeight: 51, borderRadius: 13, backgroundColor: "#1167B1", alignItems: "center", justifyContent: "center", marginTop: 3 }, primaryText: { color: "#F3F1EA", fontSize: 11, fontWeight: "800" }, command: { flexDirection: "row", gap: 8, backgroundColor: "#192831", borderWidth: 1, borderColor: "#2F4652", borderRadius: 12, padding: 9 }, commandInput: { flex: 1, minHeight: 36, borderWidth: 1, borderColor: "#34434B", borderRadius: 8, paddingHorizontal: 9, color: "#F3F1EA", fontSize: 10 },
   config: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, paddingVertical: 10, borderTopWidth: 1, borderTopColor: "#2B3A41" }, configActive: { backgroundColor: "#1D3440", marginHorizontal: -13, paddingHorizontal: 13 }, feature: { flexDirection: "row", gap: 8, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#2B3A41" }, featureMain: { flex: 1 }, trace: { color: "#6EA4CA", fontSize: 8, marginTop: 4 }, featureActions: { alignItems: "flex-end", gap: 4 }, mini: { borderWidth: 1, borderColor: "#34434B", borderRadius: 5, paddingHorizontal: 7, paddingVertical: 4 }, miniText: { color: "#8EC4E8", fontSize: 8, fontWeight: "800" }, bodyButton: { alignItems: "center", paddingTop: 3 },
-  export: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, backgroundColor: "#192831", borderWidth: 1, borderColor: "#2F4652", borderRadius: 12 }, exportButton: { backgroundColor: "#1F8A70", paddingHorizontal: 10, paddingVertical: 10, borderRadius: 8 }, exportText: { color: "#F3F1EA", fontSize: 9, fontWeight: "800" }, success: { color: "#67B39F", fontSize: 9, lineHeight: 14 }, selection: { backgroundColor: "#17303A", borderRadius: 10, padding: 11 }, error: { backgroundColor: "#3A1E1E", borderWidth: 1, borderColor: "#B3261E", borderRadius: 10, padding: 11 }, footer: { color: "#71828B", textAlign: "center", fontSize: 9, lineHeight: 14, paddingHorizontal: 10 }, pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] }, disabled: { opacity: 0.5 },
+  export: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, backgroundColor: "#192831", borderWidth: 1, borderColor: "#2F4652", borderRadius: 12 }, exportButton: { backgroundColor: "#1F8A70", paddingHorizontal: 10, paddingVertical: 10, borderRadius: 8 }, exportText: { color: "#F3F1EA", fontSize: 9, fontWeight: "800" }, success: { color: "#67B39F", fontSize: 9, lineHeight: 14 }, preview: { backgroundColor: "#192831", borderWidth: 1, borderColor: "#61538E", borderRadius: 12, padding: 10, gap: 8 }, previewGrid: { gap: 8 }, previewLabel: { color: "#C2B2F3", fontSize: 8, fontWeight: "900", letterSpacing: 0.5 }, selection: { backgroundColor: "#17303A", borderRadius: 10, padding: 11 }, error: { backgroundColor: "#3A1E1E", borderWidth: 1, borderColor: "#B3261E", borderRadius: 10, padding: 11 }, footer: { color: "#71828B", textAlign: "center", fontSize: 9, lineHeight: 14, paddingHorizontal: 10 }, pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] }, disabled: { opacity: 0.5 },
 });

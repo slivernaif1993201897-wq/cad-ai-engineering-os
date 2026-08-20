@@ -13,7 +13,7 @@ import type { KernelViewerMesh } from "../shared/cadAgent";
 
 let kernelPromise: ReturnType<typeof initOpenCascade> | undefined;
 
-async function getKernel() {
+export async function getOpenCascadeKernel() {
   kernelPromise ??= initOpenCascade();
   return kernelPromise;
 }
@@ -52,8 +52,8 @@ function feature(id: string, type: string, status: CADFeature["status"], depends
   return { id, type, status, dependsOn, parameters, ...(note ? { note } : {}) };
 }
 
-function extractViewerMesh(oc: any, shape: any, input: MountingBlockInput, featureId: string): KernelViewerMesh {
-  const tessellator = new oc.BRepMesh_IncrementalMesh_2(shape, 0.8, false, 0.5, false);
+export function extractKernelViewerMesh(oc: any, shape: any, featureId: string, deflection = 0.8): KernelViewerMesh {
+  const tessellator = new oc.BRepMesh_IncrementalMesh_2(shape, deflection, false, 0.5, false);
   const explorer = new oc.TopExp_Explorer_2(shape, oc.TopAbs_ShapeEnum.TopAbs_FACE, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
   const vertices: [number, number, number][] = [];
   const triangles: [number, number, number][] = [];
@@ -117,12 +117,16 @@ function extractViewerMesh(oc: any, shape: any, input: MountingBlockInput, featu
     faceRanges,
     boundingBox: { min, max, size, diagonal },
     measurements: {
-      width: input.width,
-      depth: input.depth,
-      height: input.height,
+      width: size[0],
+      depth: size[1],
+      height: size[2],
       boundingBoxDiagonal: diagonal,
     },
   };
+}
+
+function extractViewerMesh(oc: any, shape: any, _input: MountingBlockInput, featureId: string): KernelViewerMesh {
+  return extractKernelViewerMesh(oc, shape, featureId);
 }
 
 export async function generateMountingBlock(input: MountingBlockInput, prompt: string): Promise<CADGenerationResult> {
@@ -182,7 +186,7 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
     return { plan, error: "Fillet radius is too large for the block dimensions." };
   }
 
-  const oc = await getKernel();
+  const oc = await getOpenCascadeKernel();
   const progress = new oc.Message_ProgressRange_1();
   const box = new oc.BRepPrimAPI_MakeBox_2(input.width, input.depth, input.height);
   let current = box.Shape();

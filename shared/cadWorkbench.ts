@@ -3,7 +3,7 @@ import type { EngineeringTruthStatus } from "./engineeringTruth";
 
 export const WORKBENCH_VALIDATION_STAGES = ["CONCEPTUAL", "ESTIMATED", "CALCULATED", "GEOMETRICALLY_VALIDATED", "PHYSICALLY_PLAUSIBLE", "CAE_VERIFIED", "EXPERIMENTALLY_VALIDATED", "PRODUCTION_READY"] as const;
 export type WorkbenchValidationStage = (typeof WORKBENCH_VALIDATION_STAGES)[number];
-export type GeometrySelectionKind = "FACE" | "EDGE" | "VERTEX" | "FEATURE" | "BODY" | "ASSEMBLY" | "REGION" | "NONE";
+export type GeometrySelectionKind = "FACE" | "EDGE" | "VERTEX" | "FEATURE" | "BODY" | "SOLID" | "ASSEMBLY" | "REGION" | "NONE";
 export type ChatRole = "USER" | "CAD_AGENT" | "SYSTEM";
 export type ProposalStatus = "PENDING" | "PREVIEWED" | "APPLIED" | "REJECTED" | "EDIT_REQUESTED" | "REVERTED";
 export type WorkbenchActionKind = "CREATE" | "MODIFY" | "MEASURE" | "ANALYZE" | "OPTIMIZE" | "GENERATE_CONCEPT" | "COMPARE_CONCEPTS" | "VALIDATE" | "UPLOAD" | "EXPORT" | "ASK_CAD_AGENT";

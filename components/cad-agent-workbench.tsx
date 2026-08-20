@@ -46,6 +46,7 @@ export function CADAgentWorkbench({
   memorySummary,
   validationStage,
   onApplyProposal,
+  onPreviewProposal,
 }: {
   projectId: string;
   projectName: string;
@@ -59,6 +60,7 @@ export function CADAgentWorkbench({
   memorySummary: string;
   validationStage: WorkbenchValidationStage;
   onApplyProposal?: (proposal: CADChangeProposal) => Promise<boolean>;
+  onPreviewProposal?: (proposal: CADChangeProposal) => Promise<boolean>;
 }) {
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
@@ -171,6 +173,10 @@ export function CADAgentWorkbench({
 
   const actOnProposal = async (proposal: CADChangeProposal, status: "PREVIEWED" | "APPLIED" | "REJECTED" | "EDIT_REQUESTED" | "REVERTED") => {
     let nextStatus = status;
+    if (status === "PREVIEWED") {
+      const previewed = onPreviewProposal ? await onPreviewProposal(proposal) : false;
+      if (!previewed) setWorkbenchNotice("No proposed geometry preview was rendered. The proposal remains inspectable, but it cannot be shown as a kernel-derived alternate model for this active configuration.");
+    }
     if (status === "APPLIED") {
       const applied = onApplyProposal ? await onApplyProposal(proposal) : false;
       if (!applied) { nextStatus = "EDIT_REQUESTED"; setWorkbenchNotice("The proposal was not silently applied: the selected change is not executable in the active CAD configuration. Edit it or use the supported parametric controls."); }

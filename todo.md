@@ -56,3 +56,10 @@
 - [x] Phase 3.9: Build versioned STEP/STL file cards with status, units, geometry summary, provenance, inspection, chat reference, compare, and remove actions.
 - [x] Phase 3.9: Add real STEP/STL fixture parsing, invalid file, integrity, duplicate, versioning, isolation, failure, unsupported format, file-context, and CAD Agent acceptance tests.
 - [x] Phase 3.9: Save a verified checkpoint and report formats, parser/kernel, limitations, storage, schema, UI, integration, security, tests, and next milestone without starting Phase 4.
+
+- [x] Phase 4: Define project-isolated viewer scene, selection, measurement, traceability, proposal-preview, and immutable branch contracts without claiming unsupported engineering evidence.
+- [x] Phase 4: Implement real parser/kernel-derived STEP/STP/STL tessellation, stable entity references, bounded scene generation, and authorized viewer APIs.
+- [x] Phase 4: Build the native 3D viewer workspace with touch/mouse camera controls, model tree, selection highlighting, inspection, visibility, section, measurement, and responsive panels.
+- [x] Phase 4: Integrate selected geometry with CAD Agent context, evidence, requirements, persistent memory, non-destructive proposal preview, lineage, and file-version association.
+- [x] Phase 4: Add deterministic viewer, tessellation, selection, camera, measurement, tree, traceability, proposal, branch, isolation, and full-regression acceptance tests.
+- [x] Phase 4: Save a verified checkpoint and report architecture, engine, kernel integration, UX, security, performance, tests, limitations, and recommended next phase without starting Phase 5.
