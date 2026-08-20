@@ -12,4 +12,4 @@
 - [x] Phase 2: Integrate requirement validation with CAD generation so invalid, conflicting, or incomplete requirements cannot create trusted CAD.
 - [x] Phase 2: Add the Requirements panel for open questions, conflicts, validated requirements, source, confidence, and status.
 - [x] Phase 2: Add unit, conflict, missing-information, conversational-update, traceability, and regression acceptance tests.
-- [ ] Phase 2: Save a verified checkpoint and report the final test status.
+- [x] Phase 2: Save a verified checkpoint and report the final test status.
