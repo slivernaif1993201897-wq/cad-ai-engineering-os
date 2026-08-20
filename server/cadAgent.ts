@@ -140,6 +140,43 @@ export async function previewMountingBlockConfiguration(args: {
   return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error };
 }
 
+/**
+ * Executes a bounded parameter revision through the kernel and only stores it after BRep validation succeeds.
+ * A failed preview or kernel call produces an uncommitted result; it never mutates the source configuration.
+ */
+export async function executeMountingBlockConfigurationAtomically(args: {
+  configurationId: string;
+  name: string;
+  inputPatch: Partial<MountingBlockInput>;
+  updateText: string;
+}): Promise<CADAgentResult> {
+  const previous = configurations.get(args.configurationId);
+  if (!previous) throw new Error(`Unknown configuration: ${args.configurationId}`);
+  const input = { ...previous.input, ...args.inputPatch };
+  const requirementSet = applyRequirementRevision(previous.requirementSet, args.updateText);
+  const revision = previous.revision + 1;
+  const id = configurationId(args.name, revision);
+  if (configurations.has(id)) throw new Error(`A configuration already exists at ${id}; create a distinct operation branch name rather than overwriting history.`);
+  const plan = planMountingBlockFeatures(requirementSet, input, `PLAN-${args.name.toUpperCase().replace(/\s+/g, "-")}-R${revision}`);
+  const sourceText = `${previous.sourceText}\nExecuted revision: ${args.updateText}`;
+  const initialReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: id });
+  const base: CADConfiguration = { id, name: args.name, revision, createdAt: new Date().toISOString(), sourceText, input, requirementSet, engineeringReview: initialReview, plan, modelStatus: "CONCEPTUAL" };
+  if (requirementSet.validation_status !== "VALIDATED" || initialReview.gate === "BLOCKED") return conceptualResult(base, initialReview.gate === "BLOCKED" ? `Kernel execution blocked before start: ${initialReview.verdictReason}` : `Kernel execution blocked before start because RequirementSet is ${requirementSet.validation_status}.`);
+  const kernelResult = await generateMountingBlock(input, canonicalMountingPrompt(input));
+  const modelStatus: CADModelStatus = kernelResult.artifact?.validationStatus === "VALID" && kernelResult.viewerMesh ? "VALIDATED" : "INVALID";
+  plan.model_status = modelStatus; plan.revision = revision;
+  plan.features = plan.features.map((feature) => ({ ...feature, executionStatus: modelStatus === "VALIDATED" ? "EXECUTED" : "FAILED" }));
+  const engineeringReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: modelStatus === "VALIDATED" ? "GEOMETRICALLY_VALIDATED" : "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: id });
+  const configuration: CADConfiguration = { ...base, modelStatus, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, engineeringReview };
+  if (modelStatus !== "VALIDATED") return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error ?? "OpenCascade did not return a validated BRep artifact; the source model was not modified." };
+  configurations.set(id, configuration);
+  return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error };
+}
+
+export function getCadConfiguration(configurationId: string): CADConfiguration | undefined {
+  return configurations.get(configurationId);
+}
+
 export function listConfigurations(): CADConfiguration[] {
   return [...configurations.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }

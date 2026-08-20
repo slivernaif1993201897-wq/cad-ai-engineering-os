@@ -63,3 +63,11 @@
 - [x] Phase 4: Integrate selected geometry with CAD Agent context, evidence, requirements, persistent memory, non-destructive proposal preview, lineage, and file-version association.
 - [x] Phase 4: Add deterministic viewer, tessellation, selection, camera, measurement, tree, traceability, proposal, branch, isolation, and full-regression acceptance tests.
 - [x] Phase 4: Save a verified checkpoint and report architecture, engine, kernel integration, UX, security, performance, tests, limitations, and recommended next phase without starting Phase 5.
+
+- [x] Phase 4.5: Define controlled CAD operation, validation, execution, preview, history, failure-recovery, and truth contracts with no arbitrary code path.
+- [x] Phase 4.5: Implement deterministic CAD Agent proposal-to-operation planning and pre-execution validation for the reliably supported mounting-block parameter operations only.
+- [x] Phase 4.5: Implement non-persistent kernel preview, atomic user-approved execution, immutable parametric revision lineage, safe rollback reference, and bounded alternative recovery.
+- [x] Phase 4.5: Expose capability-safe operation APIs and integrate CAD Agent proposals, selection context, evidence, file-version limits, and operation history.
+- [x] Phase 4.5: Build a mobile Operation Inspector with plan review, validation, preview, apply, reject, execution states, history, and recovery guidance.
+- [x] Phase 4.5: Add real-kernel operation, invalid-parameter, invalid-reference, preview, apply, reject, branch, rollback, history, recovery, security, and full-regression acceptance tests.
+- [x] Phase 4.5: Save a verified checkpoint and report supported operations, kernel execution, validation, preview, branching, recovery, UI, security, tests, limitations, and next milestone without starting Phase 5.

@@ -47,6 +47,7 @@ export function CADAgentWorkbench({
   validationStage,
   onApplyProposal,
   onPreviewProposal,
+  onProposalCreated,
 }: {
   projectId: string;
   projectName: string;
@@ -61,6 +62,7 @@ export function CADAgentWorkbench({
   validationStage: WorkbenchValidationStage;
   onApplyProposal?: (proposal: CADChangeProposal) => Promise<boolean>;
   onPreviewProposal?: (proposal: CADChangeProposal) => Promise<boolean>;
+  onProposalCreated?: (proposal: CADChangeProposal) => void;
 }) {
   const { width } = useWindowDimensions();
   const isWide = width >= 900;
@@ -157,7 +159,7 @@ export function CADAgentWorkbench({
     sendMessage.mutate({ ...context, projectId: persistentProject.projectId, accessKey: persistentProject.accessKey, conversationId: activeConversationId, message: trimmed }, {
       onSuccess: (result) => {
         setMessages((items) => [...items, result.userMessage, result.agentMessage]);
-        if (result.proposal) setProposals((items) => [...items, result.proposal!]);
+        if (result.proposal) { setProposals((items) => [...items, result.proposal!]); onProposalCreated?.(result.proposal); }
         if (result.concepts.length) setConcepts((items) => [...items, ...result.concepts]);
         setEvidence(result.evidence);
         setHistory(result.history);

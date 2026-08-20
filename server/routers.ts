@@ -11,6 +11,7 @@ import { getEngineeringMemory, runEngineeringIntelligence } from "./engineeringI
 import { attachWorkbenchFile, getWorkbenchProject, runWorkbenchMessage, updateProposal } from "./cadWorkbench";
 import { analyzeCadFile, getCadFileContext, ingestCadFile, listCadFiles, removeCadFile } from "./cadFileIntelligence";
 import { createEngineeringViewerBranch, getEngineeringViewerScene, getViewerProposalPreview } from "./engineeringViewer";
+import { executeCadOperation, listCadOperationHistory, planCadOperation, previewCadOperation, rejectCadOperation, revertCadOperation } from "./cadExecution";
 import { createPersistentConversation, listPersistentConversations, openPersistentProject, projectMemorySnapshot, retrievePersistentMemory, updatePersistentConversation } from "./persistentMemory";
 import { persistWorkbenchAttachment, recordPersistentConceptDecision, recordPersistentProposalDecision, restoreWorkbenchConversation, runPersistentWorkbenchMessage } from "./persistentWorkbench";
 import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
@@ -190,6 +191,27 @@ export const appRouter = router({
     proposalPreview: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), fileId: z.string().trim().min(1).max(96), proposalId: z.string().trim().min(1).max(160), sourceConfigurationId: z.string().trim().min(1).max(160).optional() }))
       .query(({ input }) => getViewerProposalPreview(input)),
+  }),
+
+  cadExecution: router({
+    plan: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), configurationId: z.string().trim().min(1).max(160), selectedGeometry: z.object({ kind: z.enum(["FACE", "EDGE", "VERTEX", "FEATURE", "BODY", "SOLID", "ASSEMBLY", "REGION", "NONE"]), id: z.string().trim().min(1).max(160).optional(), label: z.string().trim().min(1).max(320), featureId: z.string().trim().min(1).max(160).optional(), bodyId: z.string().trim().min(1).max(160).optional(), viewerFaceId: z.string().trim().min(1).max(160).optional(), source: z.enum(["VIEWER", "FEATURE_TREE", "WORKBENCH", "NONE"]) }).optional(), proposal: z.object({ id: z.string().trim().min(1).max(160), parameters: z.array(z.object({ name: z.string().trim().min(1).max(64), after: z.string().trim().min(1).max(64).optional(), unit: z.string().trim().min(1).max(16).optional() })).max(8) }).optional(), requestedParameter: z.object({ name: z.enum(["width", "depth", "height", "holeDiameter", "holeEdgeOffset", "filletRadius"]), value: z.number().finite(), unit: z.literal("mm") }).optional() }))
+      .mutation(({ input }) => planCadOperation(input)),
+    preview: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), operationId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => previewCadOperation(input)),
+    applyOperation: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), operationId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => executeCadOperation(input)),
+    reject: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), operationId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => rejectCadOperation(input)),
+    revert: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), operationId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => revertCadOperation(input)),
+    history: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128) }))
+      .query(({ input }) => listCadOperationHistory(input)),
   }),
 
   cad: router({
