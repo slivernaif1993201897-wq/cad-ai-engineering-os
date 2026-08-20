@@ -41,4 +41,11 @@
 - [x] Phase 3.7: Integrate the workbench with selected viewer geometry, active configuration, requirements, intelligence, CAD actions, and server APIs.
 - [x] Phase 3.7: Build responsive mobile-first conversational workbench panels, command palette, context bar, accessibility labels, and keyboard shortcuts where supported.
 - [x] Phase 3.7: Add conversation, selection context, proposal transparency, reversibility, concept, evidence, attachment, command, and regression acceptance tests.
-- [ ] Phase 3.7: Save a verified checkpoint and report final results without starting Phase 4.
+- [x] Phase 3.7: Save a verified checkpoint and report final results without starting Phase 4.
+
+- [x] Phase 3.8: Define persistent project, conversation, memory, decision, lineage, retrieval, archive, restore, and deletion contracts with project isolation.
+- [x] Phase 3.8: Implement append-only persistent conversations, memory records, design decisions, rejected concepts, immutable lineage, and selective memory retrieval.
+- [x] Phase 3.8: Integrate persistent memory with CAD Agent workbench messages, proposals, concept actions, requirements, validation states, and typed server APIs.
+- [x] Phase 3.8: Build mobile workbench panels for conversation history, engineering memory, decisions, concept/revision lineage, rejected concepts, and source evidence inspection.
+- [x] Phase 3.8: Add persistence, lineage, retrieval, project-isolation, archive, restore, delete, missing-history, and context-restoration acceptance tests.
+- [ ] Phase 3.8: Save a verified checkpoint and report final results without starting Phase 4.
