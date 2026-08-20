@@ -9,6 +9,7 @@ import { createMountingBlockConfiguration, getValidatedStepExport, listConfigura
 import { runRuthlessEngineeringReview } from "./engineeringReview";
 import { getEngineeringMemory, runEngineeringIntelligence } from "./engineeringIntelligence";
 import { attachWorkbenchFile, getWorkbenchProject, runWorkbenchMessage, updateProposal } from "./cadWorkbench";
+import { analyzeCadFile, getCadFileContext, ingestCadFile, listCadFiles, removeCadFile } from "./cadFileIntelligence";
 import { createPersistentConversation, listPersistentConversations, openPersistentProject, projectMemorySnapshot, retrievePersistentMemory, updatePersistentConversation } from "./persistentMemory";
 import { persistWorkbenchAttachment, recordPersistentConceptDecision, recordPersistentProposalDecision, restoreWorkbenchConversation, runPersistentWorkbenchMessage } from "./persistentWorkbench";
 import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
@@ -151,6 +152,31 @@ export const appRouter = router({
     snapshot: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128) }))
       .query(({ input }) => projectMemorySnapshot(input)),
+  }),
+
+  cadFiles: router({
+    upload: publicProcedure
+      .input(z.object({
+        projectId: z.string().trim().min(1).max(96),
+        accessKey: z.string().trim().min(16).max(128),
+        conversationId: z.string().trim().min(1).max(96).optional(),
+        fileName: z.string().trim().min(1).max(255),
+        mimeType: z.string().trim().min(1).max(128).optional(),
+        base64: z.string().trim().min(1).max(14_000_000),
+      }))
+      .mutation(({ input }) => ingestCadFile(input)),
+    list: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), conversationId: z.string().trim().min(1).max(96).optional(), includeRemoved: z.boolean().optional() }))
+      .query(({ input }) => listCadFiles(input)),
+    get: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), fileId: z.string().trim().min(1).max(96) }))
+      .query(({ input }) => getCadFileContext(input)),
+    analyze: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), fileId: z.string().trim().min(1).max(96), question: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => analyzeCadFile(input)),
+    remove: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), fileId: z.string().trim().min(1).max(96) }))
+      .mutation(({ input }) => removeCadFile(input)),
   }),
 
   cad: router({

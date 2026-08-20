@@ -121,6 +121,10 @@ export async function appendPersistentMessages(args: { projectId: string; access
 export async function appendPersistentMemory(args: { projectId: string; accessKey: string; record: Omit<PersistentMemoryRecord, "id" | "projectId" | "createdAt"> }): Promise<PersistentMemoryRecord> {
   await authorize(args.projectId, args.accessKey);
   const db = await database();
+  if (args.record.conversationId) {
+    const conversation = await db.select().from(engineeringConversations).where(and(eq(engineeringConversations.projectId, args.projectId), eq(engineeringConversations.id, args.record.conversationId))).limit(1);
+    if (!conversation[0]) throw new Error("Memory records cannot reference a conversation outside the authorized project.");
+  }
   const record: PersistentMemoryRecord = { ...args.record, id: id("MEMORY"), projectId: args.projectId, createdAt: now() };
   await db.insert(engineeringMemoryRecords).values({ ...record, relatedGeometryJson: record.relatedGeometry ? JSON.stringify(record.relatedGeometry) : null, createdAt: new Date(record.createdAt) });
   return record;

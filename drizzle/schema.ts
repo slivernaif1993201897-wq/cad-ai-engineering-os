@@ -107,3 +107,34 @@ export type EngineeringConversationEvent = typeof engineeringConversationEvents.
 export type EngineeringMessage = typeof engineeringMessages.$inferSelect;
 export type EngineeringMemoryRecord = typeof engineeringMemoryRecords.$inferSelect;
 export type EngineeringLineageNode = typeof engineeringLineageNodes.$inferSelect;
+
+/** Storage references and parser output for untrusted uploaded engineering files. Binary bytes remain in managed object storage. */
+export const engineeringCadFiles = mysqlTable("engineering_cad_files", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  conversationId: varchar("conversationId", { length: 96 }),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  normalizedName: varchar("normalizedName", { length: 255 }).notNull(),
+  format: mysqlEnum("format", ["STEP", "STL", "UNSUPPORTED"]).notNull(),
+  mimeType: varchar("mimeType", { length: 128 }),
+  sizeBytes: int("sizeBytes").notNull(),
+  sha256: varchar("sha256", { length: 64 }).notNull(),
+  version: int("version").notNull(),
+  parentFileId: varchar("parentFileId", { length: 96 }),
+  storageKey: varchar("storageKey", { length: 512 }).notNull(),
+  storageUrl: varchar("storageUrl", { length: 768 }).notNull(),
+  parser: varchar("parser", { length: 64 }).notNull(),
+  parserVersion: varchar("parserVersion", { length: 96 }).notNull(),
+  parseStatus: mysqlEnum("parseStatus", ["UPLOADED", "VALIDATING", "PARSED", "PARTIALLY_PARSED", "PARSE_FAILED", "UNSUPPORTED", "CORRUPTED", "REMOVED"]).notNull(),
+  validationStatus: mysqlEnum("validationStatus", ["VALID", "INVALID", "UNKNOWN"]).notNull(),
+  contextJson: text("contextJson").notNull(),
+  parserErrorJson: text("parserErrorJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  removedAt: timestamp("removedAt"),
+}, (table) => [
+  index("engineering_cad_files_project_hash_idx").on(table.projectId, table.sha256),
+  index("engineering_cad_files_project_name_version_idx").on(table.projectId, table.normalizedName, table.version),
+  index("engineering_cad_files_project_conversation_idx").on(table.projectId, table.conversationId),
+]);
+
+export type EngineeringCadFile = typeof engineeringCadFiles.$inferSelect;

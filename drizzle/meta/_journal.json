@@ -15,6 +15,13 @@
       "when": 1787254665089,
       "tag": "0001_supreme_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1787257003321,
+      "tag": "0002_powerful_captain_midlands",
+      "breakpoints": true
     }
   ]
 }

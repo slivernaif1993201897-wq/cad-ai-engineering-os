@@ -1,5 +1,6 @@
 import type { WorkbenchAttachment, WorkbenchConversationResult, WorkbenchInput } from "../shared/cadWorkbench";
 import { attachWorkbenchFile, runWorkbenchMessage } from "./cadWorkbench";
+import { listCadFiles } from "./cadFileIntelligence";
 import {
   appendLineageNode,
   appendPersistentMemory,
@@ -24,7 +25,12 @@ function persistentContext(context: WorkbenchConversationResult["context"]) {
 }
 
 export async function runPersistentWorkbenchMessage(input: PersistentWorkbenchInput) {
-  const result = runWorkbenchMessage({ ...input, projectId: input.projectId });
+  const projectFiles = await listCadFiles({ projectId: input.projectId, accessKey: input.accessKey });
+  const referenced = input.attachedFileIds?.length ? projectFiles.filter((file) => input.attachedFileIds?.includes(file.fileId)) : projectFiles.filter((file) => file.conversationId === input.conversationId);
+  const parsedFileSummary = referenced.length
+    ? referenced.map((file) => `${file.fileName} v${file.version}: ${file.format}, ${file.parseStatus}, ${file.boundingBox ? `extent ${file.boundingBox.size.join(" × ")}` : "extent UNKNOWN"}, units ${file.units.value ?? "UNKNOWN"} (${file.units.provenance}).`).join(" ").slice(0, 900)
+    : "No project-authorized parsed CAD file context is attached.";
+  const result = runWorkbenchMessage({ ...input, projectId: input.projectId, attachedFileIds: referenced.map((file) => file.fileId), memorySummary: `${input.memorySummary ?? "No engineering memory loaded"} CAD FILE EVIDENCE: ${parsedFileSummary}`.slice(0, 1000) });
   const context = persistentContext(result.context);
   const messages = await appendPersistentMessages({
     projectId: input.projectId,

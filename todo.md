@@ -49,3 +49,10 @@
 - [x] Phase 3.8: Build mobile workbench panels for conversation history, engineering memory, decisions, concept/revision lineage, rejected concepts, and source evidence inspection.
 - [x] Phase 3.8: Add persistence, lineage, retrieval, project-isolation, archive, restore, delete, missing-history, and context-restoration acceptance tests.
 - [x] Phase 3.8: Save a verified checkpoint and report final results without starting Phase 4.
+
+- [x] Phase 3.9: Define secure project-isolated CAD file, version, parser context, geometry metadata, provenance, storage-reference, and lifecycle contracts.
+- [x] Phase 3.9: Implement real STEP and STL validation, bounded parsing, file hashing, duplicate/version detection, OpenCascade geometry context, parser transparency, and managed storage references.
+- [x] Phase 3.9: Integrate parsed CAD file context and provenance with CAD Agent conversations, engineering analysis, concepts, traceability, and typed server APIs.
+- [x] Phase 3.9: Build versioned STEP/STL file cards with status, units, geometry summary, provenance, inspection, chat reference, compare, and remove actions.
+- [x] Phase 3.9: Add real STEP/STL fixture parsing, invalid file, integrity, duplicate, versioning, isolation, failure, unsupported format, file-context, and CAD Agent acceptance tests.
+- [x] Phase 3.9: Save a verified checkpoint and report formats, parser/kernel, limitations, storage, schema, UI, integration, security, tests, and next milestone without starting Phase 4.
