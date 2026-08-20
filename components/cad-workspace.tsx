@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { CADViewer, type ViewerSelection } from "@/components/cad-viewer";
+import { EngineeringReviewPanel } from "@/components/engineering-review-panel";
 import { trpc } from "@/lib/trpc";
 import type { MountingBlockInput } from "@/shared/cad";
 import type { CADAgentResult, CADConfiguration, CADModelStatus } from "@/shared/cadAgent";
@@ -54,15 +55,18 @@ export function CADWorkspace() {
   const [isolated, setIsolated] = useState<string>();
   const [bodyVisible, setBodyVisible] = useState(true);
   const [exportMessage, setExportMessage] = useState<string>();
+  const [exploratoryMode, setExploratoryMode] = useState(false);
 
   const requirements = trpc.requirements.parse.useMutation();
   const create = trpc.cadAgent.createConfiguration.useMutation();
   const revise = trpc.cadAgent.reviseConfiguration.useMutation();
   const exportStep = trpc.cadAgent.exportStep.useMutation();
+  const engineeringReview = trpc.engineering.review.useMutation();
   const configurations = trpc.cadAgent.listConfigurations.useQuery();
 
   const input = useMemo<MountingBlockInput>(() => ({ ...DEFAULTS, width: Number(width) || 0, holeEdgeOffset: Number(offset) || 0, approveAssumption: approved }), [approved, offset, width]);
   const requirementSet = active?.configuration.requirementSet ?? requirements.data?.requirementSet;
+  const review = active?.configuration.engineeringReview ?? engineeringReview.data;
   const modelStatus: CADModelStatus | "CONCEPTUAL" = dirty ? "STALE" : active?.configuration.modelStatus ?? "CONCEPTUAL";
   const activeId = active?.configuration.id;
   const configs = configurations.data ?? (active ? [active.configuration] : []);
@@ -72,7 +76,7 @@ export function CADWorkspace() {
   const generate = () => {
     if (activeId) {
       revise.mutate({ configurationId: activeId, inputPatch: { width: input.width, holeEdgeOffset: input.holeEdgeOffset }, updateText: `Change width to ${input.width} mm and set hole edge offset to ${input.holeEdgeOffset} mm.` }, { onSuccess: adopt });
-    } else create.mutate({ name: "Concept A", input, sourceText: prompt }, { onSuccess: adopt });
+    } else create.mutate({ name: "Concept A", input, sourceText: prompt, conceptual: exploratoryMode }, { onSuccess: adopt });
   };
   const applyCommand = () => {
     if (!activeId) return Alert.alert("Generate first", "Create a validated configuration before applying a parametric change.");
@@ -102,7 +106,9 @@ export function CADWorkspace() {
   return <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
     <View style={styles.header}><View><Text style={styles.eyebrow}>CAD-AI / CAD AGENT</Text><Text style={styles.title}>{active?.configuration.name ?? "Mounting Block"}</Text><Text style={styles.subtitle}>{active ? `REVISION ${active.configuration.revision} · ${active.plan.plan_id}` : "Requirements → Feature Plan → OpenCascade.js"}</Text></View><View style={styles.thread}><Text style={styles.threadKicker}>DIGITAL THREAD</Text><Text style={styles.threadValue}>{active?.configuration.id ?? "AWAITING PLAN"}</Text></View></View>
 
-    <View style={styles.truth}><View style={styles.row}><Text style={styles.cardKicker}>CAD MODEL TRUTH</Text><Pill label={modelStatus} /></View><Text style={styles.cardCopy}>{modelStatus === "VALIDATED" ? "OpenCascade.js validated the BRep, derived the viewer tessellation, and serialized a STEP artifact." : modelStatus === "STALE" ? "A parameter changed. Regenerate and validate before export." : "Only deterministic requirements validation and kernel evidence can create a trusted model."}</Text></View>
+    <View style={styles.truth}><View style={styles.row}><Text style={styles.cardKicker}>GEOMETRY TRUTH · SEPARATE FROM ENGINEERING VALIDITY</Text><Pill label={modelStatus} /></View><Text style={styles.cardCopy}>{modelStatus === "VALIDATED" ? "OpenCascade.js validated the BRep, derived the viewer tessellation, and serialized a STEP artifact. Physical behavior, manufacturability, safety, and production readiness remain separate review states." : modelStatus === "STALE" ? "A parameter changed. Regenerate and validate before export." : "Only deterministic requirements validation and kernel evidence can create a trusted geometric model."}</Text></View>
+
+    <Section title="PHASE 3.6 · TRUTH, RIGOR & RADICAL PROBLEM SOLVING"><EngineeringReviewPanel review={review} exploratoryMode={exploratoryMode} onToggleExploration={() => setExploratoryMode((value) => !value)} onRunReview={() => engineeringReview.mutate({ sourceText: prompt, exploratoryMode, geometryStatus: active?.configuration.engineeringReview.reality.geometry, requirementSetId: requirementSet?.id, configurationId: activeId })} pending={engineeringReview.isPending} /></Section>
 
     <Section title="NATURAL-LANGUAGE INTENT"><TextInput value={prompt} onChangeText={(value) => { setPrompt(value); setDirty(true); }} multiline style={styles.prompt} placeholderTextColor="#80909A" /><View style={styles.row}><Pressable style={styles.secondary} onPress={() => requirements.mutate({ sourceText: prompt, revision: requirementSet?.revision ?? 1 })}><Text style={styles.secondaryText}>{requirements.isPending ? "CHECKING…" : "VALIDATE REQUIREMENTS"}</Text></Pressable><Pressable style={({ pressed }) => [styles.approval, pressed && styles.pressed]} onPress={() => { setApproved(!approved); setDirty(true); }}><Text style={styles.approvalText}>{approved ? "✓ OFFSET APPROVED" : "APPROVE OFFSET"}</Text></Pressable></View></Section>
 

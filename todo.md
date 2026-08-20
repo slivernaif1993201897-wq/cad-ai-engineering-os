@@ -19,4 +19,11 @@
 - [x] Phase 3: Build a kernel-derived tessellated mobile CAD viewer with camera controls, feature selection, and bounding-box measurements.
 - [x] Phase 3: Extend the mobile workspace with CAD viewer, parameters, feature tree, measurements, configurations, and export controls.
 - [x] Phase 3: Add CAD Agent, Feature Planner, viewer payload, configuration, export, truth-layer, and full-workflow acceptance tests.
-- [ ] Phase 3: Save a verified checkpoint and report final commands, test results, and performance observations.
+- [x] Phase 3: Save a verified checkpoint and report final commands, test results, and performance observations.
+
+- [x] Phase 3.6: Define explicit engineering truth statuses, evidence-chain contracts, ruthless review, contradiction, alternatives, and self-critique schemas.
+- [x] Phase 3.6: Implement deterministic evidence, review, problem-solving, contradiction, and self-critique engines without fabricating scientific, simulation, material, or manufacturing claims.
+- [x] Phase 3.6: Integrate review truth states with CAD gating and expose the workflow through tRPC.
+- [x] Phase 3.6: Build the engineering review workspace with truth labels, evidence, risks, alternatives, limitations, and explicit exploration gating.
+- [x] Phase 3.6: Add truth-status, evidence-chain, honesty, contradiction, alternative, self-critique, CAD-gating, and regression acceptance tests.
+- [ ] Phase 3.6: Save a verified checkpoint and report the final test status without starting Phase 4.

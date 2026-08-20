@@ -1,4 +1,5 @@
 import type { CADArtifact, CADFeature, CADParameter, MountingBlockInput } from "./cad";
+import type { RuthlessEngineeringReview } from "./engineeringTruth";
 import type { RequirementSet, TraceabilityLink } from "./requirements";
 
 export const CAD_FEATURE_TYPES = [
@@ -95,8 +96,10 @@ export interface CADConfiguration {
   name: string;
   revision: number;
   createdAt: string;
+  sourceText: string;
   input: MountingBlockInput;
   requirementSet: RequirementSet;
+  engineeringReview: RuthlessEngineeringReview;
   plan: CADPlanV2;
   artifact?: CADArtifact;
   viewerMesh?: KernelViewerMesh;

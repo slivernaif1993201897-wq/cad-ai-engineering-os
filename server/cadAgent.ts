@@ -1,4 +1,5 @@
 import { generateMountingBlock } from "./cadKernel";
+import { runRuthlessEngineeringReview } from "./engineeringReview";
 import { planMountingBlockFeatures } from "./featurePlanner";
 import { applyRequirementRevision, parseRequirements } from "./requirementsAgent";
 import type { MountingBlockInput } from "../shared/cad";
@@ -40,20 +41,25 @@ export async function createMountingBlockConfiguration(args: {
   const requirementSet = prepareRequirements(args.input, args.sourceText);
   const plan = planMountingBlockFeatures(requirementSet, args.input, `PLAN-${args.name.toUpperCase().replace(/\s+/g, "-")}-R${requirementSet.revision}`);
   const id = configurationId(args.name, requirementSet.revision);
-  const blocked = requirementSet.validation_status !== "VALIDATED";
+  const initialReview = runRuthlessEngineeringReview({ sourceText: args.sourceText, exploratoryMode: args.conceptual, geometryStatus: "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: id });
+  const blocked = requirementSet.validation_status !== "VALIDATED" || initialReview.gate === "BLOCKED";
   const baseConfiguration: CADConfiguration = {
     id,
     name: args.name,
     revision: requirementSet.revision,
     createdAt: new Date().toISOString(),
+    sourceText: args.sourceText,
     input: args.input,
     requirementSet,
+    engineeringReview: initialReview,
     plan,
     modelStatus: blocked ? "CONCEPTUAL" : "GENERATED",
   };
   if (blocked) {
     configurations.set(id, baseConfiguration);
-    return conceptualResult(baseConfiguration, args.conceptual
+    return conceptualResult(baseConfiguration, initialReview.gate === "BLOCKED"
+      ? `CAD Agent stopped: ${initialReview.verdictReason} The engineering review recorded a PHYSICS_CONFLICT and blocks trusted geometry.`
+      : args.conceptual
       ? `Conceptual CAD plan created without geometry: RequirementSet is ${requirementSet.validation_status}. The OpenCascade kernel remains blocked until requirements are validated.`
       : `CAD Agent stopped: RequirementSet is ${requirementSet.validation_status}. Resolve requirements or explicitly request a conceptual plan.`);
   }
@@ -67,7 +73,8 @@ export async function createMountingBlockConfiguration(args: {
     status: kernelResult.artifact?.featureTree.find((item) => item.type === feature.type || ((feature.featureType === "HOLE" || feature.featureType === "PATTERN" || feature.featureType === "CUT") && item.type === "HOLE_PATTERN"))?.status ?? "FAILED",
     executionStatus: modelStatus === "VALIDATED" ? "EXECUTED" : "FAILED",
   }));
-  const configuration: CADConfiguration = { ...baseConfiguration, requirementSet, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, modelStatus };
+  const engineeringReview = runRuthlessEngineeringReview({ sourceText: args.sourceText, exploratoryMode: args.conceptual, geometryStatus: modelStatus === "VALIDATED" ? "GEOMETRICALLY_VALIDATED" : "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: id });
+  const configuration: CADConfiguration = { ...baseConfiguration, requirementSet, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, modelStatus, engineeringReview };
   configurations.set(id, configuration);
   return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error };
 }
@@ -86,13 +93,21 @@ export async function reviseMountingBlockConfiguration(args: {
   const name = args.name ?? previous.name;
   const id = configurationId(name, revision);
   const plan = planMountingBlockFeatures(revisedRequirementSet, input, `PLAN-${name.toUpperCase().replace(/\s+/g, "-")}-R${revision}`);
+  const sourceText = `${previous.sourceText}\nRevision: ${args.updateText}`;
+  const initialReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: "NOT_GENERATED", requirementSetId: revisedRequirementSet.id, configurationId: id });
+  if (revisedRequirementSet.validation_status !== "VALIDATED" || initialReview.gate === "BLOCKED") {
+    const conceptualConfiguration: CADConfiguration = { id, name, revision, createdAt: new Date().toISOString(), sourceText, input, requirementSet: revisedRequirementSet, engineeringReview: initialReview, plan, modelStatus: "CONCEPTUAL" };
+    configurations.set(id, conceptualConfiguration);
+    return conceptualResult(conceptualConfiguration, initialReview.gate === "BLOCKED" ? `CAD Agent stopped: ${initialReview.verdictReason}` : `CAD Agent stopped: RequirementSet is ${revisedRequirementSet.validation_status}.`);
+  }
   const kernelResult = await generateMountingBlock(input, canonicalMountingPrompt(input));
   const modelStatus: CADModelStatus = kernelResult.artifact?.validationStatus === "VALID" && kernelResult.viewerMesh ? "VALIDATED" : "INVALID";
   plan.model_status = modelStatus;
   plan.revision = revision;
   plan.requirement_set_id = revisedRequirementSet.id;
   plan.features = plan.features.map((feature) => ({ ...feature, executionStatus: modelStatus === "VALIDATED" ? "EXECUTED" : "FAILED" }));
-  const configuration: CADConfiguration = { id, name, revision, createdAt: new Date().toISOString(), input, requirementSet: revisedRequirementSet, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, modelStatus };
+  const engineeringReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: modelStatus === "VALIDATED" ? "GEOMETRICALLY_VALIDATED" : "NOT_GENERATED", requirementSetId: revisedRequirementSet.id, configurationId: id });
+  const configuration: CADConfiguration = { id, name, revision, createdAt: new Date().toISOString(), sourceText, input, requirementSet: revisedRequirementSet, engineeringReview, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, modelStatus };
   configurations.set(id, configuration);
   return { configuration, plan, artifact: kernelResult.artifact, viewerMesh: kernelResult.viewerMesh, error: kernelResult.error };
 }

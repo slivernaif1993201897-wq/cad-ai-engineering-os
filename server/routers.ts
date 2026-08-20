@@ -6,6 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { generateMountingBlock } from "./cadKernel";
 import { createMountingBlockConfiguration, getValidatedStepExport, listConfigurations, markConfigurationStale, reviseMountingBlockConfiguration } from "./cadAgent";
+import { runRuthlessEngineeringReview } from "./engineeringReview";
 import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
 
 const mountingBlockInput = z.object({
@@ -43,6 +44,18 @@ export const appRouter = router({
     revise: publicProcedure
       .input(z.object({ previous: z.any(), updateText: z.string().trim().min(1).max(2000) }))
       .mutation(({ input }) => applyRequirementRevision(input.previous, input.updateText)),
+  }),
+
+  engineering: router({
+    review: publicProcedure
+      .input(z.object({
+        sourceText: z.string().trim().min(1).max(8000),
+        exploratoryMode: z.boolean().optional(),
+        geometryStatus: z.enum(["NOT_GENERATED", "GEOMETRICALLY_GENERATED", "GEOMETRICALLY_VALIDATED"]).optional(),
+        requirementSetId: z.string().trim().min(1).max(160).optional(),
+        configurationId: z.string().trim().min(1).max(160).optional(),
+      }))
+      .mutation(({ input }) => runRuthlessEngineeringReview(input)),
   }),
 
   cad: router({
