@@ -13,3 +13,10 @@
 - [x] Phase 2: Add the Requirements panel for open questions, conflicts, validated requirements, source, confidence, and status.
 - [x] Phase 2: Add unit, conflict, missing-information, conversational-update, traceability, and regression acceptance tests.
 - [x] Phase 2: Save a verified checkpoint and report the final test status.
+
+- [x] Phase 3: Define the requirements-gated CAD Agent, deterministic Feature Planner, expanded CADPlan contracts, and CAD model truth states.
+- [x] Phase 3: Integrate feature planning, parametric regeneration, configuration preservation, and validated STEP export without changing the verified OpenCascade kernel path.
+- [x] Phase 3: Build a kernel-derived tessellated mobile CAD viewer with camera controls, feature selection, and bounding-box measurements.
+- [x] Phase 3: Extend the mobile workspace with CAD viewer, parameters, feature tree, measurements, configurations, and export controls.
+- [x] Phase 3: Add CAD Agent, Feature Planner, viewer payload, configuration, export, truth-layer, and full-workflow acceptance tests.
+- [ ] Phase 3: Save a verified checkpoint and report final commands, test results, and performance observations.

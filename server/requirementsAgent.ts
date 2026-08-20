@@ -57,7 +57,10 @@ const LENGTH_WORDS: Record<string, string> = {
   thick: "thickness",
   thickness: "thickness",
   diameter: "diameter",
+  hole: "diameter",
+  holes: "diameter",
   radius: "radius",
+  fillet: "radius",
 };
 
 function cleanUnit(unit: string) {
@@ -220,7 +223,7 @@ function buildTraceability(sourceText: string, requirements: Requirement[]): Tra
 export function parseRequirements(sourceText: string, revision = 1): RequirementParseResult {
   const source = /make|change|set|actually|use|keep|new revision/i.test(sourceText) ? "CONVERSATIONAL_UPDATE" : "NATURAL_LANGUAGE" as Requirement["source"];
   const requirements = [...parseDimensions(sourceText, source), ...parseNamedUpdates(sourceText, source), ...parseMaterial(sourceText, source)];
-  const triplet = sourceText.match(/([\d.]+)\s*(mm|cm|m|in|inches|ft|feet)\s*x\s*([\d.]+)\s*(mm|cm|m|in|inches|ft|feet)\s*x\s*([\d.]+)\s*(mm|cm|m|in|inches|ft|feet)/i);
+  const triplet = sourceText.match(/([\d.]+)\s*(mm|cm|m|in|inches|ft|feet)\s*[x×]\s*([\d.]+)\s*(mm|cm|m|in|inches|ft|feet)\s*[x×]\s*([\d.]+)\s*(mm|cm|m|in|inches|ft|feet)/i);
   if (triplet) {
     const tripletValues = [
       { parameter: "length", value: Number(triplet[1]), unit: triplet[2] },

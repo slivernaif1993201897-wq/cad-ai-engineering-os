@@ -9,6 +9,7 @@ import type {
   OpenQuestion,
   Requirement,
 } from "../shared/cad";
+import type { KernelViewerMesh } from "../shared/cadAgent";
 
 let kernelPromise: ReturnType<typeof initOpenCascade> | undefined;
 
@@ -49,6 +50,79 @@ function makeRequirement(input: MountingBlockInput, prompt: string): Requirement
 
 function feature(id: string, type: string, status: CADFeature["status"], dependsOn: string[], parameters: CADFeature["parameters"], note?: string): CADFeature {
   return { id, type, status, dependsOn, parameters, ...(note ? { note } : {}) };
+}
+
+function extractViewerMesh(oc: any, shape: any, input: MountingBlockInput, featureId: string): KernelViewerMesh {
+  const tessellator = new oc.BRepMesh_IncrementalMesh_2(shape, 0.8, false, 0.5, false);
+  const explorer = new oc.TopExp_Explorer_2(shape, oc.TopAbs_ShapeEnum.TopAbs_FACE, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
+  const vertices: [number, number, number][] = [];
+  const triangles: [number, number, number][] = [];
+  const faceRanges: KernelViewerMesh["faceRanges"] = [];
+  let faceIndex = 0;
+
+  while (explorer.More()) {
+    const face = oc.TopoDS.Face_1(explorer.Current());
+    const location = new oc.TopLoc_Location_1();
+    const triangulationHandle = oc.BRep_Tool.Triangulation(face, location, 0);
+    if (!triangulationHandle.IsNull()) {
+      const triangulation = triangulationHandle.get();
+      const vertexOffset = vertices.length;
+      const transformation = location.IsIdentity() ? undefined : location.Transformation();
+      for (let nodeIndex = 1; nodeIndex <= triangulation.NbNodes(); nodeIndex += 1) {
+        const point = triangulation.Node(nodeIndex);
+        const transformed = transformation ? point.Transformed(transformation) : point;
+        vertices.push([transformed.X(), transformed.Y(), transformed.Z()]);
+        if (transformation) transformed.delete?.();
+      }
+      const triangleStart = triangles.length;
+      for (let triangleIndex = 1; triangleIndex <= triangulation.NbTriangles(); triangleIndex += 1) {
+        const triangle = triangulation.Triangle(triangleIndex);
+        triangles.push([
+          vertexOffset + triangle.Value(1) - 1,
+          vertexOffset + triangle.Value(2) - 1,
+          vertexOffset + triangle.Value(3) - 1,
+        ]);
+        triangle.delete?.();
+      }
+      faceRanges.push({
+        faceId: `FACE-${String(faceIndex + 1).padStart(3, "0")}`,
+        featureId,
+        triangleStart,
+        triangleCount: triangles.length - triangleStart,
+      });
+      triangulationHandle.delete?.();
+    }
+    location.delete();
+    explorer.Next();
+    faceIndex += 1;
+  }
+
+  explorer.delete();
+  tessellator.delete();
+  if (!vertices.length || !triangles.length) throw new Error("OpenCascade.js did not produce a tessellated viewer mesh.");
+
+  const xs = vertices.map(([x]) => x);
+  const ys = vertices.map(([, y]) => y);
+  const zs = vertices.map(([, , z]) => z);
+  const min: [number, number, number] = [Math.min(...xs), Math.min(...ys), Math.min(...zs)];
+  const max: [number, number, number] = [Math.max(...xs), Math.max(...ys), Math.max(...zs)];
+  const size: [number, number, number] = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+  const diagonal = Math.hypot(...size);
+
+  return {
+    source: "OpenCascade.js",
+    tessellation: "BRepMesh_IncrementalMesh",
+    vertices,
+    triangles,
+    faceRanges,
+    boundingBox: { min, max, size, diagonal },
+    measurements: {
+      width: input.width,
+      depth: input.depth,
+      height: input.height,
+      boundingBoxDiagonal: diagonal,
+    },
+  };
 }
 
 export async function generateMountingBlock(input: MountingBlockInput, prompt: string): Promise<CADGenerationResult> {
@@ -159,6 +233,7 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
   writer.Write(stepPath);
   const stepBytes = Buffer.from((oc as any).FS.readFile(stepPath));
   (oc as any).FS.unlink(stepPath);
+  const viewerMesh = extractViewerMesh(oc, current, input, "FEATURE-005");
 
   const artifact: CADArtifact = {
     id: `ARTIFACT-${Date.now()}`,
@@ -170,8 +245,8 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
     openQuestions: plan.requirements[0].openQuestions,
     stepBase64: stepBytes.toString("base64"),
     stepByteLength: stepBytes.byteLength,
-    viewerAvailable: false,
-    viewerNote: "A native mobile BRep viewer is not bundled in this vertical slice. The STEP artifact and validation evidence are available; no fabricated mesh preview is shown.",
+    viewerAvailable: true,
+    viewerNote: "Viewer triangles are tessellated directly from the validated OpenCascade.js BRep using BRepMesh_IncrementalMesh; the STEP artifact remains the authoritative exchange output.",
   };
 
   analyzer.delete();
@@ -180,5 +255,5 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
   for (const item of cuts) item.delete?.();
   box.delete();
 
-  return { plan, artifact, requirementSet };
+  return { plan, artifact, requirementSet, viewerMesh };
 }

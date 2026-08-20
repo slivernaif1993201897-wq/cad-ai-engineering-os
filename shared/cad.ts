@@ -56,7 +56,7 @@ export interface CADArtifact {
   openQuestions: OpenQuestion[];
   stepBase64?: string;
   stepByteLength?: number;
-  viewerAvailable: false;
+  viewerAvailable: boolean;
   viewerNote: string;
 }
 
@@ -64,6 +64,7 @@ export interface CADGenerationResult {
   plan: CADPlan;
   artifact?: CADArtifact;
   requirementSet?: RequirementSet;
+  viewerMesh?: import("./cadAgent").KernelViewerMesh;
   error?: string;
 }
 

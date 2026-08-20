@@ -5,6 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { generateMountingBlock } from "./cadKernel";
+import { createMountingBlockConfiguration, getValidatedStepExport, listConfigurations, markConfigurationStale, reviseMountingBlockConfiguration } from "./cadAgent";
 import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
 
 const mountingBlockInput = z.object({
@@ -16,6 +17,8 @@ const mountingBlockInput = z.object({
   filletRadius: z.number().nonnegative(),
   approveAssumption: z.boolean(),
 });
+
+const mountingBlockInputPatch = mountingBlockInput.partial();
 
 export const appRouter = router({
   system: systemRouter,
@@ -51,6 +54,22 @@ export const appRouter = router({
         }),
       )
       .mutation(({ input }) => generateMountingBlock(input.input, input.prompt)),
+  }),
+
+  cadAgent: router({
+    createConfiguration: publicProcedure
+      .input(z.object({ name: z.string().trim().min(1).max(80), input: mountingBlockInput, sourceText: z.string().trim().min(1).max(5000), conceptual: z.boolean().optional() }))
+      .mutation(({ input }) => createMountingBlockConfiguration(input)),
+    reviseConfiguration: publicProcedure
+      .input(z.object({ configurationId: z.string().trim().min(1), name: z.string().trim().min(1).max(80).optional(), inputPatch: mountingBlockInputPatch, updateText: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => reviseMountingBlockConfiguration(input)),
+    listConfigurations: publicProcedure.query(() => listConfigurations()),
+    markStale: publicProcedure
+      .input(z.object({ configurationId: z.string().trim().min(1) }))
+      .mutation(({ input }) => markConfigurationStale(input.configurationId)),
+    exportStep: publicProcedure
+      .input(z.object({ configurationId: z.string().trim().min(1) }))
+      .mutation(({ input }) => getValidatedStepExport(input.configurationId)),
   }),
 });
 
