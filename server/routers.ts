@@ -20,6 +20,7 @@ import { FEATURE_CATALOG } from "../shared/featureHistory";
 import { createPersistentConversation, listPersistentConversations, openPersistentProject, projectMemorySnapshot, retrievePersistentMemory, updatePersistentConversation } from "./persistentMemory";
 import { persistWorkbenchAttachment, recordPersistentConceptDecision, recordPersistentProposalDecision, restoreWorkbenchConversation, runPersistentWorkbenchMessage } from "./persistentWorkbench";
 import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
+import { createCAEPlan, getCAEPlan, listCAEPlans, requestCAEExecution, reviewCAEPlan } from "./caeAgent";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -32,6 +33,8 @@ const mountingBlockInput = z.object({
 });
 
 const mountingBlockInputPatch = mountingBlockInput.partial();
+const caeSelection = z.object({ kind: z.enum(["FACE", "EDGE", "VERTEX", "FEATURE", "BODY", "SOLID", "ASSEMBLY", "REGION", "NONE"]), id: z.string().trim().min(1).max(160).optional(), label: z.string().trim().min(1).max(320), featureId: z.string().trim().min(1).max(160).optional(), bodyId: z.string().trim().min(1).max(160).optional(), viewerFaceId: z.string().trim().min(1).max(160).optional(), source: z.enum(["VIEWER", "FEATURE_TREE", "WORKBENCH", "NONE"]) });
+const caePlanInput = z.object({ projectId: z.string().trim().min(1).max(96), sourceCadRevision: z.string().trim().min(1).max(160), sourceCadBranch: z.string().trim().min(1).max(160).optional(), engineeringQuestion: z.string().trim().min(1).max(5000), analysisType: z.enum(["STATIC_STRUCTURAL", "DYNAMIC", "MODAL", "THERMAL", "THERMAL_STRUCTURAL", "CONTACT", "BUCKLING", "FATIGUE"]).optional(), selectedGeometry: caeSelection.optional(), featureHistory: z.array(z.string().trim().min(1).max(160)).max(64).optional(), geometryProvenance: z.enum(["OPENCASCADE_KERNEL", "PARSED_STEP", "PARSED_STL", "UNKNOWN"]).optional(), geometryValidation: z.enum(["VALID", "UNAVAILABLE", "UNKNOWN"]).optional(), requirementIds: z.array(z.string().trim().min(1).max(160)).max(128).optional(), material: z.object({ materialId: z.string().trim().min(1).max(160).optional(), name: z.string().trim().min(1).max(160).optional(), status: z.enum(["COMPLETE", "MATERIAL_KNOWLEDGE_GAP", "UNKNOWN"]), properties: z.array(z.object({ name: z.enum(["ELASTIC_MODULUS", "POISSON_RATIO", "DENSITY", "YIELD_STRENGTH", "THERMAL_CONDUCTIVITY", "THERMAL_EXPANSION", "SPECIFIC_HEAT", "CUSTOM"]), value: z.number().finite().optional(), unit: z.string().trim().min(1).max(32).optional(), source: z.enum(["SOURCE_VERIFIED", "USER_PROVIDED", "DATABASE_VERIFIED", "CALCULATED", "ASSUMED", "UNKNOWN"]), provenance: z.string().trim().min(1).max(500).optional(), requiredFor: z.array(z.enum(["STATIC_STRUCTURAL", "DYNAMIC", "MODAL", "THERMAL", "THERMAL_STRUCTURAL", "CONTACT", "BUCKLING", "FATIGUE"])).max(8) })).max(32) }).optional(), boundaryConditions: z.array(z.object({ id: z.string().trim().min(1).max(160), geometryReference: z.string().trim().min(1).max(240).optional(), type: z.enum(["FIXED", "DISPLACEMENT", "SYMMETRY", "ROLLER", "THERMAL", "CUSTOM"]), direction: z.enum(["GLOBAL_X", "GLOBAL_Y", "GLOBAL_Z", "NORMAL", "TANGENTIAL", "ALL"]).optional(), magnitude: z.number().finite().optional(), unit: z.string().trim().min(1).max(32).optional(), source: z.enum(["USER_PROVIDED", "REQUIREMENT", "ASSUMED", "UNKNOWN"]), confidence: z.number().min(0).max(1), assumptionStatus: z.enum(["NOT_ASSUMED", "ASSUMED", "UNKNOWN"]), geometryStatus: z.enum(["PROVEN", "AMBIGUOUS", "UNKNOWN"]) })).max(64).optional(), loads: z.array(z.object({ id: z.string().trim().min(1).max(160), type: z.enum(["FORCE", "PRESSURE", "MOMENT", "GRAVITY", "ACCELERATION", "THERMAL", "TIME_DEPENDENT"]), geometryReference: z.string().trim().min(1).max(240).optional(), magnitude: z.number().finite().optional(), unit: z.string().trim().min(1).max(32).optional(), direction: z.enum(["GLOBAL_X", "GLOBAL_Y", "GLOBAL_Z", "NORMAL", "CUSTOM"]).optional(), timeDependence: z.string().trim().min(1).max(500).optional(), source: z.enum(["USER_PROVIDED", "REQUIREMENT", "CALCULATED", "ASSUMED", "UNKNOWN"]), assumptionStatus: z.enum(["NOT_ASSUMED", "ASSUMED", "UNKNOWN"]), geometryStatus: z.enum(["PROVEN", "AMBIGUOUS", "UNKNOWN"]) })).max(64).optional(), contacts: z.array(z.object({ id: z.string().trim().min(1).max(160), type: z.enum(["BONDED", "FRICTIONLESS", "FRICTIONAL", "NO_SEPARATION"]), primaryGeometryReference: z.string().trim().min(1).max(240).optional(), secondaryGeometryReference: z.string().trim().min(1).max(240).optional(), source: z.enum(["USER_PROVIDED", "ASSUMED", "UNKNOWN"]), status: z.enum(["PLANNED", "KNOWLEDGE_GAP"]) })).max(64).optional(), meshStrategy: z.object({ elementType: z.enum(["TETRAHEDRAL", "HEXA_HYBRID", "SHELL", "BEAM", "UNKNOWN"]).optional(), targetSize: z.number().positive().finite().optional(), unit: z.string().trim().min(1).max(32).optional(), refinementRegions: z.array(z.object({ geometryReference: z.string().trim().min(1).max(240).optional(), rationale: z.string().trim().min(1).max(500), status: z.enum(["PLANNED", "UNKNOWN"]) })).max(64), qualityRequirements: z.array(z.string().trim().min(1).max(500)).max(32), convergenceRequirement: z.string().trim().min(1).max(500).optional(), status: z.enum(["PLANNED", "MESH_KNOWLEDGE_GAP", "NOT_EXECUTED"]) }).optional() });
 
 export const appRouter = router({
   system: systemRouter,
@@ -68,6 +71,24 @@ export const appRouter = router({
         configurationId: z.string().trim().min(1).max(160).optional(),
       }))
       .mutation(({ input }) => runRuthlessEngineeringReview(input)),
+  }),
+
+  cae: router({
+    createPlan: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: caePlanInput }))
+      .mutation(({ input }) => createCAEPlan(input)),
+    listPlans: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128) }))
+      .query(({ input }) => listCAEPlans(input)),
+    getPlan: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), simulationId: z.string().trim().min(1).max(160) }))
+      .query(({ input }) => getCAEPlan(input)),
+    reviewPlan: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), simulationId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => reviewCAEPlan(input)),
+    requestExecution: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), simulationId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => requestCAEExecution(input)),
   }),
 
   intelligence: router({

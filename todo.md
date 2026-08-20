@@ -113,3 +113,12 @@
 - [x] Phase 4.10: Extend CAD Agent Mirror planning and no-override FILLET_READY diagnostics with explicit PASS/FAIL/UNKNOWN statuses.
 - [x] Phase 4.10: Build and run deterministic real-kernel edge, Mirror, highlighting, topology refusal, fillet diagnostic, CAD benchmark, TypeScript, and full-regression tests.
 - [x] Phase 4.10: Save a verified checkpoint and report edge proof, Mirror, pattern highlighting, CAD benchmark, fillet diagnostic, regressions, constraints, and Phase 5 recommendation without starting Phase 5.
+
+- [x] Phase 5.0: Audit requirements, CAD provenance, feature history, viewer selection, persistent memory, truth contracts, APIs, and UI integration points for a solver-independent CAE planning foundation.
+- [x] Phase 5.0: Define shared CAE simulation-plan, analysis, material-truth, geometry scope, boundary, load, contact, mesh, solver, evidence, knowledge-gap, readiness, traceability, review, critique, and no-results contracts.
+- [x] Phase 5.0: Implement deterministic CAE problem decomposition, input validation, readiness gating, solver-unavailable refusal, knowledge gaps, CAD change requests, project-isolated plans, and append-only evidence without CAD modification.
+- [x] Phase 5.0: Implement physics, boundary, material, mesh, solver, and validation adversarial reviews plus self-critique with explicit assumptions and no fabricated numerical outputs.
+- [x] Phase 5.0: Expose capability-safe project-isolated CAE APIs linked to validated CAD revision, geometry provenance, feature history, requirements, selected geometry, and branch context.
+- [x] Phase 5.0: Build a mobile CAE workspace showing plans, reused viewer context, inspector, assumptions, materials, loads, constraints, contacts, evidence, knowledge gaps, review, critique, readiness, and no-solver status.
+- [x] Phase 5.0: Add deterministic CAE plan, analysis, material, load, boundary, contact, mesh, gap, readiness, truth, traceability, failure, critique, adversarial-review, difficult-mechanical acceptance, TypeScript, and full-regression tests.
+- [x] Phase 5.0: Save a verified checkpoint and report CAE architecture, contracts, reasoning, truth gates, CAD linkage, UI, tests, solver limitations, and Phase 5.0 completion without implementing a solver.

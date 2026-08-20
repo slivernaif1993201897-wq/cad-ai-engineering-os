@@ -1,0 +1,254 @@
+import type { GeometrySelectionContext } from "./cadWorkbench";
+import type { EngineeringTruthStatus } from "./engineeringTruth";
+
+export const CAE_ANALYSIS_TYPES = ["STATIC_STRUCTURAL", "DYNAMIC", "MODAL", "THERMAL", "THERMAL_STRUCTURAL", "CONTACT", "BUCKLING", "FATIGUE"] as const;
+export type CAEAnalysisType = (typeof CAE_ANALYSIS_TYPES)[number];
+export const CAE_PLAN_STATUSES = ["NOT_READY", "READY_FOR_REVIEW", "READY_FOR_SOLVER", "EXECUTING", "COMPLETED", "FAILED", "VALIDATION_REQUIRED"] as const;
+export type CAEPlanStatus = (typeof CAE_PLAN_STATUSES)[number];
+export const CAE_TRUTH_STATUSES = ["INPUT_VERIFIED", "INPUT_ASSUMED", "CALCULATED", "SOLVER_RESULT", "POST_PROCESSED", "UNVERIFIED", "UNKNOWN"] as const;
+export type CAETruthStatus = (typeof CAE_TRUTH_STATUSES)[number];
+export const MATERIAL_PROPERTY_SOURCES = ["SOURCE_VERIFIED", "USER_PROVIDED", "DATABASE_VERIFIED", "CALCULATED", "ASSUMED", "UNKNOWN"] as const;
+export type MaterialPropertySource = (typeof MATERIAL_PROPERTY_SOURCES)[number];
+export const CAE_RESULT_STATUSES = ["NOT_EXECUTED", "SOLVER_UNAVAILABLE", "INVALID"] as const;
+export type CAEResultStatus = (typeof CAE_RESULT_STATUSES)[number];
+
+export interface CAEGeometryScope {
+  sourceCadRevision: string;
+  sourceCadBranch: string;
+  sourceCadProjectId: string;
+  geometryProvenance: "OPENCASCADE_KERNEL" | "PARSED_STEP" | "PARSED_STL" | "UNKNOWN";
+  geometryValidation: "VALID" | "UNAVAILABLE" | "UNKNOWN";
+  featureHistory: string[];
+  selectedGeometry?: GeometrySelectionContext;
+  declaredRegionReference?: string;
+  selectionStatus: "PROVEN" | "AMBIGUOUS" | "UNKNOWN";
+}
+
+export interface CAEMaterialProperty {
+  name: "ELASTIC_MODULUS" | "POISSON_RATIO" | "DENSITY" | "YIELD_STRENGTH" | "THERMAL_CONDUCTIVITY" | "THERMAL_EXPANSION" | "SPECIFIC_HEAT" | "CUSTOM";
+  value?: number;
+  unit?: string;
+  source: MaterialPropertySource;
+  provenance?: string;
+  requiredFor: CAEAnalysisType[];
+}
+
+export interface CAEMaterialDefinition {
+  materialId?: string;
+  name?: string;
+  properties: CAEMaterialProperty[];
+  status: "COMPLETE" | "MATERIAL_KNOWLEDGE_GAP" | "UNKNOWN";
+}
+
+export interface MaterialKnowledgeGap {
+  id: string;
+  kind: "MATERIAL_KNOWLEDGE_GAP";
+  missingProperty: CAEMaterialProperty["name"];
+  whyRequired: string;
+  acceptableUnits: string[];
+  possibleSource: string;
+  requiredExperiment?: string;
+  blocking: boolean;
+}
+
+export interface CAEBoundaryCondition {
+  id: string;
+  geometryReference?: string;
+  type: "FIXED" | "DISPLACEMENT" | "SYMMETRY" | "ROLLER" | "THERMAL" | "CUSTOM";
+  direction?: "GLOBAL_X" | "GLOBAL_Y" | "GLOBAL_Z" | "NORMAL" | "TANGENTIAL" | "ALL";
+  magnitude?: number;
+  unit?: string;
+  source: "USER_PROVIDED" | "REQUIREMENT" | "ASSUMED" | "UNKNOWN";
+  confidence: number;
+  assumptionStatus: "NOT_ASSUMED" | "ASSUMED" | "UNKNOWN";
+  geometryStatus: "PROVEN" | "AMBIGUOUS" | "UNKNOWN";
+}
+
+export interface CAELoad {
+  id: string;
+  type: "FORCE" | "PRESSURE" | "MOMENT" | "GRAVITY" | "ACCELERATION" | "THERMAL" | "TIME_DEPENDENT";
+  geometryReference?: string;
+  magnitude?: number;
+  unit?: string;
+  direction?: "GLOBAL_X" | "GLOBAL_Y" | "GLOBAL_Z" | "NORMAL" | "CUSTOM";
+  timeDependence?: string;
+  source: "USER_PROVIDED" | "REQUIREMENT" | "CALCULATED" | "ASSUMED" | "UNKNOWN";
+  assumptionStatus: "NOT_ASSUMED" | "ASSUMED" | "UNKNOWN";
+  geometryStatus: "PROVEN" | "AMBIGUOUS" | "UNKNOWN";
+}
+
+export interface CAEContact {
+  id: string;
+  type: "BONDED" | "FRICTIONLESS" | "FRICTIONAL" | "NO_SEPARATION";
+  primaryGeometryReference?: string;
+  secondaryGeometryReference?: string;
+  source: "USER_PROVIDED" | "ASSUMED" | "UNKNOWN";
+  status: "PLANNED" | "KNOWLEDGE_GAP";
+}
+
+export interface CAEMeshStrategy {
+  elementType?: "TETRAHEDRAL" | "HEXA_HYBRID" | "SHELL" | "BEAM" | "UNKNOWN";
+  targetSize?: number;
+  unit?: string;
+  refinementRegions: Array<{ geometryReference?: string; rationale: string; status: "PLANNED" | "UNKNOWN" }>;
+  qualityRequirements: string[];
+  convergenceRequirement?: string;
+  status: "PLANNED" | "MESH_KNOWLEDGE_GAP" | "NOT_EXECUTED";
+}
+
+export interface CAESolverDefinition {
+  adapterId: "NO_EXECUTABLE_SOLVER";
+  name: "No executable solver configured";
+  capabilities: CAEAnalysisType[];
+  status: "UNAVAILABLE";
+  reason: string;
+}
+
+export interface ICAESolverAdapter {
+  readonly id: string;
+  prepare(plan: CAESimulationPlan): Promise<{ status: "UNAVAILABLE" | "PREPARED"; evidence: string[] }>;
+  validate(plan: CAESimulationPlan): Promise<{ status: "INVALID" | "VALID"; findings: string[] }>;
+  execute(plan: CAESimulationPlan): Promise<CAEResultEnvelope>;
+  collectResults(plan: CAESimulationPlan): Promise<CAEResultEnvelope>;
+  verify(plan: CAESimulationPlan, result: CAEResultEnvelope): Promise<{ status: "INVALID" | "VERIFIED"; findings: string[] }>;
+}
+
+export interface CAEKnowledgeGap {
+  id: string;
+  kind: "KNOWLEDGE_GAP" | "PHYSICS_CONFLICT";
+  missingInformation: string;
+  whyItMatters: string;
+  possibleSource: string;
+  possibleExperiment?: string;
+  possibleSimulation?: string;
+  possibleMeasurement?: string;
+  blocking: boolean;
+  truthStatus: "UNKNOWN" | "PHYSICS_CONFLICT";
+}
+
+export interface CAETraceabilityLink {
+  id: string;
+  fromType: "REQUIREMENT" | "CAD_FEATURE" | "GEOMETRY" | "CAE_LOAD" | "CAE_BOUNDARY" | "SIMULATION" | "VALIDATION";
+  fromId: string;
+  toType: "REQUIREMENT" | "CAD_FEATURE" | "GEOMETRY" | "CAE_LOAD" | "CAE_BOUNDARY" | "SIMULATION" | "VALIDATION";
+  toId: string;
+  rationale: string;
+  status: "DECLARED" | "PROVEN" | "UNKNOWN";
+}
+
+export interface CAEAssumption {
+  id: string;
+  category: "MATERIAL" | "BOUNDARY" | "LOAD" | "CONTACT" | "MESH" | "SOLVER" | "PHYSICS";
+  statement: string;
+  truthStatus: "INPUT_ASSUMED" | "UNVERIFIED" | "UNKNOWN";
+  source: string;
+  dangerous: boolean;
+}
+
+export interface CAEAdversarialFinding {
+  id: string;
+  reviewer: "PHYSICS" | "BOUNDARY" | "MATERIAL" | "MESH" | "SOLVER" | "VALIDATION";
+  question: string;
+  finding: string;
+  status: "PASS" | "FAIL" | "UNKNOWN";
+  blocking: boolean;
+  requiredEvidence: string[];
+}
+
+export interface CAESelfCritique {
+  id: string;
+  incorrectAssumptions: string[];
+  missingLoads: string[];
+  incorrectConstraints: string[];
+  analysisTypeRisks: string[];
+  materialUncertainty: string[];
+  meshUncertainty: string[];
+  solverLimitations: string[];
+  resultInterpretationRisks: string[];
+  correctedSummary: string;
+}
+
+export interface CADChangeRequest {
+  id: string;
+  status: "PROPOSED" | "NOT_CREATED";
+  requestedChange: string;
+  rationale: string;
+  sourceSimulationId: string;
+  sourceCadRevision: string;
+  truthStatus: EngineeringTruthStatus;
+}
+
+export interface CAEEvidenceRequirement {
+  id: string;
+  category: "MATERIAL" | "LOAD" | "BOUNDARY" | "CONTACT" | "MESH" | "SOLVER" | "VALIDATION";
+  statement: string;
+  blocking: boolean;
+  status: CAETruthStatus;
+}
+
+export interface CAEResultEnvelope {
+  status: CAEResultStatus;
+  truthStatus: "UNVERIFIED" | "UNKNOWN";
+  solverId: "NO_EXECUTABLE_SOLVER";
+  reason: string;
+  numericalResults: never[];
+}
+
+export interface CAESimulationPlan {
+  simulationId: string;
+  projectId: string;
+  createdAt: string;
+  sourceCadRevision: string;
+  engineeringQuestion: string;
+  analysisType: CAEAnalysisType;
+  physicsModel: string[];
+  geometryScope: CAEGeometryScope;
+  materialDefinition: CAEMaterialDefinition;
+  boundaryConditions: CAEBoundaryCondition[];
+  loads: CAELoad[];
+  contacts: CAEContact[];
+  meshStrategy: CAEMeshStrategy;
+  solver: CAESolverDefinition;
+  assumptions: CAEAssumption[];
+  unknowns: Array<CAEKnowledgeGap | MaterialKnowledgeGap>;
+  validationRequirements: string[];
+  evidenceRequirements: CAEEvidenceRequirement[];
+  traceability: CAETraceabilityLink[];
+  adversarialReview: CAEAdversarialFinding[];
+  selfCritique: CAESelfCritique;
+  cadChangeRequests: CADChangeRequest[];
+  result: CAEResultEnvelope;
+  status: CAEPlanStatus;
+  truthStatus: CAETruthStatus;
+  limitations: string[];
+}
+
+export interface CAEPlanInput {
+  projectId: string;
+  sourceCadRevision: string;
+  sourceCadBranch?: string;
+  engineeringQuestion: string;
+  analysisType?: CAEAnalysisType;
+  selectedGeometry?: GeometrySelectionContext;
+  featureHistory?: string[];
+  geometryProvenance?: CAEGeometryScope["geometryProvenance"];
+  geometryValidation?: CAEGeometryScope["geometryValidation"];
+  material?: CAEMaterialDefinition;
+  boundaryConditions?: CAEBoundaryCondition[];
+  loads?: CAELoad[];
+  contacts?: CAEContact[];
+  meshStrategy?: CAEMeshStrategy;
+  requirementIds?: string[];
+}
+
+export interface CAEPlanSummary {
+  simulationId: string;
+  sourceCadRevision: string;
+  engineeringQuestion: string;
+  analysisType: CAEAnalysisType;
+  status: CAEPlanStatus;
+  truthStatus: CAETruthStatus;
+  unknownCount: number;
+  blockingGapCount: number;
+  createdAt: string;
+}
