@@ -9,6 +9,8 @@ export type ViewerSelection = {
   mode: ViewerSelectionMode;
   faceId: string;
   featureId: string;
+  instanceKey?: string;
+  instanceIdentity?: "PROVEN" | "INSTANCE_IDENTITY_UNKNOWN";
   vertex?: [number, number, number];
   edge?: [[number, number, number], [number, number, number]];
 };
@@ -35,6 +37,7 @@ function distance(a: [number, number, number], b: [number, number, number]) {
 export function CADViewer({
   mesh,
   selectedFeatureId,
+  selectedInstanceKey,
   onSelectionChange,
   hiddenFeatureIds = [],
   isolatedFeatureId,
@@ -42,6 +45,7 @@ export function CADViewer({
 }: {
   mesh?: KernelViewerMesh;
   selectedFeatureId?: string;
+  selectedInstanceKey?: string;
   onSelectionChange?: (selection: ViewerSelection) => void;
   hiddenFeatureIds?: string[];
   isolatedFeatureId?: string;
@@ -74,7 +78,7 @@ export function CADViewer({
   }), [camera, gestureMode, mesh]);
 
   const triangles = useMemo(() => {
-    if (!mesh || !bodyVisible) return [] as { id: number; points: string; depth: number; faceId: string; featureId: string; vertices: [number, number, number][] }[];
+    if (!mesh || !bodyVisible) return [] as { id: number; points: string; depth: number; faceId: string; featureId: string; instanceKey?: string; instanceIdentity?: "PROVEN" | "INSTANCE_IDENTITY_UNKNOWN"; vertices: [number, number, number][] }[];
     const { min, max } = mesh.boundingBox;
     const center: [number, number, number] = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
     const scale = Math.min(size.width, size.height) / Math.max(mesh.boundingBox.diagonal, 1) * 1.65 * camera.zoom;
@@ -95,12 +99,12 @@ export function CADViewer({
       const vertices = triangle.map((vertexIndex) => mesh.vertices[vertexIndex]) as [number, number, number][];
       const projected = vertices.map(project);
       const range = rangeForTriangle(index);
-      return { id: index, points: projected.map((point) => `${point.x},${point.y}`).join(" "), depth: projected.reduce((sum, point) => sum + point.depth, 0) / 3, faceId: range?.faceId ?? "FACE-UNKNOWN", featureId: range?.featureId ?? "FEATURE-UNKNOWN", vertices };
+      return { id: index, points: projected.map((point) => `${point.x},${point.y}`).join(" "), depth: projected.reduce((sum, point) => sum + point.depth, 0) / 3, faceId: range?.faceId ?? "FACE-UNKNOWN", featureId: range?.featureId ?? "FEATURE-UNKNOWN", instanceKey: range?.instanceKey, instanceIdentity: range?.instanceIdentity, vertices };
     }).filter((triangle) => !hiddenFeatureIds.includes(triangle.featureId) && (!isolatedFeatureId || triangle.featureId === isolatedFeatureId)).sort((a, b) => a.depth - b.depth);
   }, [bodyVisible, camera, hiddenFeatureIds, isolatedFeatureId, mesh, size.height, size.width]);
 
   const selectTriangle = (triangle: (typeof triangles)[number]) => {
-    const next: ViewerSelection = { mode: selectionMode, faceId: triangle.faceId, featureId: triangle.featureId };
+    const next: ViewerSelection = { mode: selectionMode, faceId: triangle.faceId, featureId: triangle.featureId, instanceKey: triangle.instanceKey, instanceIdentity: triangle.instanceIdentity };
     if (selectionMode === "VERTEX") next.vertex = triangle.vertices[0];
     if (selectionMode === "EDGE") next.edge = [triangle.vertices[0], triangle.vertices[1]];
     setSelection(next);
@@ -119,7 +123,7 @@ export function CADViewer({
       <View style={styles.header}><View><Text style={styles.title}>KERNEL-DERIVED CAD VIEWER</Text><Text style={styles.subTitle}>{mesh ? `${mesh.triangles.length} triangles · ${mesh.faceRanges.length} BRep faces · ${mesh.source}` : "No validated BRep mesh available"}</Text></View><Text style={styles.truth}>{mesh ? "TESSELLATED FROM BREP" : "NO FABRICATED PREVIEW"}</Text></View>
       <View style={styles.viewer} onLayout={(event) => setSize({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })} {...panResponder.panHandlers}>
         {mesh ? <Svg width={size.width} height={size.height}>
-          {triangles.map((triangle) => <SvgPolygon key={triangle.id} points={triangle.points} fill={selection?.faceId === triangle.faceId || selectedFeatureId === triangle.featureId ? "#DE6B35" : "#4F8DB5"} fillOpacity={selection?.faceId === triangle.faceId ? 0.92 : 0.76} stroke="#B4D9EF" strokeOpacity={0.52} strokeWidth={0.55} onPress={() => selectTriangle(triangle)} />)}
+          {triangles.map((triangle) => <SvgPolygon key={triangle.id} points={triangle.points} fill={selection?.faceId === triangle.faceId || (selectedInstanceKey && triangle.instanceIdentity === "PROVEN" && triangle.instanceKey === selectedInstanceKey) || selectedFeatureId === triangle.featureId ? "#DE6B35" : "#4F8DB5"} fillOpacity={selection?.faceId === triangle.faceId || (selectedInstanceKey && triangle.instanceKey === selectedInstanceKey) ? 0.92 : 0.76} stroke="#B4D9EF" strokeOpacity={0.52} strokeWidth={0.55} onPress={() => selectTriangle(triangle)} />)}
           {selection?.vertex ? <Circle cx={size.width / 2} cy={size.height / 2} r={4} fill="#F3F1EA" /> : null}
           {selection?.edge ? <Line x1={0} y1={0} x2={0} y2={0} stroke="#F3F1EA" /> : null}
         </Svg> : <View style={styles.empty}><Text style={styles.emptyMark}>◇</Text><Text style={styles.emptyTitle}>AWAITING VALIDATED GEOMETRY</Text><Text style={styles.emptyCopy}>Generate the model to receive an OpenCascade.js tessellation. No unrelated placeholder mesh is shown.</Text></View>}

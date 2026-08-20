@@ -125,6 +125,20 @@ export function extractKernelViewerMesh(oc: any, shape: any, featureId: string, 
   };
 }
 
+export function mergeKernelViewerMeshes(items: Array<{ mesh: KernelViewerMesh; instanceKey?: string; instanceIdentity?: "PROVEN" | "INSTANCE_IDENTITY_UNKNOWN" }>): KernelViewerMesh {
+  if (!items.length) throw new Error("At least one real kernel instance mesh is required for a merged viewer mesh.");
+  const vertices: KernelViewerMesh["vertices"] = []; const triangles: KernelViewerMesh["triangles"] = []; const faceRanges: KernelViewerMesh["faceRanges"] = [];
+  for (const { mesh, instanceKey, instanceIdentity } of items) {
+    const vertexOffset = vertices.length; const triangleOffset = triangles.length;
+    vertices.push(...mesh.vertices);
+    triangles.push(...mesh.triangles.map((triangle) => [triangle[0] + vertexOffset, triangle[1] + vertexOffset, triangle[2] + vertexOffset] as [number, number, number]));
+    for (const range of mesh.faceRanges) faceRanges.push({ ...range, faceId: instanceKey ? `${instanceKey}:${range.faceId}` : range.faceId, triangleStart: triangleOffset + range.triangleStart, instanceKey, instanceIdentity });
+  }
+  const xs = vertices.map(([x]) => x); const ys = vertices.map(([, y]) => y); const zs = vertices.map(([, , z]) => z);
+  const min: [number, number, number] = [Math.min(...xs), Math.min(...ys), Math.min(...zs)]; const max: [number, number, number] = [Math.max(...xs), Math.max(...ys), Math.max(...zs)]; const size: [number, number, number] = [max[0] - min[0], max[1] - min[1], max[2] - min[2]]; const diagonal = Math.hypot(...size);
+  return { source: "OpenCascade.js", tessellation: "BRepMesh_IncrementalMesh", vertices, triangles, faceRanges, boundingBox: { min, max, size, diagonal }, measurements: { width: size[0], depth: size[1], height: size[2], boundingBoxDiagonal: diagonal } };
+}
+
 function extractViewerMesh(oc: any, shape: any, _input: MountingBlockInput, featureId: string): KernelViewerMesh {
   return extractKernelViewerMesh(oc, shape, featureId);
 }

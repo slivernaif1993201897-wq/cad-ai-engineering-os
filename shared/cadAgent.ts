@@ -70,6 +70,8 @@ export interface ViewerFaceRange {
   featureId: string;
   triangleStart: number;
   triangleCount: number;
+  instanceKey?: string;
+  instanceIdentity?: "PROVEN" | "INSTANCE_IDENTITY_UNKNOWN";
 }
 
 export interface KernelViewerMesh {

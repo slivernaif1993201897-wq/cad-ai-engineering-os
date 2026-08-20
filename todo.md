@@ -104,3 +104,12 @@
 - [x] Phase 4.9: Build progressive-disclosure mobile Feature Inspector controls for circle and rectangular patterns, lifecycle state, topology evidence, fillet readiness, and STEP geometry export metadata.
 - [x] Phase 4.9: Add real-kernel GLOBAL_X/GLOBAL_Y/GLOBAL_Z, invalid axis, rectangular-pattern, edit, regeneration, branch, topology, provenance, CAD Agent, UI, and full-regression tests.
 - [x] Phase 4.9: Save a verified checkpoint and report supported patterns, topology stress, fillet gate, exports, CAD Agent, UI, regressions, limitations, and explicit Phase 5 exclusion.
+
+- [x] Phase 4.10: Audit topology manifests, viewer selection mapping, feature history, CAD Agent, UI, and regression boundaries against the final CAD foundation closure specification.
+- [x] Phase 4.10: Define edge-topology proof, fillet evidence status, bounded global-plane Mirror, pattern-instance identity, and CAD capability benchmark contracts.
+- [x] Phase 4.10: Implement deterministic real-kernel EDGE creation, persistence, regeneration, deletion, replacement, ambiguity, invalidation, branch isolation, and repeated-regeneration evidence without transient object-identity claims.
+- [x] Phase 4.10: Implement bounded OpenCascade Mirror over GLOBAL_X/GLOBAL_Y/GLOBAL_Z with immutable history, preview, apply, reject, regeneration, failure preservation, STEP provenance, and APIs.
+- [x] Phase 4.10: Implement proof-aware pattern-instance viewport selection/highlighting and a progressive-disclosure mobile Pattern Instance Inspector with explicit unknown identity.
+- [x] Phase 4.10: Extend CAD Agent Mirror planning and no-override FILLET_READY diagnostics with explicit PASS/FAIL/UNKNOWN statuses.
+- [x] Phase 4.10: Build and run deterministic real-kernel edge, Mirror, highlighting, topology refusal, fillet diagnostic, CAD benchmark, TypeScript, and full-regression tests.
+- [x] Phase 4.10: Save a verified checkpoint and report edge proof, Mirror, pattern highlighting, CAD benchmark, fillet diagnostic, regressions, constraints, and Phase 5 recommendation without starting Phase 5.

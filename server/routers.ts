@@ -12,8 +12,10 @@ import { attachWorkbenchFile, getWorkbenchProject, runWorkbenchMessage, updatePr
 import { analyzeCadFile, getCadFileContext, ingestCadFile, listCadFiles, removeCadFile } from "./cadFileIntelligence";
 import { createEngineeringViewerBranch, getEngineeringViewerScene, getViewerProposalPreview } from "./engineeringViewer";
 import { executeCadOperation, listCadOperationHistory, planCadOperation, previewCadOperation, rejectCadOperation, revertCadOperation } from "./cadExecution";
-import { assessCircleRepeatability, compareFeatureRevisions, createCircularPattern, createCircleFeatureHistory, createFeatureHistory, diagnoseFeatureHistoryFailure, evaluateFilletReadiness, executeCircularPatternRegeneration, executeCircleFeatureRegeneration, executeFeatureRegeneration, getCircleFilletReadiness, getCircleGeometryExport, getTopologyManifest, inspectCircleTopology, listFeatureHistory, matchTopologyRevisions, planCircularBoss, planCircularPattern, previewCircularPatternRegeneration, previewCircleFeatureRegeneration, previewFeatureRegeneration } from "./featureHistory";
+import { assessCircleRepeatability, cacheFeatureHistoryRevision, compareFeatureRevisions, createCircularPattern, createCircleFeatureHistory, createFeatureHistory, diagnoseFeatureHistoryFailure, evaluateFilletReadiness, executeCircularPatternRegeneration, executeCircleFeatureRegeneration, executeFeatureRegeneration, getCircleFilletReadiness, getCircleGeometryExport, getFeatureViewerMesh, getTopologyManifest, inspectCircleTopology, listFeatureHistory, matchTopologyRevisions, planCircularBoss, planCircularPattern, previewCircularPatternRegeneration, previewCircleFeatureRegeneration, previewFeatureRegeneration } from "./featureHistory";
 import { createRectangularPattern, executeRectangularPatternRegeneration, planRectangularPattern, previewRectangularPatternRegeneration } from "./rectangularPattern";
+import { edgeTopologyProofs, matchEdgeTopology } from "./edgeTopology";
+import { createMirror, executeMirrorRegeneration, planMirror, previewMirrorRegeneration, rejectMirrorPreview } from "./mirrorFeature";
 import { FEATURE_CATALOG } from "../shared/featureHistory";
 import { createPersistentConversation, listPersistentConversations, openPersistentProject, projectMemorySnapshot, retrievePersistentMemory, updatePersistentConversation } from "./persistentMemory";
 import { persistWorkbenchAttachment, recordPersistentConceptDecision, recordPersistentProposalDecision, restoreWorkbenchConversation, runPersistentWorkbenchMessage } from "./persistentWorkbench";
@@ -228,6 +230,9 @@ export const appRouter = router({
     planRectangularPattern: publicProcedure
       .input(z.object({ message: z.string().trim().min(1).max(2000) }))
       .query(({ input }) => planRectangularPattern(input.message)),
+    planMirror: publicProcedure
+      .input(z.object({ message: z.string().trim().min(1).max(2000) }))
+      .query(({ input }) => planMirror(input.message)),
     create: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), width: z.number().finite(), height: z.number().finite(), extrudeDistance: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }) }))
       .mutation(({ input }) => createFeatureHistory(input)),
@@ -240,9 +245,15 @@ export const appRouter = router({
     createRectangularPattern: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), sourceRevisionId: z.string().trim().min(1).max(160), sourceFeatureId: z.literal("EXTRUDE-CIRCLE-001"), directionX: z.enum(["GLOBAL_X_POSITIVE", "GLOBAL_X_NEGATIVE"]), directionY: z.enum(["GLOBAL_Y_POSITIVE", "GLOBAL_Y_NEGATIVE"]), countX: z.number().int().min(1).max(24), countY: z.number().int().min(1).max(24), spacingX: z.number().finite().gt(0), spacingY: z.number().finite().gt(0), unit: z.enum(["mm", "cm", "m"]) }) }))
       .mutation(({ input }) => createRectangularPattern(input)),
+    createMirror: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: z.object({ title: z.string().trim().min(1).max(160), sourceRevisionId: z.string().trim().min(1).max(160), sourceFeatureId: z.literal("EXTRUDE-CIRCLE-001"), mirrorPlane: z.enum(["GLOBAL_X", "GLOBAL_Y", "GLOBAL_Z"]) }) }))
+      .mutation(({ input }) => createMirror(input)),
     list: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128) }))
       .query(({ input }) => listFeatureHistory(input)),
+    viewerMesh: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), revisionId: z.string().trim().min(1).max(160) }))
+      .query(({ input }) => getFeatureViewerMesh(input)),
     preview: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ featureId: z.string().trim().min(1).max(96), parameter: z.object({ name: z.enum(["width", "height", "radius", "centerX", "centerY", "extrudeDistance", "instanceCount", "angleDegrees", "countX", "countY", "spacingX", "spacingY"]), value: z.number().finite(), unit: z.enum(["mm", "cm", "m"]) }).optional(), targetReferenceId: z.string().trim().min(1).max(160).optional(), direction: z.literal("NORMAL").optional(), featureType: z.enum(["RECTANGLE_SKETCH", "CIRCLE_SKETCH", "EXTRUDE", "CIRCULAR_PATTERN", "RECTANGULAR_PATTERN", "REVOLVE", "SWEEP", "LOFT", "BOOLEAN_UNION", "BOOLEAN_CUT", "BOOLEAN_INTERSECTION", "FILLET", "CHAMFER", "SHELL", "DRAFT", "PATTERN", "MIRROR"]).optional(), operationOrder: z.number().int().min(0).max(32).optional() }) }))
       .mutation(({ input }) => previewFeatureRegeneration(input)),
@@ -267,6 +278,15 @@ export const appRouter = router({
     executeRectangularPattern: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), previewRevisionId: z.string().trim().min(1).max(160) }))
       .mutation(({ input }) => executeRectangularPatternRegeneration(input)),
+    previewMirror: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), edit: z.object({ mirrorPlane: z.enum(["GLOBAL_X", "GLOBAL_Y", "GLOBAL_Z"]).optional() }) }))
+      .mutation(({ input }) => previewMirrorRegeneration(input)),
+    executeMirror: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), previewRevisionId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => executeMirrorRegeneration(input)),
+    rejectMirrorPreview: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), previewRevisionId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => rejectMirrorPreview(input)),
     compare: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), baseRevisionId: z.string().trim().min(1).max(160), comparedRevisionId: z.string().trim().min(1).max(160) }))
       .query(({ input }) => compareFeatureRevisions(input)),
@@ -288,9 +308,15 @@ export const appRouter = router({
     topologyManifest: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), revisionId: z.string().trim().min(1).max(160) }))
       .query(({ input }) => getTopologyManifest(input)),
+    edgeProofs: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), revisionId: z.string().trim().min(1).max(160) }))
+      .query(async ({ input }) => { const revision = (await listFeatureHistory(input)).find((item) => item.revisionId === input.revisionId); if (!revision) throw new Error("An authorized immutable feature revision is required for edge topology proof."); return edgeTopologyProofs(revision); }),
     topologyMatch: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), targetRevisionId: z.string().trim().min(1).max(160) }))
       .query(({ input }) => matchTopologyRevisions(input)),
+    edgeTopologyMatch: publicProcedure
+      .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), targetRevisionId: z.string().trim().min(1).max(160) }))
+      .query(async ({ input }) => { const revisions = await listFeatureHistory(input); const source = revisions.find((item) => item.revisionId === input.sourceRevisionId); const target = revisions.find((item) => item.revisionId === input.targetRevisionId); if (!source || !target) throw new Error("Both authorized immutable revisions are required for edge topology matching."); return matchEdgeTopology(source, target); }),
     filletGate: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), sourceRevisionId: z.string().trim().min(1).max(160), targetRevisionId: z.string().trim().min(1).max(160) }))
       .query(({ input }) => evaluateFilletReadiness(input)),

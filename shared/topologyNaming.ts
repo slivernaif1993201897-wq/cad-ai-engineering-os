@@ -1,13 +1,14 @@
 export type TopologyEntityType = "BODY" | "SOLID" | "FACE" | "EDGE" | "VERTEX";
 export type TopologyReferenceValidity = "VALID" | "TOPOLOGY_MATCH_AMBIGUOUS" | "TOPOLOGY_REFERENCE_INVALIDATED" | "REVISION_SCOPED";
 export type TopologyMatchStatus = "TOPOLOGY_MATCHED" | "TOPOLOGY_MATCH_AMBIGUOUS" | "TOPOLOGY_REFERENCE_INVALIDATED" | "NEW_ENTITY";
+export type EvidenceStatus = "PASS" | "FAIL" | "UNKNOWN";
 
 export interface TopologyProvenance {
   sourceFeatureId: string;
   sourceRevisionId: string;
   entityType: TopologyEntityType;
   role: string;
-  generator: "CIRCLE_SKETCH_EXTRUDE" | "CIRCULAR_PATTERN" | "RECTANGULAR_PATTERN";
+  generator: "CIRCLE_SKETCH_EXTRUDE" | "CIRCULAR_PATTERN" | "RECTANGULAR_PATTERN" | "MIRROR";
 }
 export interface TopologySignature {
   geometryKind: "PLANAR" | "CYLINDRICAL" | "CIRCULAR" | "VERTEX" | "SOLID";
@@ -41,6 +42,19 @@ export interface TopologyMatchReport {
   targetRevisionId: string;
   matches: TopologyMatchEvidence[];
   summary: { matched: number; ambiguous: number; invalidated: number; newEntities: number };
+}
+export interface EdgeTopologyProof {
+  referenceId: string;
+  role: string;
+  status: EvidenceStatus;
+  signature: { geometryKind: "CIRCULAR"; radius: number; z: number; centerX: number; centerY: number; adjacentFaces: number };
+  evidence: string[];
+  uncertainty?: string;
+}
+export interface FilletEvidenceCheck {
+  id: "EDGE_IDENTITY" | "LOCAL_PRECONDITIONS" | "KERNEL_EXECUTION" | "REGENERATION" | "FAILURE_PRESERVATION";
+  status: EvidenceStatus;
+  detail: string;
 }
 export interface StepGeometryExportProvenance {
   projectId: string;

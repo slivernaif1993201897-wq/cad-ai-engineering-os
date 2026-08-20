@@ -1,7 +1,7 @@
 import type { KernelViewerMesh } from "./cadAgent";
-import type { StepGeometryExportProvenance, TopologyManifest } from "./topologyNaming";
+import type { EdgeTopologyProof, FilletEvidenceCheck, StepGeometryExportProvenance, TopologyManifest } from "./topologyNaming";
 
-export const SUPPORTED_FEATURE_TYPES = ["RECTANGLE_SKETCH", "CIRCLE_SKETCH", "EXTRUDE", "CIRCULAR_PATTERN", "RECTANGULAR_PATTERN"] as const;
+export const SUPPORTED_FEATURE_TYPES = ["RECTANGLE_SKETCH", "CIRCLE_SKETCH", "EXTRUDE", "CIRCULAR_PATTERN", "RECTANGULAR_PATTERN", "MIRROR"] as const;
 export type SupportedFeatureType = (typeof SUPPORTED_FEATURE_TYPES)[number];
 export type CADFeatureHistoryType = SupportedFeatureType | "REVOLVE" | "SWEEP" | "LOFT" | "BOOLEAN_UNION" | "BOOLEAN_CUT" | "BOOLEAN_INTERSECTION" | "FILLET" | "CHAMFER" | "SHELL" | "DRAFT" | "PATTERN" | "MIRROR";
 export type FeatureImplementationStatus = "KERNEL_BACKED" | "UNSUPPORTED";
@@ -42,7 +42,7 @@ export interface CADFeatureHistoryNode {
   constraints: FeatureConstraint[];
   dependencies: string[];
   operationData?: Record<string, string | number | boolean>;
-  generatedInstances?: Array<{ instanceId: string; instanceKey: string; index: number; sourceFeatureId: string; angleDegrees?: number; xOffset?: number; yOffset?: number; status: "KERNEL_VALIDATED" }>;
+  generatedInstances?: Array<{ instanceId: string; instanceKey: string; index: number; sourceFeatureId: string; angleDegrees?: number; xOffset?: number; yOffset?: number; geometryReference?: string; topologyStatus?: "PROVEN" | "INSTANCE_IDENTITY_UNKNOWN"; status: "KERNEL_VALIDATED" }>;
   sourceRevision: string;
   resultRevision?: string;
   status: FeatureHistoryStatus;
@@ -57,6 +57,7 @@ export interface FeatureHistoryGeometry {
   kernel: "OpenCascade.js";
   topology?: TopologyInspection;
   topologyManifest?: TopologyManifest;
+  edgeProofs?: EdgeTopologyProof[];
   export?: { status: "AVAILABLE" | "UNAVAILABLE"; format: "STEP_GEOMETRY"; featureHistory: "NOT_PRESERVED"; storageKey?: string; url?: string; note: string; provenance?: StepGeometryExportProvenance };
 }
 export interface TopologyInspection {
@@ -69,6 +70,7 @@ export interface TopologyInspection {
 export interface FilletReadinessGate {
   ready: boolean;
   checks: Array<{ id: "STABLE_TOPOLOGY_REFERENCES" | "DETERMINISTIC_EDGE_IDENTIFICATION" | "SUCCESSFUL_REGENERATION" | "FAILURE_PRESERVATION" | "BRANCH_PRESERVATION" | "KERNEL_VALIDITY" | "REPEATABILITY"; passed: boolean; detail: string }>;
+  evidence?: FilletEvidenceCheck[];
   missing: string[];
   conclusion: string;
 }
@@ -146,6 +148,14 @@ export interface RectangularPatternEdit {
   spacingY?: number;
   unit?: "mm" | "cm" | "m";
 }
+export type MirrorPlane = "GLOBAL_X" | "GLOBAL_Y" | "GLOBAL_Z";
+export interface MirrorInput {
+  title: string;
+  sourceRevisionId: string;
+  sourceFeatureId: "EXTRUDE-CIRCLE-001";
+  mirrorPlane: MirrorPlane;
+}
+export interface MirrorEdit { mirrorPlane?: MirrorPlane; }
 export interface FeatureHistoryComparison {
   baseRevision: string;
   comparedRevision: string;
@@ -162,5 +172,5 @@ export const FEATURE_CATALOG: Array<{ type: CADFeatureHistoryType; supported: bo
   { type: "EXTRUDE", supported: true, description: "Kernel-backed prism generated only from a valid rectangular sketch profile and positive normal distance." },
   { type: "CIRCULAR_PATTERN", supported: true, description: "Guarded kernel-backed compound of rotated instances from a valid offset CIRCLE_SKETCH → EXTRUDE source, with explicit validated Global X, Y, or Z axis, count, angle, direction, and instance provenance." },
   { type: "RECTANGULAR_PATTERN", supported: true, description: "Guarded kernel-backed compound of translated instances from a validated CIRCLE_SKETCH → EXTRUDE source, using explicit signed Global X and Global Y directions, count, spacing, and instance provenance." },
-  { type: "REVOLVE", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "SWEEP", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "LOFT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_UNION", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_CUT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_INTERSECTION", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "FILLET", supported: false, description: "Not implemented as a feature-history operation; existing mounting-block filleting is not exposed here." }, { type: "CHAMFER", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "SHELL", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "DRAFT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "PATTERN", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "MIRROR", supported: false, description: "Not implemented or tested through the current feature-history kernel route." },
+  { type: "REVOLVE", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "SWEEP", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "LOFT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_UNION", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_CUT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "BOOLEAN_INTERSECTION", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "FILLET", supported: false, description: "Not implemented as a feature-history operation; existing mounting-block filleting is not exposed here." }, { type: "CHAMFER", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "SHELL", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "DRAFT", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "PATTERN", supported: false, description: "Not implemented or tested through the current feature-history kernel route." }, { type: "MIRROR", supported: true, description: "Bounded real OpenCascade plane reflection of a validated CIRCLE_SKETCH → EXTRUDE source across explicit GLOBAL_X, GLOBAL_Y, or GLOBAL_Z only; arbitrary geometry-derived planes are unsupported." },
 ];
