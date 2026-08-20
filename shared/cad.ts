@@ -1,3 +1,5 @@
+import type { RequirementSet } from "./requirements";
+
 export type RequirementStatus = "VALIDATED" | "OPEN_QUESTION" | "CONFLICT";
 export type FeatureStatus = "APPLIED" | "UNSUPPORTED" | "FAILED";
 
@@ -61,6 +63,7 @@ export interface CADArtifact {
 export interface CADGenerationResult {
   plan: CADPlan;
   artifact?: CADArtifact;
+  requirementSet?: RequirementSet;
   error?: string;
 }
 

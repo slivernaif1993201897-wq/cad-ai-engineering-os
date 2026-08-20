@@ -5,6 +5,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { generateMountingBlock } from "./cadKernel";
+import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -27,6 +28,18 @@ export const appRouter = router({
         success: true,
       } as const;
     }),
+  }),
+
+  requirements: router({
+    parse: publicProcedure
+      .input(z.object({ sourceText: z.string().trim().min(1).max(5000), revision: z.number().int().positive().optional() }))
+      .mutation(({ input }) => parseRequirements(input.sourceText, input.revision ?? 1)),
+    normalizeUnit: publicProcedure
+      .input(z.object({ value: z.number(), unit: z.string().trim().min(1).max(32) }))
+      .query(({ input }) => normalizeUnit(input.value, input.unit)),
+    revise: publicProcedure
+      .input(z.object({ previous: z.any(), updateText: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => applyRequirementRevision(input.previous, input.updateText)),
   }),
 
   cad: router({

@@ -47,7 +47,10 @@ export default function HomeScreen() {
   const [prompt, setPrompt] = useState(INITIAL_PROMPT);
   const [width, setWidth] = useState(String(DEFAULTS.width));
   const [assumptionApproved, setAssumptionApproved] = useState(true);
+  const [revisionText, setRevisionText] = useState("Make the width 5 cm.");
   const mutation = trpc.cad.generateMountingBlock.useMutation();
+  const requirementsMutation = trpc.requirements.parse.useMutation();
+  const revisionMutation = trpc.requirements.revise.useMutation();
 
   const input = useMemo(() => ({
     ...DEFAULTS,
@@ -55,12 +58,18 @@ export default function HomeScreen() {
     approveAssumption: assumptionApproved,
   }), [assumptionApproved, width]);
 
+  const validateRequirements = () => requirementsMutation.mutate({ sourceText: prompt, revision: requirementsMutation.data?.requirementSet.revision ?? 1 });
+  const applyRevision = () => {
+    const currentSet = result?.requirementSet ?? requirementsMutation.data?.requirementSet;
+    if (currentSet && revisionText.trim()) revisionMutation.mutate({ previous: currentSet, updateText: revisionText.trim() });
+  };
   const generate = () => mutation.mutate({ input, prompt });
   const result = mutation.data;
+  const requirementSet = revisionMutation.data ?? result?.requirementSet ?? requirementsMutation.data?.requirementSet;
   const requirement = result?.plan.requirements[0];
   const artifact = result?.artifact;
   const isValid = artifact?.validationStatus === "VALID";
-  const hasOpenQuestion = Boolean(requirement?.openQuestions.length);
+  const hasOpenQuestion = Boolean(requirement?.openQuestions.length || requirementSet?.open_questions.length);
 
   return (
     <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-[#101820]" safeAreaClassName="bg-[#101820]" containerStyle={styles.shell}>
@@ -95,6 +104,22 @@ export default function HomeScreen() {
             placeholderTextColor="#80909A"
             style={styles.promptInput}
           />
+        </Section>
+
+        <Section title="REQUIREMENTS AGENT · DETERMINISTIC PREFLIGHT">
+          <View style={styles.requirementAgentCard}>
+            <View style={styles.requirementAgentHeader}>
+              <View><Text style={styles.requirementAgentTitle}>RequirementSet</Text><Text style={styles.requirementAgentMeta}>{requirementSet ? `REVISION ${requirementSet.revision} · ${requirementSet.validation_status}` : "Not validated yet"}</Text></View>
+              <Pressable disabled={requirementsMutation.isPending} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]} onPress={validateRequirements}><Text style={styles.secondaryButtonText}>{requirementsMutation.isPending ? "CHECKING…" : "VALIDATE"}</Text></Pressable>
+            </View>
+            {requirementSet?.requirements.map((item) => <View key={item.requirement_id} style={styles.requirementRow}><View style={styles.requirementRowMain}><Text style={styles.requirementRowId}>{item.requirement_id}</Text><Text style={styles.requirementRowDescription}>{item.parameter ?? item.category} · {item.description}</Text></View><View style={styles.requirementRowValue}><Text style={styles.requirementRowNumber}>{item.value ?? "—"}</Text><Text style={styles.requirementRowUnit}>{item.unit ?? "NO UNIT"}</Text></View><StatusPill label={item.status} tone={item.status === "VALIDATED" ? "green" : item.status === "CONFLICT" ? "red" : "orange"} /></View>)}
+            {requirementSet?.open_questions.length ? <View style={styles.requirementAlert}><Text style={styles.requirementAlertTitle}>OPEN QUESTIONS · {requirementSet.open_questions.length}</Text>{requirementSet.open_questions.map((question) => <Text key={question.id} style={styles.requirementAlertText}>• {question.question}</Text>)}</View> : null}
+            {requirementSet?.conflicts.length ? <View style={styles.conflictAlert}><Text style={styles.conflictAlertTitle}>CONFLICTS · {requirementSet.conflicts.length}</Text>{requirementSet.conflicts.map((conflict) => <Text key={conflict.id} style={styles.conflictAlertText}>{conflict.explanation}</Text>)}</View> : null}
+            {requirementSet ? <Text style={styles.traceabilityText}>TRACEABILITY · {requirementSet.traceability.length} links from user request to CAD parameters and features.</Text> : <Text style={styles.traceabilityText}>The validator will normalize units and stop on ambiguity before trusted CAD generation.</Text>}
+            <View style={styles.revisionDivider} />
+            <Text style={styles.revisionLabel}>CONVERSATIONAL REVISION</Text>
+            <View style={styles.revisionRow}><TextInput value={revisionText} onChangeText={setRevisionText} placeholder="Make the width 5 cm…" placeholderTextColor="#71828B" style={styles.revisionInput} /><Pressable disabled={!requirementSet || revisionMutation.isPending} style={({ pressed }) => [styles.secondaryButton, (!requirementSet || revisionMutation.isPending) && styles.disabled, pressed && styles.pressed]} onPress={applyRevision}><Text style={styles.secondaryButtonText}>{revisionMutation.isPending ? "UPDATING…" : "NEW REVISION"}</Text></Pressable></View>
+          </View>
         </Section>
 
         <Section title="REQUIREMENTS">
@@ -183,6 +208,30 @@ const styles = StyleSheet.create({
   section: { gap: 9 },
   sectionTitle: { color: "#7B8A93", fontSize: 10, letterSpacing: 1.3, fontWeight: "800" },
   promptInput: { minHeight: 82, borderColor: "#34434B", borderWidth: 1, borderRadius: 12, padding: 13, color: "#F3F1EA", backgroundColor: "#19232A", fontSize: 14, lineHeight: 20, textAlignVertical: "top" },
+  requirementAgentCard: { backgroundColor: "#192831", borderRadius: 14, padding: 14, gap: 10, borderWidth: 1, borderColor: "#2F4652" },
+  requirementAgentHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  requirementAgentTitle: { color: "#F3F1EA", fontSize: 15, fontWeight: "800" },
+  requirementAgentMeta: { color: "#7B8A93", fontSize: 10, marginTop: 3, letterSpacing: 0.5 },
+  secondaryButton: { borderRadius: 8, borderWidth: 1, borderColor: "#5B9DCA", paddingHorizontal: 11, paddingVertical: 8 },
+  secondaryButtonText: { color: "#8EC4E8", fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+  requirementRow: { flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#2B3A41", paddingTop: 10 },
+  requirementRowMain: { flex: 1 },
+  requirementRowId: { color: "#6EA4CA", fontSize: 9, fontWeight: "800" },
+  requirementRowDescription: { color: "#D7E0E3", fontSize: 11, marginTop: 3 },
+  requirementRowValue: { alignItems: "flex-end", minWidth: 48 },
+  requirementRowNumber: { color: "#F3F1EA", fontSize: 14, fontWeight: "800" },
+  requirementRowUnit: { color: "#7B8A93", fontSize: 9 },
+  requirementAlert: { backgroundColor: "#3A2A1C", borderLeftWidth: 3, borderLeftColor: "#DE6B35", padding: 10, gap: 4 },
+  requirementAlertTitle: { color: "#F1A778", fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  requirementAlertText: { color: "#F6D8C6", fontSize: 11, lineHeight: 16 },
+  conflictAlert: { backgroundColor: "#3A1E1E", borderLeftWidth: 3, borderLeftColor: "#B3261E", padding: 10, gap: 4 },
+  conflictAlertTitle: { color: "#FFB4AB", fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  conflictAlertText: { color: "#F8D2CD", fontSize: 11, lineHeight: 16 },
+  traceabilityText: { color: "#7B8A93", fontSize: 10, lineHeight: 15 },
+  revisionDivider: { height: 1, backgroundColor: "#2B3A41", marginTop: 2 },
+  revisionLabel: { color: "#7B8A93", fontSize: 9, fontWeight: "800", letterSpacing: 0.8 },
+  revisionRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  revisionInput: { flex: 1, minHeight: 38, borderWidth: 1, borderColor: "#34434B", borderRadius: 8, paddingHorizontal: 10, color: "#F3F1EA", fontSize: 11 },
   requirementCard: { backgroundColor: "#F3F1EA", borderRadius: 14, padding: 15, gap: 10 },
   requirementHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   requirementId: { color: "#3C4A50", fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },

@@ -1,4 +1,5 @@
 import initOpenCascade from "opencascade.js/dist/node.js";
+import { parseRequirements } from "./requirementsAgent";
 import type {
   CADArtifact,
   CADFeature,
@@ -51,6 +52,22 @@ function feature(id: string, type: string, status: CADFeature["status"], depends
 }
 
 export async function generateMountingBlock(input: MountingBlockInput, prompt: string): Promise<CADGenerationResult> {
+  const parsedRequirements = parseRequirements(prompt);
+  let requirementSet = parsedRequirements.requirementSet;
+  if (/mounting block/i.test(prompt) && requirementSet.conflicts.length === 0 && requirementSet.open_questions.every((question) => question.id === "OPEN-SPECIFICATION-001")) {
+    requirementSet = parseRequirements(`${input.width} mm x ${input.depth} mm x ${input.height} mm mounting block with ${input.holeDiameter} mm diameter holes and ${input.filletRadius} mm radius fillet`).requirementSet;
+    requirementSet.source_text = prompt;
+  }
+  if (!input.approveAssumption) {
+    requirementSet.open_questions.push({
+      id: "OPEN-HOLE-OFFSET-001",
+      question: "What exact edge offset should locate the four holes?",
+      whyItMatters: "The phrase near the corners does not define a measurable hole center location.",
+      severity: "IMPORTANT",
+      relatedRequirementIds: requirementSet.requirements.map((item) => item.requirement_id),
+    });
+    requirementSet.validation_status = "OPEN_QUESTION";
+  }
   const plan: CADPlan = {
     id: "PLAN-MOUNTING-BLOCK-001",
     intent: "Create a parametric mounting block with four through holes and an external edge fillet.",
@@ -69,10 +86,17 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
   ];
   plan.features = features;
 
-  if (plan.requirements[0].status !== "VALIDATED") {
+  if (requirementSet.validation_status === "CONFLICT") {
+    plan.requirements[0].status = "CONFLICT";
     features[1].status = "UNSUPPORTED";
     features[2].status = "UNSUPPORTED";
-    return { plan, error: "Requirements are not validated; resolve all OPEN_QUESTION items before CAD generation." };
+    return { plan, requirementSet, error: "Requirement conflict detected; resolve conflicting values before CAD generation." };
+  }
+  if (requirementSet.validation_status !== "VALIDATED") {
+    plan.requirements[0].status = "OPEN_QUESTION";
+    features[1].status = "UNSUPPORTED";
+    features[2].status = "UNSUPPORTED";
+    return { plan, requirementSet, error: "Requirements are not validated; resolve all OPEN_QUESTION items before CAD generation." };
   }
   if (input.width <= 0 || input.depth <= 0 || input.height <= 0 || input.holeDiameter <= 0 || input.filletRadius < 0 || input.holeEdgeOffset <= 0) {
     return { plan, error: "All dimensions must be positive and expressed in millimetres." };
@@ -156,5 +180,5 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
   for (const item of cuts) item.delete?.();
   box.delete();
 
-  return { plan, artifact };
+  return { plan, artifact, requirementSet };
 }
