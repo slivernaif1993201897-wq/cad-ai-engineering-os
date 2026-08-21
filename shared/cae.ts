@@ -407,7 +407,7 @@ export interface CAEContextInvalidation {
 
 export interface CAEEvidenceGraphNode {
   id: string;
-  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "COMPARISON" | "ENGINEERING_DECISION" | "VALIDATION" | "RESULT";
+  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
   label: string;
   truthStatus: CAETruthStatus | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
 }
@@ -624,4 +624,136 @@ export interface ExternalSolverAdapterRegistration {
   executable: false;
   revocable: true;
   createdAt: string;
+}
+
+export const REVIEWER_IDENTITY_STATES = ["UNVERIFIED", "VERIFIED", "SUSPENDED", "REVOKED"] as const;
+export type ReviewerIdentityState = (typeof REVIEWER_IDENTITY_STATES)[number];
+export const REVIEWER_PERMISSIONS = ["APPROVE_MATERIAL", "APPROVE_CALIBRATION", "APPROVE_SOLVER_ADAPTER", "APPROVE_VALIDATION"] as const;
+export type ReviewerPermission = (typeof REVIEWER_PERMISSIONS)[number];
+export interface VerifiedReviewerIdentity {
+  reviewerId: string;
+  projectId: string;
+  displayName: string;
+  identityStatus: ReviewerIdentityState;
+  role: string;
+  projectScope: string[];
+  verificationMethod?: string;
+  verificationTimestamp?: string;
+  permissions: ReviewerPermission[];
+  status: ReviewerIdentityState;
+  createdAt: string;
+}
+
+export const CERTIFICATE_STATES = ["UNVERIFIED", "VALID", "EXPIRED", "REVOKED", "CONFLICT", "UNKNOWN"] as const;
+export type CalibrationCertificateState = (typeof CERTIFICATE_STATES)[number];
+export interface CalibrationCertificate {
+  certificateId: string;
+  projectId: string;
+  fileName: string;
+  mimeType: string;
+  fileHash: string;
+  fileSizeBytes: number;
+  storage: MaterialEvidenceStorage;
+  issuer?: string;
+  certificateNumber?: string;
+  instrument: string;
+  calibrationDate?: string;
+  expirationDate?: string;
+  scope?: string;
+  uncertainty?: string;
+  status: CalibrationCertificateState;
+  createdAt: string;
+}
+export interface CalibrationEvidenceVerification {
+  verificationId: string;
+  projectId: string;
+  certificateId: string;
+  filePresent: "PASS" | "FAIL" | "UNKNOWN";
+  metadataValid: "PASS" | "FAIL" | "UNKNOWN";
+  sourceVerified: "PASS" | "FAIL" | "UNKNOWN";
+  dateValid: "PASS" | "FAIL" | "UNKNOWN";
+  scopeMatch: "PASS" | "FAIL" | "UNKNOWN";
+  signatureVerified: "PASS" | "FAIL" | "UNKNOWN";
+  status: CalibrationCertificateState;
+  findings: string[];
+  createdAt: string;
+}
+
+export const ADAPTER_TRUST_STATES = ["UNTRUSTED", "REGISTERED", "VERIFIED", "APPROVED", "EXECUTION_ELIGIBLE", "REVOKED", "INVALID"] as const;
+export type AdapterTrustState = (typeof ADAPTER_TRUST_STATES)[number];
+export const ADAPTER_PERMISSIONS = ["READ_CAD", "READ_REQUIREMENTS", "READ_MATERIAL_EVIDENCE", "READ_CAE_PLAN", "WRITE_RESULTS", "WRITE_LOGS", "NETWORK_ACCESS", "FILESYSTEM_ACCESS"] as const;
+export type AdapterPermission = (typeof ADAPTER_PERMISSIONS)[number];
+export interface SandboxContract {
+  sandboxType: "DECLARATION_ONLY" | "CONTAINER" | "VM" | "UNKNOWN";
+  resourceLimits: string[];
+  filesystemScope: string[];
+  networkPolicy: "NO_NETWORK" | "DECLARATION_ONLY";
+  timeoutSeconds?: number;
+  memoryLimitMiB?: number;
+  cpuLimit?: number;
+  allowedInputs: string[];
+  allowedOutputs: string[];
+  prohibitsShellExecution: true;
+  prohibitsArbitraryFilesystem: true;
+}
+export interface AdapterCapabilityVerification {
+  capability: string;
+  declared: boolean;
+  verified: boolean;
+  status: "VERIFIED" | "CAPABILITY_CONFLICT" | "UNKNOWN";
+}
+export interface AdapterTrustVerification {
+  verificationId: string;
+  projectId: string;
+  registrationId: string;
+  reviewerId?: string;
+  trustState: AdapterTrustState;
+  identityCheck: "PASS" | "FAIL" | "UNKNOWN";
+  manifestValidation: "PASS" | "FAIL" | "UNKNOWN";
+  signatureCheck: "PASS" | "FAIL" | "UNKNOWN";
+  capabilityCheck: "PASS" | "FAIL" | "UNKNOWN";
+  securityReview: "PASS" | "FAIL" | "UNKNOWN";
+  permissionCheck: "PASS" | "FAIL" | "UNKNOWN";
+  capabilities: AdapterCapabilityVerification[];
+  grantedPermissions: AdapterPermission[];
+  sandbox: SandboxContract;
+  executionEligible: boolean;
+  executable: false;
+  reason: string;
+  createdAt: string;
+}
+export interface RevocationRecord {
+  revocationId: string;
+  projectId: string;
+  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE";
+  objectId: string;
+  previousState: string;
+  newState: "REVOKED";
+  reason: string;
+  actor: string;
+  timestamp: string;
+}
+export interface SecurityAuditEvent {
+  eventId: string;
+  projectId: string;
+  actor: string;
+  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE";
+  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION";
+  objectId: string;
+  timestamp: string;
+  previousState?: string;
+  newState: string;
+  reason: string;
+}
+export interface AuthorizedEngineeringApproval {
+  approvalId: string;
+  projectId: string;
+  reviewerId: string;
+  targetType: "MATERIAL_RECONCILIATION" | "CALIBRATION" | "ADAPTER" | "VALIDATION";
+  targetId: string;
+  decision: "APPROVE" | "REJECT" | "REQUEST_EVIDENCE";
+  evidenceIds: string[];
+  revision: number;
+  reason: string;
+  timestamp: string;
 }

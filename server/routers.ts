@@ -24,6 +24,7 @@ import { createCAEPlan, getCAEPlan, listCAEPlans, requestCAEExecution, reviewCAE
 import { assessReadiness, assessUncertainty, buildEvidenceGraph, createExperimentalValidationPlan, getSolverAdapterContract, invalidateCadContext, listExperimentalValidationPlans, listMaterialEvidence, materialPropertyConflicts, negotiateSolver, registerMaterialEvidence } from "./caeEvidence";
 import { createDatasetProcessingRecord, ingestMeasurementDataset, listCalibrationRecords, listDatasetProcessing, listMeasurementDatasets, reconcileMaterialProperty, recordCalibration, recordEngineeringReviewDecision } from "./caeReconciliation";
 import { buildExtendedEvidenceGraph, createCalibrationCandidate, createSimulationMeasurementComparison, listComparisons, listExternalSolverAdapterRegistrations, registerExternalSolverAdapter } from "./caeIntegration";
+import { adapterEligibility, attachCalibrationCertificate, authorizeEngineeringApproval, buildTrustEvidenceGraph, listAdapterTrustVerifications, listAuthorizedApprovals, listCalibrationCertificates, listReviewerIdentities, listSecurityAudit, registerReviewerIdentity, revokeTrustObject, verifyAdapterTrust, verifyCalibrationCertificate, verifyReviewerIdentity } from "./caeTrust";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -44,6 +45,9 @@ const experimentalPlanInput = z.object({ simulationId: z.string().trim().min(1).
 const propertyName = z.enum(["ELASTIC_MODULUS", "POISSON_RATIO", "DENSITY", "YIELD_STRENGTH", "THERMAL_CONDUCTIVITY", "THERMAL_EXPANSION", "SPECIFIC_HEAT", "CUSTOM"]);
 const measurementMetadataInput = z.object({ source: z.string().trim().min(1).max(500), instrument: z.string().trim().min(1).max(160).optional(), instrumentId: z.string().trim().min(1).max(160).optional(), operator: z.string().trim().min(1).max(160).optional(), testDate: z.string().trim().min(1).max(64).optional(), units: z.string().trim().min(1).max(160).optional(), samplingRate: z.string().trim().min(1).max(128).optional(), environment: z.string().trim().min(1).max(500).optional(), temperature: z.string().trim().min(1).max(128).optional(), humidity: z.string().trim().min(1).max(128).optional(), testArticle: z.string().trim().min(1).max(320).optional(), testRevision: z.string().trim().min(1).max(160).optional(), calibrationStatus: z.enum(["CALIBRATED", "UNCALIBRATED", "UNKNOWN"]), uncertainty: z.string().trim().min(1).max(500).optional(), provenance: z.enum(["MEASURED", "SIMULATED", "CALCULATED", "DERIVED", "ASSUMED", "UNKNOWN"]) });
 const adapterRegistrationInput = z.object({ solverId: z.string().trim().min(1).max(160), solverName: z.string().trim().min(1).max(240), version: z.string().trim().min(1).max(80), provider: z.string().trim().min(1).max(240), adapterVersion: z.string().trim().min(1).max(80), supportedAnalysisTypes: z.array(z.enum(["STATIC_STRUCTURAL", "DYNAMIC", "MODAL", "THERMAL", "THERMAL_STRUCTURAL", "CONTACT", "BUCKLING", "FATIGUE"])).max(8), capabilities: z.array(z.string().trim().min(1).max(240)).max(64), executionMode: z.enum(["LOCAL_ADAPTER", "REMOTE_ADAPTER", "CLOUD_UNCONFIGURED"]), inputSchemaVersion: z.string().trim().min(1).max(80), outputSchemaVersion: z.string().trim().min(1).max(80), securityRequirements: z.array(z.string().trim().min(1).max(500)).max(64), adapterManifest: z.string().trim().min(1).max(100_000), adapterHash: z.string().trim().regex(/^[a-fA-F0-9]{64}$/), publisherIdentity: z.string().trim().min(1).max(320), signature: z.string().trim().min(1).max(20_000).optional(), capabilityManifest: z.array(z.string().trim().min(1).max(240)).max(64) });
+const reviewerPermission = z.enum(["APPROVE_MATERIAL", "APPROVE_CALIBRATION", "APPROVE_SOLVER_ADAPTER", "APPROVE_VALIDATION"]);
+const adapterPermission = z.enum(["READ_CAD", "READ_REQUIREMENTS", "READ_MATERIAL_EVIDENCE", "READ_CAE_PLAN", "WRITE_RESULTS", "WRITE_LOGS", "NETWORK_ACCESS", "FILESYSTEM_ACCESS"]);
+const sandboxInput = z.object({ sandboxType: z.enum(["DECLARATION_ONLY", "CONTAINER", "VM", "UNKNOWN"]).optional(), resourceLimits: z.array(z.string().trim().min(1).max(240)).max(32).optional(), filesystemScope: z.array(z.string().trim().min(1).max(240)).max(32).optional(), networkPolicy: z.enum(["NO_NETWORK", "DECLARATION_ONLY"]).optional(), timeoutSeconds: z.number().int().positive().max(86_400).optional(), memoryLimitMiB: z.number().int().positive().max(1_048_576).optional(), cpuLimit: z.number().positive().max(4096).optional(), allowedInputs: z.array(z.string().trim().min(1).max(240)).max(32).optional(), allowedOutputs: z.array(z.string().trim().min(1).max(240)).max(32).optional() }).optional();
 
 export const appRouter = router({
   system: systemRouter,
@@ -171,6 +175,48 @@ export const appRouter = router({
     listExternalSolverAdapters: publicProcedure
       .input(caeAccess)
       .query(({ input }) => listExternalSolverAdapterRegistrations(input)),
+    registerReviewer: publicProcedure
+      .input(caeAccess.extend({ displayName: z.string().trim().min(1).max(160), role: z.string().trim().min(1).max(160), projectScope: z.array(z.string().trim().min(1).max(96)).min(1).max(32), permissions: z.array(reviewerPermission).max(4), actor: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => registerReviewerIdentity(input)),
+    listReviewers: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listReviewerIdentities(input)),
+    verifyReviewer: publicProcedure
+      .input(caeAccess.extend({ reviewerId: z.string().trim().min(1).max(160), verificationMethod: z.string().trim().min(1).max(1000), actor: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => verifyReviewerIdentity(input)),
+    attachCalibrationCertificate: publicProcedure
+      .input(caeAccess.extend({ fileName: z.string().trim().min(1).max(255), mimeType: z.string().trim().min(1).max(128).optional(), base64: z.string().min(1).max(7_000_000), issuer: z.string().trim().min(1).max(320).optional(), certificateNumber: z.string().trim().min(1).max(320).optional(), instrument: z.string().trim().min(1).max(160), calibrationDate: z.string().trim().min(1).max(64).optional(), expirationDate: z.string().trim().min(1).max(64).optional(), scope: z.string().trim().min(1).max(1000).optional(), uncertainty: z.string().trim().min(1).max(500).optional(), actor: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => attachCalibrationCertificate(input)),
+    listCalibrationCertificates: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listCalibrationCertificates(input)),
+    verifyCalibrationCertificate: publicProcedure
+      .input(caeAccess.extend({ certificateId: z.string().trim().min(1).max(160), reviewerId: z.string().trim().min(1).max(160), sourceVerified: z.boolean(), signatureVerified: z.boolean(), scopeMatch: z.boolean(), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => verifyCalibrationCertificate(input)),
+    verifyAdapterTrust: publicProcedure
+      .input(caeAccess.extend({ registrationId: z.string().trim().min(1).max(160), reviewerId: z.string().trim().min(1).max(160), manifestVerified: z.boolean(), signatureVerified: z.boolean(), verifiedCapabilities: z.array(z.string().trim().min(1).max(240)).max(64), grantedPermissions: z.array(adapterPermission).max(8), sandbox: sandboxInput, reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => verifyAdapterTrust(input)),
+    listAdapterTrustVerifications: publicProcedure
+      .input(caeAccess.extend({ registrationId: z.string().trim().min(1).max(160).optional() }))
+      .query(({ input }) => listAdapterTrustVerifications(input)),
+    authorizeEngineeringApproval: publicProcedure
+      .input(caeAccess.extend({ reviewerId: z.string().trim().min(1).max(160), targetType: z.enum(["MATERIAL_RECONCILIATION", "CALIBRATION", "ADAPTER", "VALIDATION"]), targetId: z.string().trim().min(1).max(160), decision: z.enum(["APPROVE", "REJECT", "REQUEST_EVIDENCE"]), evidenceIds: z.array(z.string().trim().min(1).max(160)).min(1).max(64), revision: z.number().int().positive(), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => authorizeEngineeringApproval(input)),
+    listAuthorizedApprovals: publicProcedure
+      .input(caeAccess.extend({ targetId: z.string().trim().min(1).max(160).optional() }))
+      .query(({ input }) => listAuthorizedApprovals(input)),
+    adapterEligibility: publicProcedure
+      .input(caeAccess.extend({ registrationId: z.string().trim().min(1).max(160) }))
+      .query(({ input }) => adapterEligibility(input)),
+    revokeTrustObject: publicProcedure
+      .input(caeAccess.extend({ objectType: z.enum(["REVIEWER", "ADAPTER", "CERTIFICATE"]), objectId: z.string().trim().min(1).max(160), actor: z.string().trim().min(1).max(160), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => revokeTrustObject(input)),
+    securityAudit: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listSecurityAudit(input)),
+    trustEvidenceGraph: publicProcedure
+      .input(caeAccess.extend({ simulationId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => buildTrustEvidenceGraph(input)),
   }),
 
   intelligence: router({

@@ -140,3 +140,12 @@
 - [x] Phase 5.2: Extend the mobile CAE workspace with prominent Material Evidence Review, measured-data, calibration, comparison, decision, graph, and adapter-onboarding controls.
 - [x] Phase 5.2: Add deterministic reconciliation, normalization, condition, human-review, dataset immutability/quality, calibration, provenance, comparison, graph, adapter-gate, TypeScript, and full-regression tests.
 - [x] Phase 5.2: Save a verified checkpoint and report material reconciliation, measurement, calibration, comparison, evidence graph, signing/onboarding security, UI, tests, and limits without starting Phase 6.
+
+- [x] Phase 5.3: Audit current adapter registration, engineering decision, calibration evidence, persistent memory, graph, APIs, tests, and mobile workspace seams for trust and revocation extensions.
+- [x] Phase 5.3: Define reviewer identity, authorization, certificate verification, adapter trust-gate, manifest/capability, permission, sandbox, revocation, eligibility, and immutable audit-event contracts.
+- [x] Phase 5.3: Implement project-isolated reviewer identity and authorization, certificate attachment/validation, adapter verification, capability and permission checks, sandbox declarations, immutable audit, revocation, and non-executable eligibility.
+- [x] Phase 5.3: Extend the evidence graph with reviewer, decision, evidence, adapter, verification, and eligibility links while preserving historical records through revocation.
+- [x] Phase 5.3: Expose capability-safe project-isolated trust, identity, certificate, verification, approval, eligibility, revocation, audit, and graph APIs without any solver or executable adapter endpoint.
+- [x] Phase 5.3: Build a mobile Solver Trust panel with explicit verification/revocation states, reviewer controls, certificate controls, permissions, sandbox, audit, and non-executable eligibility controls.
+- [x] Phase 5.3: Add deterministic identity, authorization, certificate, expiry, manifest tamper, signature, capability, permission, revocation, audit, eligibility, TypeScript, and full-regression tests.
+- [x] Phase 5.3: Save a verified checkpoint and report identity, approvals, certificates, adapter trust, capabilities, permissions, sandboxing, revocation, audit, UI, tests, and no-solver limits without starting Phase 6.

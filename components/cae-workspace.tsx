@@ -9,6 +9,7 @@ import type { GeometrySelectionContext } from "@/shared/cadWorkbench";
 import type { CAESimulationPlan } from "@/shared/cae";
 import { CAEEvidencePanel } from "@/components/cae-evidence-panel";
 import { CAEReconciliationPanel } from "@/components/cae-reconciliation-panel";
+import { SolverTrustPanel } from "@/components/solver-trust-panel";
 
 function color(status?: string) { if (["COMPLETED", "READY_FOR_SOLVER", "PASS", "INPUT_VERIFIED"].includes(status ?? "")) return "#62B39A"; if (["NOT_READY", "FAILED", "FAIL", "SOLVER_UNAVAILABLE"].includes(status ?? "")) return "#E78966"; return "#8EC4E8"; }
 function Badge({ label }: { label: string }) { const tint = color(label); return <View style={[styles.badge, { borderColor: tint, backgroundColor: `${tint}18` }]}><Text style={[styles.badgeText, { color: tint }]}>{label}</Text></View>; }
@@ -43,6 +44,7 @@ export function CAEWorkspace({ sourceCadRevision, model, selectedGeometry, featu
       <View style={styles.noSolver}><Text style={styles.cardKicker}>EXECUTION SAFETY GATE</Text><Text style={styles.copy}>Execution is disabled. This action records a refusal because required inputs and an executable numerical solver do not exist.</Text><Pressable style={styles.secondary} disabled={execute.isPending} onPress={requestSolver}><Text style={styles.secondaryText}>{execute.isPending ? "CHECKING…" : "REQUEST SOLVER EXECUTION"}</Text></Pressable></View>
       <CAEEvidencePanel simulationId={selected.simulationId} observedCadRevision={sourceCadRevision} />
       <CAEReconciliationPanel simulationId={selected.simulationId} />
+      <SolverTrustPanel simulationId={selected.simulationId} />
     </> : null}
     <Text style={styles.notice}>{notice}</Text>
   </View>;
