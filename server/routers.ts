@@ -26,6 +26,7 @@ import { createDatasetProcessingRecord, ingestMeasurementDataset, listCalibratio
 import { buildExtendedEvidenceGraph, createCalibrationCandidate, createSimulationMeasurementComparison, listComparisons, listExternalSolverAdapterRegistrations, registerExternalSolverAdapter } from "./caeIntegration";
 import { adapterEligibility, attachCalibrationCertificate, authorizeEngineeringApproval, buildTrustEvidenceGraph, listAdapterTrustVerifications, listAuthorizedApprovals, listCalibrationCertificates, listReviewerIdentities, listSecurityAudit, registerReviewerIdentity, revokeTrustObject, verifyAdapterTrust, verifyCalibrationCertificate, verifyReviewerIdentity } from "./caeTrust";
 import { buildExecutionTrustGraph, evaluateExecutionTrustReadiness, ingestCertificateRevocationSource, listCertificateRevocationSources, listExecutionTrustReadiness, listExternalIdentityClaims, listSandboxAttestationVerifications, listSandboxAttestations, registerExternalIdentityClaim, registerSandboxAttestation, revokeExecutionTrustEvidence, runExecutionTrustSecurityBenchmark, verifyExternalIdentityClaim, verifySandboxAttestation } from "./executionTrust";
+import { buildRuntimeArchitectureGraph, createRuntimeArchitectureReview, listRuntimeArchitectureReviews } from "./runtimeArchitectureReview";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -260,6 +261,15 @@ export const appRouter = router({
     executionTrustEvidenceGraph: publicProcedure
       .input(caeAccess.extend({ simulationId: z.string().trim().min(1).max(160), registrationId: z.string().trim().min(1).max(160), readinessId: z.string().trim().min(1).max(160).optional() }))
       .mutation(({ input }) => buildExecutionTrustGraph(input)),
+    createRuntimeArchitectureReview: publicProcedure
+      .input(caeAccess)
+      .mutation(({ input }) => createRuntimeArchitectureReview(input)),
+    listRuntimeArchitectureReviews: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listRuntimeArchitectureReviews(input)),
+    runtimeArchitectureGraph: publicProcedure
+      .input(caeAccess.extend({ reviewId: z.string().trim().min(1).max(160).optional() }))
+      .mutation(({ input }) => buildRuntimeArchitectureGraph(input)),
   }),
 
   intelligence: router({

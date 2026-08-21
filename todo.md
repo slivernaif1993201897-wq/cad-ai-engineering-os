@@ -158,3 +158,10 @@
 - [x] Phase 5.4: Build a mobile Trust Readiness view showing PASS/FAIL/UNKNOWN states for identity, signature, capabilities, permissions, certificate, reviewer, sandbox, revocation, and eligibility.
 - [x] Phase 5.4: Add deterministic trust acceptance and security-benchmark tests for all required positive/negative states, fail-closed invariants, restoration evidence, audit integrity, TypeScript, and full regression.
 - [x] Phase 5.4: Save a verified checkpoint and report identity verification, revocation evidence, sandbox attestation, trust model, fail-closed behavior, security invariants, benchmark, UI, regression, and no-execution limits before stopping.
+
+- [x] Phase 6.0: Define a review-only future solver-execution runtime architecture with explicit CAD-AI, CAE Agent, Adapter, Execution Manager, Sandbox, Solver, Result Collector, Result Verification, and Evidence Graph boundaries.
+- [x] Phase 6.0: Define a hostile threat model, deny-by-default permission model, enforceable resource boundaries, sandbox requirements, versioned input/output contracts, and result-trust requirements without enabling execution.
+- [x] Phase 6.0: Define result verification, failure preservation, reproducibility, human approval gates, pre-execution security test plan, and fail-closed RUNTIME_NOT_APPROVED decision contracts.
+- [x] Phase 6.0: Implement deterministic project-isolated review-only policy records, architecture APIs, immutable evidence/graph links, and no-execution security invariants.
+- [x] Phase 6.0: Build a mobile Runtime Architecture Review workspace that renders all required security decisions and prominently displays RUNTIME_NOT_APPROVED.
+- [x] Phase 6.0: Add review-only acceptance tests, run TypeScript and full regression, save a checkpoint, report the readiness decision, and stop without Phase 7 or execution implementation.

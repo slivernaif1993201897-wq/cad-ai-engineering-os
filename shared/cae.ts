@@ -407,7 +407,7 @@ export interface CAEContextInvalidation {
 
 export interface CAEEvidenceGraphNode {
   id: string;
-  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
+  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "RUNTIME_ARCHITECTURE" | "RUNTIME_BOUNDARY" | "RUNTIME_THREAT" | "RUNTIME_PERMISSION" | "RUNTIME_LIMIT" | "RUNTIME_RESULT_CONTRACT" | "RUNTIME_APPROVAL_GATE" | "RUNTIME_TEST_PLAN" | "RUNTIME_DECISION" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
   label: string;
   truthStatus: CAETruthStatus | "DERIVED" | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
 }
@@ -737,8 +737,8 @@ export interface SecurityAuditEvent {
   eventId: string;
   projectId: string;
   actor: string;
-  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS";
-  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS";
+  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE_REVIEW";
+  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE";
   objectId: string;
   timestamp: string;
   previousState?: string;
@@ -857,5 +857,118 @@ export interface ExecutionTrustBenchmarkResult {
   observedEligibility: false;
   passed: boolean;
   reason: string;
+  createdAt: string;
+}
+export const FUTURE_RUNTIME_CONTRACT_VERSION = "1.0.0" as const;
+export const FUTURE_RUNTIME_COMPONENTS = ["CAD_AI", "CAE_AGENT", "SOLVER_ADAPTER", "EXECUTION_MANAGER", "SANDBOX", "SOLVER", "RESULT_COLLECTOR", "RESULT_VERIFICATION", "EVIDENCE_GRAPH"] as const;
+export type FutureRuntimeComponent = (typeof FUTURE_RUNTIME_COMPONENTS)[number];
+export interface FutureRuntimeBoundary {
+  boundaryId: string;
+  from: FutureRuntimeComponent;
+  to: FutureRuntimeComponent;
+  permittedData: string[];
+  prohibitedOperations: string[];
+  requiredEvidence: string[];
+  trustRequirement: string;
+}
+export const FUTURE_RUNTIME_THREATS = ["MALICIOUS_ADAPTER", "TAMPERED_SOLVER", "MALICIOUS_INPUT", "MALICIOUS_OUTPUT", "RESOURCE_EXHAUSTION", "FILESYSTEM_ESCAPE", "NETWORK_ESCAPE", "PRIVILEGE_ESCALATION", "CREDENTIAL_EXPOSURE", "DATA_EXFILTRATION", "RESULT_MANIPULATION", "REPLAY", "VERSION_MISMATCH"] as const;
+export type FutureRuntimeThreatKind = (typeof FUTURE_RUNTIME_THREATS)[number];
+export interface FutureRuntimeThreat {
+  threat: FutureRuntimeThreatKind;
+  entryPoint: string;
+  impact: string;
+  requiredMitigations: string[];
+  residualRisk: "UNKNOWN" | "REQUIRES_TEST" | "NOT_ACCEPTED";
+}
+export const FUTURE_RUNTIME_PERMISSIONS = ["READ_CAD_INPUT", "READ_CAE_INPUT", "READ_MATERIAL_EVIDENCE", "WRITE_TEMPORARY_FILES", "WRITE_RESULT_FILES", "WRITE_LOGS", "NETWORK", "CPU", "MEMORY", "STORAGE", "RUNTIME", "PROCESS"] as const;
+export type FutureRuntimePermission = (typeof FUTURE_RUNTIME_PERMISSIONS)[number];
+export interface FutureRuntimePermissionPolicy {
+  permission: FutureRuntimePermission;
+  defaultDecision: "DENY";
+  futureGrantRequirement: string;
+  scope: string;
+  evidenceRequired: string[];
+}
+export interface FutureRuntimeResourceLimit {
+  resource: "CPU" | "RAM" | "DISK" | "RUNTIME" | "PROCESS_COUNT" | "FILE_COUNT" | "INPUT_SIZE" | "OUTPUT_SIZE";
+  enforcementPoint: "EXECUTION_MANAGER" | "SANDBOX" | "KERNEL" | "STORAGE_GATEWAY";
+  proposedLimit?: number;
+  unit: string;
+  status: "REQUIRES_CAPACITY_APPROVAL" | "NOT_CONFIGURED";
+  bypassPrevention: string;
+}
+export interface FutureSolverInputOutputContract {
+  contractVersion: typeof FUTURE_RUNTIME_CONTRACT_VERSION;
+  inputSchema: string[];
+  configurationSchema: string[];
+  outputSchema: string[];
+  metadataSchema: string[];
+  logSchema: string[];
+  errorSchema: string[];
+  provenanceSchema: string[];
+  parserTrustRule: "PARSED_OUTPUT_IS_UNVERIFIED";
+}
+export interface FutureResultProvenance {
+  solverIdentity: string;
+  solverVersion: string;
+  adapterIdentity: string;
+  adapterVersion: string;
+  inputHash: string;
+  cadRevisionHash: string;
+  caePlanRevision: string;
+  materialEvidenceReferences: string[];
+  runtimeIdentity: string;
+  executionTimestamp: string;
+  resultHash: string;
+}
+export interface FutureResultVerificationPolicy {
+  requiredChecks: Array<"SCHEMA_VALIDITY" | "HASH_INTEGRITY" | "EXPECTED_QUANTITIES" | "UNITS" | "RANGES" | "MISSING_VALUES" | "SOLVER_STATUS" | "CONVERGENCE_EVIDENCE" | "WARNINGS" | "ERRORS">;
+  resultStates: Array<"VERIFIED" | "UNVERIFIED" | "INVALID">;
+  automaticVerificationProhibited: true;
+}
+export interface FutureRuntimeFailurePolicy {
+  failure: "TIMEOUT" | "CRASH" | "MEMORY_EXHAUSTION" | "INVALID_RESULT" | "PARTIAL_RESULT" | "SOLVER_WARNING" | "SOLVER_DIVERGENCE" | "SANDBOX_VIOLATION" | "ADAPTER_FAILURE";
+  response: string;
+  historicalRecord: "IMMUTABLE";
+  resultState: "INVALID" | "UNVERIFIED";
+}
+export interface FutureReproducibilityManifest {
+  requiredReferences: Array<"CAD_REVISION" | "CAE_REVISION" | "MATERIAL_EVIDENCE" | "SOLVER_VERSION" | "ADAPTER_VERSION" | "CONFIGURATION" | "INPUT_HASH" | "RUNTIME_VERSION">;
+  reproductionRequiresHumanReview: true;
+  missingReferenceBehavior: "REFUSE_REPRODUCTION";
+}
+export interface FutureRuntimeHumanGate {
+  operation: "SOLVER_REGISTRATION" | "ADAPTER_APPROVAL" | "EXECUTION_AUTHORIZATION" | "RESULT_ACCEPTANCE" | "VALIDATION_DECISION";
+  actor: "VERIFIED_HUMAN";
+  aiMayRecommend: true;
+  aiMayApprove: false;
+  requiredEvidence: string[];
+}
+export interface FutureRuntimeSecurityTest {
+  test: "SANDBOX_ESCAPE" | "PERMISSION_ESCALATION" | "RESOURCE_EXHAUSTION" | "TAMPERED_INPUT" | "TAMPERED_OUTPUT" | "ADAPTER_REVOCATION" | "SOLVER_REVOCATION" | "RESULT_PROVENANCE" | "REPRODUCIBILITY" | "FAIL_CLOSED";
+  requiredBeforeExecution: true;
+  passCriteria: string;
+}
+export interface FutureRuntimeArchitectureReview {
+  reviewId: string;
+  projectId: string;
+  contractVersion: typeof FUTURE_RUNTIME_CONTRACT_VERSION;
+  architecture: FutureRuntimeComponent[];
+  boundaries: FutureRuntimeBoundary[];
+  threats: FutureRuntimeThreat[];
+  permissions: FutureRuntimePermissionPolicy[];
+  resourceLimits: FutureRuntimeResourceLimit[];
+  sandboxRequirements: string[];
+  ioContract: FutureSolverInputOutputContract;
+  resultTrustRequirements: Array<keyof FutureResultProvenance>;
+  verification: FutureResultVerificationPolicy;
+  failures: FutureRuntimeFailurePolicy[];
+  reproducibility: FutureReproducibilityManifest;
+  humanGates: FutureRuntimeHumanGate[];
+  securityTests: FutureRuntimeSecurityTest[];
+  readinessDecision: "RUNTIME_NOT_APPROVED";
+  decisionReason: string;
+  executionEligible: false;
+  executable: false;
   createdAt: string;
 }
