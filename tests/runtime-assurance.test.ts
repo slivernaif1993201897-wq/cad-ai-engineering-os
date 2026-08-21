@@ -44,39 +44,43 @@ describe("Phase 6.15 Runtime Assurance Governance", () => {
     await expect(caller.runtimeAssurance.recordObservedTest({ ...access, input: { gateId: "G1_REAL_SANDBOX", testId: "UNAUTHORIZED-PASS", evidenceScope: "INTERNAL_VERIFIED", evidenceOrigin: "INTERNAL_TEST", environmentId: "FUTURE-SEGREGATED-ENV", performerIdentity: "CAD-AI", expectedBehavior: "deny", observedBehavior: "not executed", inputHash: h("1"), rawEvidenceHash: h("2"), result: "PASS", timestamp: new Date().toISOString(), limitations: [] } })).rejects.toThrow(/externally observed, independently verified/i);
   });
 
-  it("5. preserves all G0–G13 dependencies without an upstream false pass", () => {
+  it("5. rejects an otherwise shaped PASS when its environment is not currently independently approved", async () => {
+    await expect(caller.runtimeAssurance.recordObservedTest({ ...access, input: { gateId: "G1_REAL_SANDBOX", testId: "FOREIGN-ENVIRONMENT-PASS", evidenceScope: "INDEPENDENTLY_VERIFIED", evidenceOrigin: "EXTERNAL_OBSERVED", environmentId: "FUTURE-SEGREGATED-ENV", performerIdentity: "EXTERNAL-OPERATOR", reviewerId: "EXTERNAL-REVIEWER", reviewerAuthorizationId: "EXTERNAL-AUTHORIZATION", expectedBehavior: "deny", observedBehavior: "claimed pass", inputHash: h("3"), rawEvidenceHash: h("4"), result: "PASS", timestamp: new Date().toISOString(), limitations: [] } })).rejects.toThrow(/current independently approved environment/i);
+  });
+
+  it("6. preserves all G0–G13 dependencies without an upstream false pass", () => {
     for (let index = 1; index < assessment.gates.length; index += 1) {
       expect(assessment.gates[index].dependencies).toContain(assessment.gates[index - 1].gateId);
       expect(assessment.gates[index].state).toBe("BLOCKED");
     }
   });
 
-  it("6. records immutable root-cause evidence without implying a repair", () => expect(failure).toMatchObject({ state: "OPEN", immutable: true, classification: "EXTERNAL_DEPENDENCY" }));
+  it("7. records immutable root-cause evidence without implying a repair", () => expect(failure).toMatchObject({ state: "OPEN", immutable: true, classification: "EXTERNAL_DEPENDENCY" }));
 
-  it("7. preserves repair-attempt provenance and rejects a repeated strategy", async () => {
+  it("8. preserves repair-attempt provenance and rejects a repeated strategy", async () => {
     const first = await caller.runtimeAssurance.recordRepairAttempt({ ...access, input: { failureId: failure.failureId, rootCauseId: failure.rootCauseId, repairStrategy: "Request independently approved test environment.", targetedTestReference: "G0-ENV-APPROVAL", regressionStatus: "NOT_RUN", result: "BLOCKED", evidence: ["External authorization remains absent."] } });
     expect(first).toMatchObject({ attemptCount: 1, escalationRequired: false, immutable: true });
     await expect(caller.runtimeAssurance.recordRepairAttempt({ ...access, input: { failureId: failure.failureId, rootCauseId: failure.rootCauseId, repairStrategy: "Request independently approved test environment.", targetedTestReference: "G0-ENV-APPROVAL", regressionStatus: "NOT_RUN", result: "BLOCKED", evidence: ["Still unavailable."] } })).rejects.toThrow(/cannot be repeated/i);
   });
 
-  it("8. requires root-cause escalation after three distinct unsuccessful strategies", async () => {
+  it("9. requires root-cause escalation after three distinct unsuccessful strategies", async () => {
     await caller.runtimeAssurance.recordRepairAttempt({ ...access, input: { failureId: failure.failureId, rootCauseId: failure.rootCauseId, repairStrategy: "Review environment-approval policy and required evidence schema.", targetedTestReference: "G0-POLICY-REVIEW", regressionStatus: "NOT_RUN", result: "BLOCKED", evidence: ["Policy cannot create external approval."] } });
     const third = await caller.runtimeAssurance.recordRepairAttempt({ ...access, input: { failureId: failure.failureId, rootCauseId: failure.rootCauseId, repairStrategy: "Escalate missing external infrastructure to governance review.", targetedTestReference: "G0-ROOT-CAUSE-ESCALATION", regressionStatus: "UNKNOWN", result: "BLOCKED", evidence: ["External dependency remains unresolved."] } });
     expect(third).toMatchObject({ attemptCount: 3, escalationRequired: true });
   });
 
-  it("9. isolates assurance environments, observations, failures, and repairs by project", async () => {
+  it("10. isolates assurance environments, observations, failures, and repairs by project", async () => {
     expect(await caller.runtimeAssurance.listEnvironments(other)).toEqual([]);
     expect(await caller.runtimeAssurance.listObservedTests(other)).toEqual([]);
     expect(await caller.runtimeAssurance.listFailures(other)).toEqual([]);
     expect(await caller.runtimeAssurance.listRepairAttempts(other)).toEqual([]);
   });
 
-  it("10. builds a missing-evidence review package without production authorization", async () => {
+  it("11. builds a missing-evidence review package without production authorization", async () => {
     const reviewPackage = await caller.runtimeAssurance.buildReviewPackage({ ...access, assessmentId: assessment.assessmentId });
     expect(reviewPackage).toMatchObject({ independentReviewerRequired: true, selfApprovalProhibited: true, productionAuthorization: false });
     expect(reviewPackage.missingSections).toContain("G0_APPROVED_TEST_ENVIRONMENT");
   });
 
-  it("11. exposes no provision, sandbox, hostile-test, mesher, solver, process, shell, network, filesystem, or production-authorization endpoint", () => expect(Object.keys(caller.runtimeAssurance)).not.toEqual(expect.arrayContaining(["provisionEnvironment", "runSandboxTest", "runHostileTest", "executeMesher", "executeSolver", "runProcess", "runShell", "runNetwork", "accessFilesystem", "authorizeProduction"])));
+  it("12. exposes no provision, sandbox, hostile-test, mesher, solver, process, shell, network, filesystem, or production-authorization endpoint", () => expect(Object.keys(caller.runtimeAssurance)).not.toEqual(expect.arrayContaining(["provisionEnvironment", "runSandboxTest", "runHostileTest", "executeMesher", "executeSolver", "runProcess", "runShell", "runNetwork", "accessFilesystem", "authorizeProduction"])));
 });
