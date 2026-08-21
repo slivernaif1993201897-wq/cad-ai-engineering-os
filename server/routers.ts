@@ -41,6 +41,7 @@ import { assessDigitalThread, createDigitalThreadArtifact, createDigitalThreadRe
 import { createBOMRevision, createDrawingPackage, createManufacturingPlan, createPLMRevision, listBOMRevisions, listDrawingPackages, listManufacturingPlans, listPLMRevisions } from "./planningFoundation";
 import { assessOptimizationStudy, createOptimizationCandidate, createOptimizationStudy, listOptimizationCandidates, listOptimizationStudies } from "./optimizationFoundation";
 import { assessRuntimeAssurance, buildRuntimeAssuranceReviewPackage, listRuntimeAssuranceAssessments, listRuntimeAssuranceEnvironments, listRuntimeAssuranceFailures, listRuntimeAssuranceObservedTests, listRuntimeAssuranceRepairAttempts, recordRuntimeAssuranceEnvironment, recordRuntimeAssuranceFailure, recordRuntimeAssuranceObservedTest, recordRuntimeAssuranceRepairAttempt } from "./runtimeAssurance";
+import { evaluateRuntimeAdmission, listRuntimeAdmissionDecisions } from "./runtimeAdmission";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -85,6 +86,7 @@ const runtimeAssuranceEnvironmentInput = z.object({ environmentId: boundedRefere
 const runtimeAssuranceObservedTestInput = z.object({ gateId: runtimeAssuranceGateInput, testId: boundedReference, evidenceScope: z.enum(["INTERNAL_VERIFIED", "INDEPENDENTLY_VERIFIED", "EXTERNAL_REVIEW_REQUIRED"]), evidenceOrigin: z.enum(["EXTERNAL_OBSERVED", "INTERNAL_TEST", "FUTURE_DEFINITION"]), environmentId: boundedReference, performerIdentity: z.string().trim().min(1).max(160), reviewerId: boundedReference.optional(), reviewerAuthorizationId: boundedReference.optional(), expectedBehavior: z.string().trim().min(1).max(4000), observedBehavior: z.string().trim().min(1).max(4000), inputHash: sha256, rawEvidenceHash: sha256, result: runtimeAssuranceStateInput, timestamp: z.string().trim().min(1).max(64), limitations: z.array(z.string().trim().min(1).max(1000)).max(64) });
 const runtimeAssuranceFailureInput = z.object({ gateId: runtimeAssuranceGateInput, rootCauseId: boundedReference, classification: z.enum(["CODE", "DATA", "ARCHITECTURE", "SECURITY", "INFRASTRUCTURE", "NUMERICAL", "EVIDENCE", "GOVERNANCE", "EXTERNAL_DEPENDENCY"]), observedEvidenceIds: z.array(boundedReference).max(64), rootCauseSummary: z.string().trim().min(1).max(4000), remainingRisk: z.string().trim().min(1).max(4000) });
 const runtimeAssuranceRepairInput = z.object({ failureId: boundedReference, rootCauseId: boundedReference, repairStrategy: z.string().trim().min(1).max(4000), targetedTestReference: boundedReference, regressionStatus: z.enum(["NOT_RUN", "PASS", "FAIL", "UNKNOWN"]), result: z.enum(["REPAIRED", "NOT_REPAIRED", "BLOCKED", "INCONCLUSIVE"]), evidence: z.array(z.string().trim().min(1).max(1000)).max(64) });
+const runtimeAdmissionInput = z.object({ requestedAction: z.enum(["GMSH_MESH", "CALCULIX_SOLVE"]), canonicalJobId: boundedReference, solverInputPackageId: boundedReference, configurationId: boundedReference, environmentId: boundedReference }).strict();
 const reviewerAuthorizationInput = z.object({ reviewerId: boundedReference, organization: z.string().trim().min(1).max(320), role: z.string().trim().min(1).max(320), authorizationScope: z.array(reviewerPermission).min(1).max(4), authorizationSource: z.string().trim().min(1).max(1000), authorizationHash: sha256, issuedBy: z.string().trim().min(1).max(320), validFrom: z.string().trim().min(1).max(64), validUntil: z.string().trim().min(1).max(64), independenceStatement: z.string().trim().min(1).max(2000) });
 const solverConfigurationParameterInput = z.object({ name: boundedReference, type: z.enum(["NUMBER", "INTEGER", "BOOLEAN", "ENUM", "STRING"]), required: z.boolean(), allowedValues: z.array(z.union([z.string().trim().min(1).max(160), z.number().finite(), z.boolean()])).max(64).optional(), unit: z.string().trim().min(1).max(64).optional(), defaultValue: z.union([z.string().trim().min(1).max(160), z.number().finite(), z.boolean()]).optional(), minimum: z.number().finite().optional(), maximum: z.number().finite().optional(), constraints: z.array(z.string().trim().min(1).max(1000)).max(32), incompatibleWith: z.array(boundedReference).max(32) });
 const solverConfigurationRegistryInput = z.object({ solverName: boundedReference, solverVersion: boundedReference, analysisType: z.literal("STATIC_STRUCTURAL"), configurationSchemaVersion: boundedReference, supportedParameters: z.array(solverConfigurationParameterInput).max(64), provenance: z.array(z.string().trim().min(1).max(1000)).min(1).max(32), evidenceHashes: z.array(sha256).min(1).max(32), status: z.enum(["DRAFT", "REVIEWED", "DEPRECATED", "REVOKED", "UNKNOWN"]) });
@@ -158,6 +160,11 @@ export const appRouter = router({
     assess: publicProcedure.input(caeAccess).mutation(({ input }) => assessRuntimeAssurance(input)),
     listAssessments: publicProcedure.input(caeAccess).query(({ input }) => listRuntimeAssuranceAssessments(input)),
     buildReviewPackage: publicProcedure.input(caeAccess.extend({ assessmentId: boundedReference.optional() })).mutation(({ input }) => buildRuntimeAssuranceReviewPackage(input)),
+  }),
+
+  runtimeAdmission: router({
+    evaluate: publicProcedure.input(caeAccess.extend({ input: runtimeAdmissionInput })).mutation(({ input }) => evaluateRuntimeAdmission({ projectId: input.projectId, accessKey: input.accessKey, ...input.input })),
+    listDecisions: publicProcedure.input(caeAccess).query(({ input }) => listRuntimeAdmissionDecisions(input)),
   }),
 
   requirements: router({
