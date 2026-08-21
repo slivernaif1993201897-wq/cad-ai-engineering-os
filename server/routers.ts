@@ -25,6 +25,7 @@ import { assessReadiness, assessUncertainty, buildEvidenceGraph, createExperimen
 import { createDatasetProcessingRecord, ingestMeasurementDataset, listCalibrationRecords, listDatasetProcessing, listMeasurementDatasets, reconcileMaterialProperty, recordCalibration, recordEngineeringReviewDecision } from "./caeReconciliation";
 import { buildExtendedEvidenceGraph, createCalibrationCandidate, createSimulationMeasurementComparison, listComparisons, listExternalSolverAdapterRegistrations, registerExternalSolverAdapter } from "./caeIntegration";
 import { adapterEligibility, attachCalibrationCertificate, authorizeEngineeringApproval, buildTrustEvidenceGraph, listAdapterTrustVerifications, listAuthorizedApprovals, listCalibrationCertificates, listReviewerIdentities, listSecurityAudit, registerReviewerIdentity, revokeTrustObject, verifyAdapterTrust, verifyCalibrationCertificate, verifyReviewerIdentity } from "./caeTrust";
+import { buildExecutionTrustGraph, evaluateExecutionTrustReadiness, ingestCertificateRevocationSource, listCertificateRevocationSources, listExecutionTrustReadiness, listExternalIdentityClaims, listSandboxAttestationVerifications, listSandboxAttestations, registerExternalIdentityClaim, registerSandboxAttestation, revokeExecutionTrustEvidence, runExecutionTrustSecurityBenchmark, verifyExternalIdentityClaim, verifySandboxAttestation } from "./executionTrust";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -211,12 +212,54 @@ export const appRouter = router({
     revokeTrustObject: publicProcedure
       .input(caeAccess.extend({ objectType: z.enum(["REVIEWER", "ADAPTER", "CERTIFICATE"]), objectId: z.string().trim().min(1).max(160), actor: z.string().trim().min(1).max(160), reason: z.string().trim().min(1).max(2000) }))
       .mutation(({ input }) => revokeTrustObject(input)),
+    claimExternalIdentity: publicProcedure
+      .input(caeAccess.extend({ provider: z.string().trim().min(1).max(320), providerVersion: z.string().trim().min(1).max(80), subject: z.string().trim().min(1).max(320), verificationMethod: z.string().trim().min(1).max(1000), evidence: z.array(z.string().trim().min(1).max(1000)).min(1).max(32), actor: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => registerExternalIdentityClaim(input)),
+    listExternalIdentityClaims: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listExternalIdentityClaims(input)),
+    verifyExternalIdentity: publicProcedure
+      .input(caeAccess.extend({ claimId: z.string().trim().min(1).max(160), reviewerId: z.string().trim().min(1).max(160), providerVerified: z.boolean(), evidenceVerified: z.boolean(), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => verifyExternalIdentityClaim(input)),
+    ingestRevocationSource: publicProcedure
+      .input(caeAccess.extend({ source: z.string().trim().min(1).max(500), sourceIdentity: z.string().trim().min(1).max(500), sourceContentBase64: z.string().min(1).max(7_000_000), certificateIdentifier: z.string().trim().min(1).max(320), reportedStatus: z.enum(["NOT_CHECKED", "VALID", "REVOKED", "EXPIRED", "UNKNOWN"]), independentSourceCount: z.number().int().min(1).max(32), sourceVerified: z.boolean(), effectiveTime: z.string().trim().min(1).max(64).optional(), evidence: z.array(z.string().trim().min(1).max(1000)).min(1).max(32), reviewerId: z.string().trim().min(1).max(160), actor: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => ingestCertificateRevocationSource(input)),
+    listRevocationSources: publicProcedure
+      .input(caeAccess.extend({ certificateIdentifier: z.string().trim().min(1).max(320).optional() }))
+      .query(({ input }) => listCertificateRevocationSources(input)),
+    declareSandboxAttestation: publicProcedure
+      .input(caeAccess.extend({ registrationId: z.string().trim().min(1).max(160), version: z.string().trim().min(1).max(80), environmentIdentity: z.string().trim().min(1).max(500), runtimeIdentity: z.string().trim().min(1).max(500), runtimeVersion: z.string().trim().min(1).max(160), operatingSystem: z.string().trim().min(1).max(320), resourceLimits: z.array(z.string().trim().min(1).max(500)).max(32), filesystemBoundary: z.array(z.string().trim().min(1).max(500)).max(32), networkPolicy: z.enum(["NO_NETWORK", "DECLARATION_ONLY", "UNKNOWN"]), processPolicy: z.string().trim().min(1).max(2000), isolationMechanism: z.string().trim().min(1).max(1000), attestationEvidence: z.array(z.string().trim().min(1).max(1000)).min(1).max(32), expiresAt: z.string().trim().min(1).max(64).optional(), actor: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => registerSandboxAttestation(input)),
+    listSandboxAttestations: publicProcedure
+      .input(caeAccess.extend({ registrationId: z.string().trim().min(1).max(160).optional() }))
+      .query(({ input }) => listSandboxAttestations(input)),
+    verifySandboxAttestation: publicProcedure
+      .input(caeAccess.extend({ attestationId: z.string().trim().min(1).max(160), reviewerId: z.string().trim().min(1).max(160), identityVerified: z.boolean(), integrityVerified: z.boolean(), configurationVerified: z.boolean(), permissionsVerified: z.boolean(), resourceBoundariesVerified: z.boolean(), networkRestrictionsVerified: z.boolean(), filesystemRestrictionsVerified: z.boolean(), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => verifySandboxAttestation(input)),
+    listSandboxAttestationVerifications: publicProcedure
+      .input(caeAccess.extend({ attestationId: z.string().trim().min(1).max(160).optional() }))
+      .query(({ input }) => listSandboxAttestationVerifications(input)),
+    evaluateExecutionTrustReadiness: publicProcedure
+      .input(caeAccess.extend({ registrationId: z.string().trim().min(1).max(160), externalIdentityClaimId: z.string().trim().min(1).max(160).optional(), certificateId: z.string().trim().min(1).max(160).optional(), attestationId: z.string().trim().min(1).max(160).optional() }))
+      .mutation(({ input }) => evaluateExecutionTrustReadiness(input)),
+    listExecutionTrustReadiness: publicProcedure
+      .input(caeAccess.extend({ registrationId: z.string().trim().min(1).max(160).optional() }))
+      .query(({ input }) => listExecutionTrustReadiness(input)),
+    runExecutionTrustSecurityBenchmark: publicProcedure
+      .input(caeAccess)
+      .mutation(({ input }) => runExecutionTrustSecurityBenchmark(input)),
+    revokeExecutionTrustEvidence: publicProcedure
+      .input(caeAccess.extend({ objectType: z.enum(["EXTERNAL_IDENTITY", "REVOCATION_SOURCE", "SANDBOX_ATTESTATION"]), objectId: z.string().trim().min(1).max(160), actor: z.string().trim().min(1).max(160), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => revokeExecutionTrustEvidence(input)),
     securityAudit: publicProcedure
       .input(caeAccess)
       .query(({ input }) => listSecurityAudit(input)),
     trustEvidenceGraph: publicProcedure
       .input(caeAccess.extend({ simulationId: z.string().trim().min(1).max(160) }))
       .mutation(({ input }) => buildTrustEvidenceGraph(input)),
+    executionTrustEvidenceGraph: publicProcedure
+      .input(caeAccess.extend({ simulationId: z.string().trim().min(1).max(160), registrationId: z.string().trim().min(1).max(160), readinessId: z.string().trim().min(1).max(160).optional() }))
+      .mutation(({ input }) => buildExecutionTrustGraph(input)),
   }),
 
   intelligence: router({

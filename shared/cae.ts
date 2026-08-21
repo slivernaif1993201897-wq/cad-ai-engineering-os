@@ -407,9 +407,9 @@ export interface CAEContextInvalidation {
 
 export interface CAEEvidenceGraphNode {
   id: string;
-  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
+  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
   label: string;
-  truthStatus: CAETruthStatus | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
+  truthStatus: CAETruthStatus | "DERIVED" | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
 }
 
 export interface CAEEvidenceGraphEdge {
@@ -725,7 +725,7 @@ export interface AdapterTrustVerification {
 export interface RevocationRecord {
   revocationId: string;
   projectId: string;
-  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE";
+  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION";
   objectId: string;
   previousState: string;
   newState: "REVOKED";
@@ -737,8 +737,8 @@ export interface SecurityAuditEvent {
   eventId: string;
   projectId: string;
   actor: string;
-  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE";
-  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION";
+  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS";
+  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS";
   objectId: string;
   timestamp: string;
   previousState?: string;
@@ -756,4 +756,106 @@ export interface AuthorizedEngineeringApproval {
   revision: number;
   reason: string;
   timestamp: string;
+}
+export const EXTERNAL_IDENTITY_STATES = ["IDENTITY_CLAIMED", "IDENTITY_VERIFIED", "IDENTITY_REVOKED", "IDENTITY_UNKNOWN"] as const;
+export type ExternalIdentityState = (typeof EXTERNAL_IDENTITY_STATES)[number];
+export interface ExternalIdentityProviderClaim {
+  claimId: string;
+  projectId: string;
+  provider: string;
+  providerVersion: string;
+  subject: string;
+  verificationMethod: string;
+  evidence: string[];
+  timestamp: string;
+  status: ExternalIdentityState;
+  actor: string;
+}
+export const REVOCATION_SOURCE_STATES = ["NOT_CHECKED", "VALID", "REVOKED", "EXPIRED", "UNKNOWN"] as const;
+export type RevocationSourceState = (typeof REVOCATION_SOURCE_STATES)[number];
+export interface CertificateRevocationSourceEvidence {
+  sourceEvidenceId: string;
+  projectId: string;
+  source: string;
+  sourceIdentity: string;
+  sourceHash: string;
+  storage?: MaterialEvidenceStorage;
+  retrievalTime: string;
+  effectiveTime?: string;
+  certificateIdentifier: string;
+  revocationStatus: RevocationSourceState;
+  independentSourceCount: number;
+  evidence: string[];
+  verificationStatus: "VERIFIED" | "UNVERIFIED" | "INVALID" | "UNKNOWN";
+  actor: string;
+  createdAt: string;
+}
+export const SANDBOX_ATTESTATION_STATES = ["UNATTESTED", "ATTESTED", "INVALID", "EXPIRED", "REVOKED", "UNKNOWN"] as const;
+export type SandboxAttestationState = (typeof SANDBOX_ATTESTATION_STATES)[number];
+export interface SandboxAttestationContract {
+  attestationId: string;
+  projectId: string;
+  registrationId: string;
+  version: string;
+  environmentIdentity: string;
+  runtimeIdentity: string;
+  runtimeVersion: string;
+  operatingSystem: string;
+  resourceLimits: string[];
+  filesystemBoundary: string[];
+  networkPolicy: "NO_NETWORK" | "DECLARATION_ONLY" | "UNKNOWN";
+  processPolicy: string;
+  isolationMechanism: string;
+  attestationEvidence: string[];
+  attestationTimestamp: string;
+  expiresAt?: string;
+  verificationStatus: SandboxAttestationState;
+  actor: string;
+  createdAt: string;
+}
+export interface SandboxAttestationVerification {
+  verificationId: string;
+  projectId: string;
+  attestationId: string;
+  reviewerId: string;
+  identityCheck: "PASS" | "FAIL" | "UNKNOWN";
+  integrityCheck: "PASS" | "FAIL" | "UNKNOWN";
+  configurationCheck: "PASS" | "FAIL" | "UNKNOWN";
+  permissionCheck: "PASS" | "FAIL" | "UNKNOWN";
+  resourceBoundaryCheck: "PASS" | "FAIL" | "UNKNOWN";
+  networkRestrictionCheck: "PASS" | "FAIL" | "UNKNOWN";
+  filesystemRestrictionCheck: "PASS" | "FAIL" | "UNKNOWN";
+  status: SandboxAttestationState;
+  reason: string;
+  createdAt: string;
+}
+export const EXECUTION_TRUST_GATES = ["IDENTITY", "ADAPTER_SIGNATURE", "CAPABILITY", "PERMISSIONS", "CERTIFICATE", "REVIEWER_APPROVAL", "SANDBOX_ATTESTATION", "REVOCATION_CHECK", "EXECUTION_ELIGIBILITY"] as const;
+export type ExecutionTrustGate = (typeof EXECUTION_TRUST_GATES)[number];
+export interface ExecutionTrustGateEvidence {
+  gate: ExecutionTrustGate;
+  status: "PASS" | "FAIL" | "UNKNOWN";
+  statement: string;
+  evidenceIds: string[];
+  mandatory: true;
+}
+export interface ExecutionTrustReadiness {
+  readinessId: string;
+  projectId: string;
+  registrationId: string;
+  gates: ExecutionTrustGateEvidence[];
+  gatesSatisfied: boolean;
+  executionEligible: false;
+  executable: false;
+  reason: string;
+  createdAt: string;
+}
+export interface ExecutionTrustBenchmarkResult {
+  benchmarkId: string;
+  projectId: string;
+  scenario: string;
+  expectedEligibility: false;
+  observedEligibility: false;
+  passed: boolean;
+  reason: string;
+  createdAt: string;
 }

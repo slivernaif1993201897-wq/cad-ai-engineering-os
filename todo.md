@@ -149,3 +149,12 @@
 - [x] Phase 5.3: Build a mobile Solver Trust panel with explicit verification/revocation states, reviewer controls, certificate controls, permissions, sandbox, audit, and non-executable eligibility controls.
 - [x] Phase 5.3: Add deterministic identity, authorization, certificate, expiry, manifest tamper, signature, capability, permission, revocation, audit, eligibility, TypeScript, and full-regression tests.
 - [x] Phase 5.3: Save a verified checkpoint and report identity, approvals, certificates, adapter trust, capabilities, permissions, sandboxing, revocation, audit, UI, tests, and no-solver limits without starting Phase 6.
+
+- [x] Phase 5.4: Audit Phase 5.3 reviewer, certificate, adapter trust, revocation, audit, graph, API, test, and mobile implementation seams for final fail-closed execution-trust requirements.
+- [x] Phase 5.4: Define versioned external identity, revocation-source, sandbox attestation, gate evidence, multi-gate trust readiness, fail-closed eligibility, and security benchmark contracts.
+- [x] Phase 5.4: Implement project-isolated immutable external identity evidence, independently verified revocation sources, certificate revocation status, sandbox attestation evidence/verification, audit events, and revocation lifecycle.
+- [x] Phase 5.4: Implement explicit evidence-backed multi-gate trust evaluation, fail-closed rules, execution trust graph links, security invariants, and permanently non-executable results.
+- [x] Phase 5.4: Expose capability-safe project-isolated identity, revocation-source, attestation, verification, readiness, benchmark, audit, and graph APIs without adding any execution endpoint.
+- [x] Phase 5.4: Build a mobile Trust Readiness view showing PASS/FAIL/UNKNOWN states for identity, signature, capabilities, permissions, certificate, reviewer, sandbox, revocation, and eligibility.
+- [x] Phase 5.4: Add deterministic trust acceptance and security-benchmark tests for all required positive/negative states, fail-closed invariants, restoration evidence, audit integrity, TypeScript, and full regression.
+- [x] Phase 5.4: Save a verified checkpoint and report identity verification, revocation evidence, sandbox attestation, trust model, fail-closed behavior, security invariants, benchmark, UI, regression, and no-execution limits before stopping.
