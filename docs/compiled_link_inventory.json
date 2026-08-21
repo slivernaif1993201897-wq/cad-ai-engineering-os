@@ -1,0 +1,174 @@
+{
+  "total_links": 105,
+  "access_counts": {
+    "ACCESSIBLE": 98,
+    "HTTP_403": 4,
+    "OTHER_ERROR": 3
+  },
+  "accessible_category_counts": {
+    "CAD": 19,
+    "CAE": 28,
+    "CONFIGURATION": 2,
+    "DATABASE_SCHEMA": 2,
+    "EVIDENCE_GOVERNANCE": 10,
+    "MOBILE_UI": 2,
+    "REQUIREMENTS": 2,
+    "RUNTIME_ASSURANCE": 8,
+    "TEST": 24,
+    "UNKNOWN": 1
+  },
+  "accessible_filenames_by_category": {
+    "CAD": [
+      "cad-viewer.tsx",
+      "cad-workspace.tsx",
+      "cadAgent.ts",
+      "cadFileIntelligence.ts",
+      "cadKernel.ts",
+      "circle-feature-history-panel.tsx",
+      "circular-pattern-panel.tsx",
+      "edgeTopology.ts",
+      "engineering-3d-viewer.tsx",
+      "feature-history-workspace.tsx",
+      "generate-cad-axial-bar.ts",
+      "mirror-feature-panel.tsx",
+      "mirrorFeature.ts",
+      "planning.ts",
+      "probe-mirror.ts",
+      "rectangular-pattern-panel.tsx",
+      "rectangularPattern.ts",
+      "routers.ts",
+      "topologyNaming.ts"
+    ],
+    "CAE": [
+      "bounded-cae-benchmark.yml",
+      "cae-evidence-foundation.test.ts",
+      "cae-evidence-panel.tsx",
+      "cae-job-contract-inspector.tsx",
+      "cae-job-contract.test.ts",
+      "cae-plan-integration-panel.tsx",
+      "cae-reconciliation-panel.tsx",
+      "cae-workspace.tsx",
+      "cae.ts",
+      "caeAgent.ts",
+      "caeEvidence.ts",
+      "caeIntegration.ts",
+      "caeJobContract.ts",
+      "caePlanIntegration.ts",
+      "caeReconciliation.ts",
+      "caeTrust.ts",
+      "executionTrust.ts",
+      "external-verification-panel.tsx",
+      "externalVerification.ts",
+      "optimization.ts",
+      "optimizationFoundation.ts",
+      "runtime-architecture-review-panel.tsx",
+      "runtime-implementation-readiness-panel.tsx",
+      "runtimeArchitectureReview.ts",
+      "runtimeImplementationReadiness.ts",
+      "runtimeReadiness.ts",
+      "solver-input-package-inspector.tsx",
+      "solverInputPackage.ts"
+    ],
+    "CONFIGURATION": [
+      "featureHistory.ts",
+      "storage.ts"
+    ],
+    "DATABASE_SCHEMA": [
+      "persistentMemory.ts",
+      "schema.ts"
+    ],
+    "EVIDENCE_GOVERNANCE": [
+      "digitalThread.ts",
+      "engineeringTruth.ts",
+      "evidenceIntegrity.ts",
+      "persistentMemory.ts",
+      "security-evidence-foundation-panel.tsx",
+      "solver-trust-panel.tsx",
+      "solverConfigurationGovernance.ts",
+      "verification-governance-panel.tsx",
+      "verificationGovernance.ts"
+    ],
+    "MOBILE_UI": [
+      "optimization-inspector-panel.tsx",
+      "trust-readiness-panel.tsx"
+    ],
+    "REQUIREMENTS": [
+      "planningFoundation.ts",
+      "requirements.ts"
+    ],
+    "RUNTIME_ASSURANCE": [
+      "runtime-admission.test.ts",
+      "runtime-assurance-dashboard.tsx",
+      "runtime-assurance.test.ts",
+      "runtime-readiness-panel.tsx",
+      "runtimeAdmission.ts",
+      "runtimeAssurance.ts"
+    ],
+    "TEST": [
+      "cad-workbench.test.ts",
+      "cae-foundation.test.ts",
+      "cae-plan-integration.test.ts",
+      "cae-reconciliation.test.ts",
+      "circle-feature-history.test.ts",
+      "digital-thread.test.ts",
+      "evidence-integrity.test.ts",
+      "execution-trust-closure.test.ts",
+      "external-verification.test.ts",
+      "feature-history.test.ts",
+      "github-dispatch-credential.test.ts",
+      "optimization-foundation.test.ts",
+      "phase410-cad-foundation.test.ts",
+      "phase49-patterns.test.ts",
+      "planning-foundation.test.ts",
+      "runtime-architecture-review.test.ts",
+      "runtime-implementation-readiness.test.ts",
+      "runtime-readiness.test.ts",
+      "security-evidence-foundation.test.ts",
+      "solver-configuration-governance.test.ts",
+      "solver-input-package.test.ts",
+      "solver-trust.test.ts",
+      "topology-pattern.test.ts",
+      "verification-governance.test.ts"
+    ],
+    "UNKNOWN": [
+      "featureHistory.ts"
+    ]
+  },
+  "unavailable_links": [
+    {
+      "url": "https://manus.im/share/file/c561f127-eb21-43e8-b6cd-449186979d04",
+      "status": "HTTP_403",
+      "error": "HTTP 403; content unavailable."
+    },
+    {
+      "url": "https://manus.im/share/file/cedc4a9b-7d68-42c9-b37f-c57ad5e3cb38",
+      "status": "OTHER_ERROR",
+      "error": "Content unavailable; the shared file page is not accessible."
+    },
+    {
+      "url": "https://manus.im/share/file/b217fa28-6842-409c-80db-b80e482cc7c0",
+      "status": "HTTP_403",
+      "error": "HTTP 403; content unavailable."
+    },
+    {
+      "url": "https://manus.im/share/file/a3744d54-5f04-459c-9ec1-e3af89615ca8",
+      "status": "HTTP_403",
+      "error": "HTTP 403; content unavailable."
+    },
+    {
+      "url": "https://manus.im/share/file/7f75d889-af32-4848-a876-7695bd279e74",
+      "status": "OTHER_ERROR",
+      "error": "This page could not be found."
+    },
+    {
+      "url": "https://manus.im/share/file/bec3621d-2884-4fbf-9a4e-329259cbe5e7",
+      "status": "HTTP_403",
+      "error": "HTTP 403; content unavailable."
+    },
+    {
+      "url": "https://manus.im/share/file/dbb278b1-ddd6-47c1-92ce-89371a41a47e",
+      "status": "OTHER_ERROR",
+      "error": "The page displays a 404 error indicating that the requested page could not be found."
+    }
+  ]
+}

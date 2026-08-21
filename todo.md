@@ -284,3 +284,72 @@
 
 - [x] GitHub Real Execution Directive: Inspect the authorized GitHub repository, branch, workflow, Actions, runner, artifact, package/container, permissions, and reviewer capabilities without exposing secrets; build and run only a least-privilege immutable-reference CAE bridge if the observed GitHub capability supports it, preserving exact sandbox and production-readiness limits.
 - [x] GitHub Real Execution Directive: Add immutable project-isolated GitHub benchmark observation records and a read-only mobile inspector; preserve run, artifact, commit, hash, solver, mesh, numerical-validation, and artifact-access facts while preventing any benchmark observation from approving a canonical user job, sandbox, security gate, or production runtime.
+- [x] Continuation audit: reconstruct the linked prior-task checkpoint, compare the clean GitHub repository state, and record only validated current blockers.
+- [x] Continuation archive reconciliation: compare the supplied CAD-AI archive with the linked task and current GitHub checkpoint without overwriting verified source or evidence.
+- [x] Continuation validation: use an isolated-per-file regression command to avoid native CAD test-worker interruption without weakening or excluding any affected regression coverage.
+- [x] Enable and verify the existing canonical auth logout test; add the required hostname to its request fixture so it exercises the production cookie-option helper.
+- [x] Run every existing regression file in isolated Vitest processes after the auth coverage repair; all test files completed successfully without excluding coverage.
+- [x] Archive takeover: extract the supplied project into an isolated audit location, inventory all source and evidence, screen for secrets without disclosure, and reconcile its actual identity and checkpoint before any implementation change.
+- [x] Archive-authoritative inventory: assess the extracted CAD-AI Requirements Agent source, schema, tests, mobile UI, and runtime evidence before any archive-source modification.
+- [x] Archive validation: `pnpm check` and `pnpm lint` passed; the sole `auth.logout` test was skipped by the archive’s existing test configuration, so no passing engineering-runtime test is available in the archive.
+- [x] Source reconciliation required: the shared CAD-AI Engineering OS task and byte-identical CAD kernel smoke file confirm the selected GitHub repository as the canonical source.
+- [x] Shared-task reconciliation: use the supplied Manus share link as the authoritative record to reconcile repository, archive, checkpoint, evidence, and remaining blockers.
+- [x] Shared-file reconciliation: retrieve and classify the newly shared Manus file as evidence without exposing any secret or overwriting existing project records.
+- [ ] Additional shared-file reconciliation: retrieve and classify the latest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest shared-file reconciliation: retrieve and classify the newly supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newest shared-file reconciliation: retrieve and classify the newly supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Additional evidence-file reconciliation: retrieve and classify the latest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly shared-file reconciliation: retrieve and classify the latest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current shared-file reconciliation: retrieve and classify the newly supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Incoming shared-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Additional incoming shared-file reconciliation: retrieve and classify the newly supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest incoming shared-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly arriving shared-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest shared evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly supplied evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current evidence-file reconciliation: retrieve and classify the newly supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly received evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] New incoming evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest received evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] New shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Additional current shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly added shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly received shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly provided shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current incoming shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest incoming shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly arrived shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly supplied shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest supplied shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly linked shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current linked shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current shared evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] New current shared evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newest shared evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest received shared evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly received shared evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current received shared evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] New current received shared evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly received evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest delivered evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current delivered evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly delivered evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Current incoming evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] New incoming evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest incoming evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly arrived evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly linked evidence-file reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Newly received shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [ ] Latest shared-file evidence reconciliation: retrieve and classify the newest supplied Manus file as non-secret evidence, then compare it against the canonical repository without source overwrite.
+- [x] Deterministic continuation validation: complete the full isolated `pnpm test` run and `pnpm check` successfully after the coverage-fixture and test-runner corrections.
+- [ ] Latest shared-evidence retrieval: classify the newly supplied Manus file against the canonical repository without treating inaccessible content as verified evidence.
+- [x] Latest shared-evidence retrieval: the supplied share link returned HTTP 403; its content is classified as unknown and was not used as project evidence.
+- [ ] Current shared-evidence retrieval: classify the newly supplied Manus file against the canonical repository without treating inaccessible content as verified evidence.
+- [x] Current shared-evidence retrieval: the supplied share link returned HTTP 403; its content is classified as unknown and was not used as project evidence.
+- [ ] New shared-evidence retrieval: classify the newly supplied Manus file against the canonical repository without treating inaccessible content as verified evidence.
+- [x] New shared-evidence retrieval: accessible `cad-execution.test.ts` aligns with the canonical bounded CAD execution regression and was recorded without broadening execution or runtime claims.
+- [x] Analyze every compiled shared-link reference, classify accessible and inaccessible evidence, and prepare a canonical-source continuation dossier with a prioritized mobile build roadmap.
+- [x] Execute the master continuation instruction: finish all compiled-link analysis, reconstruct the authoritative checkpoint and component matrix, implement only verified internal gaps, and preserve blocked external runtime gates until real evidence exists.
+- [ ] Latest shared-evidence retrieval: classify the newly supplied Manus file against the canonical repository without treating inaccessible content as verified evidence.
