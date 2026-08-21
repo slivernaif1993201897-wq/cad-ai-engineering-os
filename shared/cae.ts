@@ -407,7 +407,7 @@ export interface CAEContextInvalidation {
 
 export interface CAEEvidenceGraphNode {
   id: string;
-  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "RUNTIME_ARCHITECTURE" | "RUNTIME_BOUNDARY" | "RUNTIME_THREAT" | "RUNTIME_PERMISSION" | "RUNTIME_LIMIT" | "RUNTIME_RESULT_CONTRACT" | "RUNTIME_APPROVAL_GATE" | "RUNTIME_TEST_PLAN" | "RUNTIME_DECISION" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
+  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "RUNTIME_ARCHITECTURE" | "RUNTIME_BOUNDARY" | "RUNTIME_THREAT" | "RUNTIME_PERMISSION" | "RUNTIME_LIMIT" | "RUNTIME_RESULT_CONTRACT" | "RUNTIME_APPROVAL_GATE" | "RUNTIME_TEST_PLAN" | "RUNTIME_DECISION" | "CAPACITY_POLICY" | "CAPACITY_VALIDATION" | "SANDBOX_DESIGN" | "INDEPENDENT_ATTESTATION" | "ATTACK_SIMULATION" | "SECURITY_INVARIANT" | "RUNTIME_ASSURANCE" | "RUNTIME_READINESS" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
   label: string;
   truthStatus: CAETruthStatus | "DERIVED" | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
 }
@@ -737,8 +737,8 @@ export interface SecurityAuditEvent {
   eventId: string;
   projectId: string;
   actor: string;
-  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE_REVIEW";
-  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE";
+  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE_REVIEW" | "RUNTIME_READINESS_REVIEW" | "CAPACITY_POLICY_VALIDATION" | "INDEPENDENT_ATTESTATION_EVIDENCE";
+  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE" | "RUNTIME_READINESS" | "CAPACITY_POLICY" | "INDEPENDENT_ATTESTATION";
   objectId: string;
   timestamp: string;
   previousState?: string;
@@ -970,5 +970,115 @@ export interface FutureRuntimeArchitectureReview {
   decisionReason: string;
   executionEligible: false;
   executable: false;
+  createdAt: string;
+}
+export const RUNTIME_READINESS_CONTRACT_VERSION = "1.0.0" as const;
+export const CAPACITY_LIMIT_KINDS = ["CPU_LIMIT", "MEMORY_LIMIT", "DISK_LIMIT", "EXECUTION_TIMEOUT", "INPUT_SIZE_LIMIT", "OUTPUT_SIZE_LIMIT", "PROCESS_LIMIT", "CONCURRENT_JOB_LIMIT"] as const;
+export type CapacityLimitKind = (typeof CAPACITY_LIMIT_KINDS)[number];
+export interface CapacityPolicyValue {
+  kind: CapacityLimitKind;
+  value: number | "UNKNOWN";
+  unit: string;
+  rationale: string;
+  environment: string;
+  version: string;
+  effectiveDate: string;
+  evidenceIds: string[];
+}
+export interface CapacityPolicy {
+  policyId: string;
+  projectId: string;
+  contractVersion: typeof RUNTIME_READINESS_CONTRACT_VERSION;
+  limits: CapacityPolicyValue[];
+  state: "UNKNOWN" | "DECLARED" | "VERIFIED";
+  reason: string;
+  createdAt: string;
+}
+export interface CapacityPolicyValidation {
+  validationId: string;
+  projectId: string;
+  policyId: string;
+  limit: CapacityLimitKind;
+  observedValue: number | "UNKNOWN";
+  observedUnit: string;
+  outcome: "WITHIN_LIMIT" | "EXCEEDS_LIMIT" | "UNKNOWN_LIMIT";
+  safe: false;
+  reason: string;
+  createdAt: string;
+}
+export type SandboxDesignStatus = "DESIGNED" | "IMPLEMENTED" | "VERIFIED" | "ATTESTED" | "UNKNOWN";
+export interface SandboxDesignControl {
+  control: "ISOLATION_MECHANISM" | "PROCESS_ISOLATION" | "FILESYSTEM_ISOLATION" | "NETWORK_ISOLATION" | "RESOURCE_ISOLATION" | "CREDENTIAL_ISOLATION" | "IPC_BOUNDARY" | "LOGGING_BOUNDARY" | "TERMINATION_MECHANISM";
+  proposal: string;
+  status: SandboxDesignStatus;
+  requiredEvidence: string[];
+}
+export interface SandboxDesignProposal {
+  designId: string;
+  projectId: string;
+  contractVersion: typeof RUNTIME_READINESS_CONTRACT_VERSION;
+  environmentIdentity: string;
+  controls: SandboxDesignControl[];
+  statement: string;
+  createdAt: string;
+}
+export const INDEPENDENT_ATTESTATION_STATES = ["NOT_ATTESTED", "ATTESTED", "EXPIRED", "REVOKED", "INVALID", "UNKNOWN"] as const;
+export type IndependentAttestationState = (typeof INDEPENDENT_ATTESTATION_STATES)[number];
+export interface IndependentSandboxAttestationEvidence {
+  attestationEvidenceId: string;
+  projectId: string;
+  designId: string;
+  attestorIdentity: string;
+  attestorPublisherRelationship: "INDEPENDENT" | "SAME_PUBLISHER" | "UNKNOWN";
+  attestationScope: string;
+  environmentIdentity: string;
+  evidenceHash: string;
+  attestationTime: string;
+  expiration?: string;
+  verificationMethod: string;
+  status: IndependentAttestationState;
+  reason: string;
+  createdAt: string;
+}
+export const HOSTILE_ATTACKS = ["FILESYSTEM_ESCAPE", "SANDBOX_ESCAPE", "NETWORK_ESCAPE", "PRIVILEGE_ESCALATION", "RESOURCE_EXHAUSTION", "FORK_PROCESS_EXPLOSION", "MALICIOUS_INPUT", "MALICIOUS_SOLVER_OUTPUT", "PATH_TRAVERSAL", "SYMLINK_ATTACK", "ENVIRONMENT_VARIABLE_LEAKAGE", "CREDENTIAL_LEAKAGE", "IPC_ABUSE", "ADAPTER_IMPERSONATION", "SIGNATURE_TAMPERING", "REPLAY_ATTACK", "RESULT_TAMPERING"] as const;
+export type HostileAttack = (typeof HOSTILE_ATTACKS)[number];
+export interface HostileAttackSimulation {
+  simulationId: string;
+  attack: HostileAttack;
+  expectedBehavior: string;
+  failureCondition: string;
+  requiredEvidence: string[];
+  severity: "CRITICAL" | "HIGH" | "MEDIUM";
+  status: "NOT_RUN" | "PASS" | "FAIL" | "BLOCKED" | "UNKNOWN";
+}
+export interface RuntimeSecurityInvariant {
+  invariantId: string;
+  statement: string;
+  requiredEnforcement: string;
+  status: "PASS" | "FAIL" | "UNKNOWN" | "NOT_VERIFIED";
+  evidenceIds: string[];
+}
+export interface RuntimeAssuranceDimension {
+  dimension: "THREAT_COVERAGE" | "EVIDENCE_QUALITY" | "SANDBOX_ASSURANCE" | "RESOURCE_ASSURANCE" | "IDENTITY_ASSURANCE" | "AUDIT_ASSURANCE";
+  status: "PASS" | "FAIL" | "UNKNOWN" | "NOT_VERIFIED";
+  statement: string;
+  evidenceIds: string[];
+}
+export interface RuntimeReadinessReview {
+  readinessId: string;
+  projectId: string;
+  contractVersion: typeof RUNTIME_READINESS_CONTRACT_VERSION;
+  capacityPolicy: CapacityPolicy;
+  sandboxDesign: SandboxDesignProposal;
+  independentAttestations: IndependentSandboxAttestationEvidence[];
+  hostileTests: HostileAttackSimulation[];
+  securityInvariants: RuntimeSecurityInvariant[];
+  assurance: RuntimeAssuranceDimension[];
+  majorUnknowns: string[];
+  readiness: "NOT_READY" | "PARTIALLY_READY" | "READY_FOR_EXTERNAL_REVIEW";
+  executionApproval: "DISABLED";
+  executionEligible: false;
+  executable: false;
+  reason: string;
   createdAt: string;
 }

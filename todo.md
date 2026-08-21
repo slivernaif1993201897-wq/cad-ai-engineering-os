@@ -165,3 +165,10 @@
 - [x] Phase 6.0: Implement deterministic project-isolated review-only policy records, architecture APIs, immutable evidence/graph links, and no-execution security invariants.
 - [x] Phase 6.0: Build a mobile Runtime Architecture Review workspace that renders all required security decisions and prominently displays RUNTIME_NOT_APPROVED.
 - [x] Phase 6.0: Add review-only acceptance tests, run TypeScript and full regression, save a checkpoint, report the readiness decision, and stop without Phase 7 or execution implementation.
+
+- [x] Phase 6.1: Define a versioned capacity-policy contract covering CPU, memory, disk, timeout, input/output size, process, and concurrent-job limits with unknown-safe infrastructure evidence.
+- [x] Phase 6.1: Implement deterministic within-limit, exceeds-limit, and unknown-limit checks where unknown is never safe.
+- [x] Phase 6.1: Define a concrete sandbox-design proposal, independent-attestation evidence, hostile attack-simulation contracts, security invariants, multidimensional assurance score, and constrained readiness decision without execution approval.
+- [x] Phase 6.1: Implement project-isolated immutable readiness records, audit and graph links, capability-safe APIs, and fail-closed evaluation without solver, mesher, shell, plugin, network, process, credential, or arbitrary-filesystem execution.
+- [x] Phase 6.1: Build a mobile Runtime Readiness dashboard that exposes capacity, sandbox, attestation, threat coverage, tests, unknowns, decision, and missing-evidence states.
+- [x] Phase 6.1: Add deterministic acceptance tests, run TypeScript and full regression, save a verified checkpoint, report readiness, and stop without Phase 7 or runtime implementation.
