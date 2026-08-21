@@ -276,3 +276,6 @@
 
 - [ ] Zero-Blocker Runtime Directive: Audit for an authorized isolated runtime and approved solver artifacts, then complete any remaining safe adapter, sandbox-interface, evidence-collector, hostile-test-harness, result-integrity, numerical-validation, and review-package controls without treating code or fixtures as runtime evidence; retain BLOCKED_EXTERNAL_INFRASTRUCTURE for all operational work that requires independently approved resources.
 - [x] Zero-Blocker Runtime Directive: Harden future CAE result registration so a non-executing schema rejects both converged and diverged solver-behavior claims without an approved runtime receipt and independent result evidence.
+
+- [ ] Final Completion Directive: Audit and close every independently actionable CAD, CAE-contract, result-integrity, controlled-failure, reproducibility, security-package, review-package, and mobile-traceability gap with deterministic acceptance coverage; retain exact external infrastructure, authorization, artifact, independent-review, and observed-evidence blockers for all real runtime operations.
+- [x] Final Completion Directive: Harden runtime admission to recompute assurance from current project records for every request and reject expired, future-dated, malformed, or otherwise non-current environment evidence before it can affect a recorded admission decision.

@@ -10,6 +10,7 @@ describe("Final Runtime Build · bounded admission boundary", () => {
   let access: { projectId: string; accessKey: string };
   let isolated: { projectId: string; accessKey: string };
   let decision: any;
+  const h = (value: string) => value.repeat(64);
 
   beforeAll(async () => {
     const project = await caller.persistentMemory.openProject({ name: "Runtime admission boundary" });
@@ -25,4 +26,10 @@ describe("Final Runtime Build · bounded admission boundary", () => {
   it("4. isolates admission decisions by project", async () => expect(await caller.runtimeAdmission.listDecisions(isolated)).toEqual([]));
   it("5. rejects unbounded command or path fields instead of silently stripping them", async () => await expect(caller.runtimeAdmission.evaluate({ ...access, input: { requestedAction: "CALCULIX_SOLVE", canonicalJobId: "MISSING-JOB", solverInputPackageId: "MISSING-PACKAGE", configurationId: "MISSING-CONFIGURATION", environmentId: "MISSING-ENVIRONMENT", command: "ccx arbitrary.inp" } as any })).rejects.toThrow(/unrecognized key/i));
   it("6. exposes no execution, shell, process, filesystem, network, Gmsh, or CalculiX endpoint", () => expect(Object.keys(caller.runtimeAdmission)).not.toEqual(expect.arrayContaining(["execute", "run", "spawn", "shell", "filesystem", "network", "gmsh", "calculix", "ccx"])));
+
+  it("7. records stale environment evidence as an explicit fail-closed admission reason", async () => {
+    const expired = await caller.runtimeAssurance.recordEnvironment({ ...access, input: { environmentId: "EXPIRED-ENVIRONMENT", imageBaseline: "BASELINE", operatingSystem: "UNKNOWN", kernel: "UNKNOWN", cpuLimit: "UNKNOWN", memoryLimit: "UNKNOWN", storageLimit: "UNKNOWN", networkPolicy: "DECLARATION_ONLY", timeoutPolicy: "UNKNOWN", environmentHash: h("a"), observedEvidenceHash: h("b"), provenance: ["Expired environment declaration only."], approvalState: "UNKNOWN", approvalScope: "EXTERNAL_REVIEW_REQUIRED", validFrom: new Date(Date.now() - 120_000).toISOString(), validUntil: new Date(Date.now() - 60_000).toISOString() } });
+    const expiredDecision = await caller.runtimeAdmission.evaluate({ ...access, input: { requestedAction: "GMSH_MESH", canonicalJobId: "MISSING-JOB", solverInputPackageId: "MISSING-PACKAGE", configurationId: "MISSING-CONFIGURATION", environmentId: expired.environmentId } });
+    expect(expiredDecision.reasonCodes).toEqual(expect.arrayContaining(["ENVIRONMENT_EVIDENCE_NOT_CURRENT", "ENVIRONMENT_NOT_INDEPENDENTLY_APPROVED", "RUNTIME_ASSURANCE_GATES_NOT_PASS", "EXECUTION_ENGINE_NOT_IMPLEMENTED"]));
+  });
 });
