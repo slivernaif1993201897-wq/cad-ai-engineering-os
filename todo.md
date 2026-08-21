@@ -273,3 +273,6 @@
 
 - [x] Resumed Runtime Directive: Reassess whether a newly authorized, independently approved segregated execution environment, approved Gmsh/CalculiX artifacts, external reviewer authorization, and independently observed security evidence are available; otherwise preserve BLOCKED and continue only safe non-executing integration work.
 - [x] Resumed Runtime Directive: Harden runtime-assurance evidence ingestion so a PASS must bind to the current independently approved project-scoped environment and foreign or unapproved environment evidence cannot promote an assurance gate.
+
+- [ ] Zero-Blocker Runtime Directive: Audit for an authorized isolated runtime and approved solver artifacts, then complete any remaining safe adapter, sandbox-interface, evidence-collector, hostile-test-harness, result-integrity, numerical-validation, and review-package controls without treating code or fixtures as runtime evidence; retain BLOCKED_EXTERNAL_INFRASTRUCTURE for all operational work that requires independently approved resources.
+- [x] Zero-Blocker Runtime Directive: Harden future CAE result registration so a non-executing schema rejects both converged and diverged solver-behavior claims without an approved runtime receipt and independent result evidence.
