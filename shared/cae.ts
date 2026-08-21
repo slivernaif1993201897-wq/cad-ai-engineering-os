@@ -1296,3 +1296,106 @@ export interface VerificationGovernanceReadiness {
   reason: string;
   createdAt: string;
 }
+
+export const RUNTIME_IMPLEMENTATION_REVIEW_VERSION = "1.0.0" as const;
+export type RuntimeImplementationDecision = "RUNTIME_IMPLEMENTATION_BLOCKED" | "RUNTIME_IMPLEMENTATION_PARTIALLY_APPROVED" | "RUNTIME_IMPLEMENTATION_READY_FOR_SECURITY_REVIEW";
+export type RuntimeInventoryStatus = "IMPLEMENTED" | "DESIGNED_ONLY" | "EVIDENCE_BACKED" | "UNVERIFIED" | "NOT_IMPLEMENTED";
+export interface RuntimeInventoryItem {
+  capability: "CAD_KERNEL" | "CAD_AGENT" | "CAE_PLANNING" | "REQUIREMENTS" | "EVIDENCE" | "TRUST" | "IDENTITY" | "SANDBOX_ARCHITECTURE" | "CAPACITY_POLICY" | "EXTERNAL_VERIFICATION" | "GOVERNANCE" | "AUDIT" | "PROVENANCE";
+  status: RuntimeInventoryStatus;
+  implementedEvidence: string[];
+  runtimeGap: string;
+}
+export interface RuntimeImplementationBlocker {
+  blockerId: string;
+  classification: "BLOCKER" | "REQUIRED" | "RECOMMENDED" | "OPTIONAL";
+  title: string;
+  why: string;
+  evidenceNeeded: string[];
+  preventsFirstControlledRuntime: boolean;
+}
+export interface RuntimeSolverOption {
+  option: "NATIVE_OPEN_SOURCE_SOLVER" | "EXTERNAL_SOLVER_ADAPTER" | "CONTAINERIZED_SOLVER" | "REMOTE_SOLVER" | "HYBRID_ARCHITECTURE";
+  representative: string;
+  license: string;
+  integrationComplexity: "LOW" | "MEDIUM" | "HIGH";
+  sandboxRequirement: string;
+  inputOutput: string;
+  reproducibility: string;
+  verification: string;
+  performance: string;
+  maintainability: string;
+  recommendation: "FIRST_CANDIDATE" | "DEFER" | "NOT_FOR_FIRST_RUNTIME";
+  sourceUrls: string[];
+}
+export interface RuntimeMeshingOption {
+  option: "OPENCASCADE_TRIANGULATION" | "DEDICATED_OPEN_SOURCE_MESHER" | "SOLVER_NATIVE_MESHER" | "HYBRID_MESHING";
+  capability: string;
+  integrationComplexity: "LOW" | "MEDIUM" | "HIGH";
+  qualityAndVerification: string;
+  recommendation: "FIRST_CANDIDATE" | "DEFER" | "NOT_FOR_FIRST_RUNTIME";
+  sourceUrls: string[];
+}
+export interface MinimumViableCAEReview {
+  analysis: "LINEAR_STATIC_STRUCTURAL";
+  scope: string[];
+  pipeline: string[];
+  excluded: string[];
+  truthRule: string;
+}
+export interface ControlledRuntimeBoundary {
+  boundaryId: string;
+  from: "CAD_AI" | "CAE_JOB_CONTRACT" | "EXECUTION_SANDBOX" | "SOLVER_ADAPTER" | "SOLVER" | "RESULT_ARTIFACT" | "RESULT_VERIFICATION" | "EVIDENCE_GRAPH";
+  to: "CAD_AI" | "CAE_JOB_CONTRACT" | "EXECUTION_SANDBOX" | "SOLVER_ADAPTER" | "SOLVER" | "RESULT_ARTIFACT" | "RESULT_VERIFICATION" | "EVIDENCE_GRAPH";
+  immutableInputs: string[];
+  allowedOutputs: string[];
+  prohibited: string[];
+  requiredHashes: string[];
+}
+export interface RuntimeResultTrustRequirement {
+  requirement: "MESH_QUALITY" | "SOLVER_STATUS" | "CONVERGENCE" | "UNITS" | "BOUNDARY_CONDITIONS" | "LOADS" | "MATERIAL" | "WARNINGS" | "RESULT_HASH" | "SOLVER_VERSION" | "INPUT_HASH" | "ENVIRONMENT_IDENTITY";
+  condition: string;
+  missingBehavior: "INVALID_RESULT" | "UNVERIFIED_RESULT" | "REFUSE_DISPLAY";
+  requiredEvidence: string[];
+}
+export interface EssentialRuntimeSecurityGate {
+  gate: string;
+  whyRequired: string;
+  minimumEvidence: string[];
+  currentState: "PASS" | "FAIL" | "UNKNOWN";
+}
+export interface RuntimeFailureModeReview {
+  failure: "SOLVER_CRASH" | "TIMEOUT" | "MEMORY_EXHAUSTION" | "INVALID_MESH" | "DIVERGENCE" | "MALFORMED_INPUT" | "MALICIOUS_INPUT" | "CORRUPT_RESULT" | "PARTIAL_OUTPUT" | "VERSION_MISMATCH" | "STALE_CAD" | "STALE_MATERIAL_EVIDENCE";
+  failClosedBehavior: string;
+  preservedArtifacts: string[];
+  resultState: "INVALID" | "UNVERIFIED" | "NOT_CREATED";
+}
+export interface RuntimeImplementationPlanStep {
+  order: number;
+  title: string;
+  outcome: string;
+  complexity: "S" | "M" | "L" | "XL";
+  gateBeforeNext: string;
+}
+export interface RuntimeImplementationReadinessReview {
+  reviewId: string;
+  projectId: string;
+  contractVersion: typeof RUNTIME_IMPLEMENTATION_REVIEW_VERSION;
+  inventory: RuntimeInventoryItem[];
+  blockers: RuntimeImplementationBlocker[];
+  solverOptions: RuntimeSolverOption[];
+  meshingOptions: RuntimeMeshingOption[];
+  minimumViableCAE: MinimumViableCAEReview;
+  runtimeBoundary: ControlledRuntimeBoundary[];
+  resultTrust: RuntimeResultTrustRequirement[];
+  essentialSecurityGates: EssentialRuntimeSecurityGate[];
+  failureModel: RuntimeFailureModeReview[];
+  implementationPlan: RuntimeImplementationPlanStep[];
+  estimatedComplexity: "XL";
+  finalDecision: RuntimeImplementationDecision;
+  decisionReason: string;
+  sourceUrls: string[];
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+}

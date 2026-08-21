@@ -28,6 +28,7 @@ import { adapterEligibility, attachCalibrationCertificate, authorizeEngineeringA
 import { buildExecutionTrustGraph, evaluateExecutionTrustReadiness, ingestCertificateRevocationSource, listCertificateRevocationSources, listExecutionTrustReadiness, listExternalIdentityClaims, listSandboxAttestationVerifications, listSandboxAttestations, registerExternalIdentityClaim, registerSandboxAttestation, revokeExecutionTrustEvidence, runExecutionTrustSecurityBenchmark, verifyExternalIdentityClaim, verifySandboxAttestation } from "./executionTrust";
 import { buildRuntimeArchitectureGraph, createRuntimeArchitectureReview, listRuntimeArchitectureReviews } from "./runtimeArchitectureReview";
 import { buildRuntimeReadinessGraph, createCapacityPolicy, createRuntimeReadinessReview, listCapacityPolicies, listIndependentSandboxAttestations, listRuntimeReadinessReviews, registerIndependentSandboxAttestation, validateCapacityPolicy } from "./runtimeReadiness";
+import { buildRuntimeImplementationReadinessGraph, createRuntimeImplementationReadinessReview, listRuntimeImplementationReadinessReviews } from "./runtimeImplementationReadiness";
 import { buildExternalVerificationGraph, evaluateExternalVerificationReadiness, importHostileTestEvidence, importInfrastructureEvidence, importSandboxReview, listExternalVerificationReadiness, listHostileTestEnvironments, listHostileTestEvidence, listInfrastructureEvidence, listSandboxReviews, recordExternalEvidenceLifecycle, registerHostileTestEnvironment, verifyExternalEvidence } from "./externalVerification";
 import { assignVerificationReview, decideVerificationReview, ensureGovernancePolicies, evaluateVerificationGovernanceReadiness, importTestEnvironmentEvidenceReference, listGovernanceLifecycle, listGovernancePolicies, listTestEnvironmentEvidenceReferences, listVerificationConflicts, listVerificationGovernanceReadiness, listVerificationReviews, resolveVerificationConflict, revokeGovernanceReviewer, submitVerificationReview, transitionVerificationReview } from "./verificationGovernance";
 
@@ -275,6 +276,15 @@ export const appRouter = router({
     runtimeArchitectureGraph: publicProcedure
       .input(caeAccess.extend({ reviewId: z.string().trim().min(1).max(160).optional() }))
       .mutation(({ input }) => buildRuntimeArchitectureGraph(input)),
+    createRuntimeImplementationReadinessReview: publicProcedure
+      .input(caeAccess)
+      .mutation(({ input }) => createRuntimeImplementationReadinessReview(input)),
+    listRuntimeImplementationReadinessReviews: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listRuntimeImplementationReadinessReviews(input)),
+    runtimeImplementationReadinessGraph: publicProcedure
+      .input(caeAccess.extend({ reviewId: z.string().trim().min(1).max(160).optional() }))
+      .mutation(({ input }) => buildRuntimeImplementationReadinessGraph(input)),
     createCapacityPolicy: publicProcedure
       .input(caeAccess.extend({ limits: z.array(capacityLimitInput).length(8).optional() }))
       .mutation(({ input }) => createCapacityPolicy(input)),

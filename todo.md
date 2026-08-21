@@ -184,3 +184,9 @@
 - [x] Phase 6.3: Implement fail-closed readiness recalculation, reviewer-revocation behavior, authorized conflict-resolution workflow, immutable audit records, evidence graph links, and capability-safe APIs without solver, mesher, shell, plugin, process, network, filesystem, or credential execution.
 - [x] Phase 6.3: Build a mobile Verification Governance workspace showing review queue, reviewer status, evidence lifecycle, retention, revocation, conflicts, readiness, and unknown-safe gate states.
 - [x] Phase 6.3: Add deterministic separation, self-review, revocation, expiration, retention, conflict, isolation, audit, readiness, no-execution, TypeScript, and full-regression acceptance tests; save a verified checkpoint and stop without Phase 7.
+
+- [x] Phase 6.4: Audit existing CAD, CAE planning, requirements, evidence, trust, identity, sandbox, capacity, external verification, governance, audit, and provenance capabilities without rebuilding them.
+- [x] Phase 6.4: Define evidence-backed genuine blocker classifications; solver and meshing option comparisons; minimum viable CAE; immutable runtime boundary; result trust; essential security; failure model; implementation plan; complexity; and a non-execution final decision.
+- [x] Phase 6.4: Implement immutable project-isolated runtime implementation readiness review, evidence graph/audit records, final decision, and capability-safe read-only APIs without solver, mesher, process, network, filesystem, plugin, shell, or credential execution.
+- [x] Phase 6.4: Build a mobile Runtime Implementation Readiness Review workspace showing inventory, blockers, solver/meshing options, MV-CAE, boundary, trust, security, failures, implementation plan, complexity, sources, and decision.
+- [x] Phase 6.4: Add deterministic review acceptance coverage, run TypeScript and serialized full regression, save a verified checkpoint, report the decision, and stop without Phase 7 or execution implementation.
