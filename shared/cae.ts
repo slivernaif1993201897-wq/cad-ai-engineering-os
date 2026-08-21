@@ -109,8 +109,9 @@ export interface ICAESolverAdapter {
   prepare(plan: CAESimulationPlan): Promise<{ status: "UNAVAILABLE" | "PREPARED"; evidence: string[] }>;
   validate(plan: CAESimulationPlan): Promise<{ status: "INVALID" | "VALID"; findings: string[] }>;
   execute(plan: CAESimulationPlan): Promise<CAEResultEnvelope>;
+  cancel(plan: CAESimulationPlan): Promise<{ status: "CANCELLED" | "UNAVAILABLE"; evidence: string[] }>;
   collectResults(plan: CAESimulationPlan): Promise<CAEResultEnvelope>;
-  verify(plan: CAESimulationPlan, result: CAEResultEnvelope): Promise<{ status: "INVALID" | "VERIFIED"; findings: string[] }>;
+  verifyResults(plan: CAESimulationPlan, result: CAEResultEnvelope): Promise<{ status: "INVALID" | "VERIFIED"; findings: string[] }>;
 }
 
 export interface CAEKnowledgeGap {
@@ -147,7 +148,7 @@ export interface CAEAssumption {
 
 export interface CAEAdversarialFinding {
   id: string;
-  reviewer: "PHYSICS" | "BOUNDARY" | "MATERIAL" | "MESH" | "SOLVER" | "VALIDATION";
+  reviewer: "PHYSICS" | "BOUNDARY" | "MATERIAL" | "MESH" | "SOLVER" | "EXPERIMENTAL" | "VALIDATION";
   question: string;
   finding: string;
   status: "PASS" | "FAIL" | "UNKNOWN";
@@ -164,6 +165,8 @@ export interface CAESelfCritique {
   materialUncertainty: string[];
   meshUncertainty: string[];
   solverLimitations: string[];
+  experimentalMismatch?: string[];
+  uncertaintyWarnings?: string[];
   resultInterpretationRisks: string[];
   correctedSummary: string;
 }
@@ -251,4 +254,169 @@ export interface CAEPlanSummary {
   unknownCount: number;
   blockingGapCount: number;
   createdAt: string;
+}
+
+export const SOLVER_ADAPTER_CONTRACT_VERSION = "1.0.0" as const;
+export const SOLVER_ADAPTER_STATUSES = ["UNAVAILABLE", "AVAILABLE", "READY", "EXECUTING", "COMPLETED", "FAILED", "CANCELLED", "VALIDATION_REQUIRED"] as const;
+export type SolverAdapterStatus = (typeof SOLVER_ADAPTER_STATUSES)[number];
+export const MATERIAL_EVIDENCE_TYPES = ["MATERIAL_DATASHEET", "MANUFACTURER_SPECIFICATION", "TEST_REPORT", "PUBLISHED_RESEARCH", "STANDARDS_DOCUMENTATION", "USER_MEASUREMENT"] as const;
+export type MaterialEvidenceType = (typeof MATERIAL_EVIDENCE_TYPES)[number];
+export const MATERIAL_PROPERTY_STATES = ["VERIFIED_SOURCE", "USER_PROVIDED", "EXPERIMENTALLY_MEASURED", "CALCULATED", "ASSUMED", "UNKNOWN"] as const;
+export type MaterialPropertyState = (typeof MATERIAL_PROPERTY_STATES)[number];
+export const CAE_READINESS_STATES = ["NOT_READY", "MISSING_REQUIREMENTS", "MISSING_MATERIAL", "MISSING_LOADS", "MISSING_BOUNDARIES", "MISSING_MESH", "READY_FOR_REVIEW", "READY_FOR_SOLVER", "READY_FOR_EXPERIMENT", "VALIDATED"] as const;
+export type CAEReadinessState = (typeof CAE_READINESS_STATES)[number];
+
+export interface SolverAdapterContract {
+  contractVersion: typeof SOLVER_ADAPTER_CONTRACT_VERSION;
+  solverId: string;
+  solverVersion: string;
+  displayName: string;
+  status: SolverAdapterStatus;
+  supportedAnalysisTypes: CAEAnalysisType[];
+  supportedElementTypes: Array<NonNullable<CAEMeshStrategy["elementType"]>>;
+  supportedMaterialModels: string[];
+  supportedContacts: CAEContact["type"][];
+  supportedLoads: CAELoad["type"][];
+  supportedMeshTypes: string[];
+  executionEnvironment: "CLOUD_UNCONFIGURED" | "LOCAL_ADAPTER" | "REMOTE_ADAPTER";
+  capabilities: string[];
+  reason: string;
+  executable: boolean;
+}
+
+export interface SolverCapabilityNegotiation {
+  planId: string;
+  adapter: SolverAdapterContract;
+  status: "COMPATIBLE" | "INCOMPATIBLE" | "UNAVAILABLE";
+  supported: string[];
+  unsupported: string[];
+  blockingReasons: string[];
+}
+
+export interface MaterialEvidenceStorage {
+  key: string;
+  url: string;
+}
+
+export interface MaterialEvidence {
+  evidenceId: string;
+  projectId: string;
+  version: number;
+  parentEvidenceId?: string;
+  fileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  sha256: string;
+  type: MaterialEvidenceType;
+  source: string;
+  sourceDate?: string;
+  material: string;
+  property: CAEMaterialProperty["name"];
+  value?: number;
+  unit?: string;
+  condition?: string;
+  provenance: MaterialPropertyState;
+  verificationStatus: "VERIFIED" | "UNVALIDATED" | "CONFLICT" | "UNKNOWN";
+  storage: MaterialEvidenceStorage;
+  createdAt: string;
+}
+
+export interface MaterialPropertyConflict {
+  conflictId: string;
+  material: string;
+  property: CAEMaterialProperty["name"];
+  evidenceIds: string[];
+  values: Array<{ evidenceId: string; value?: number; unit?: string; condition?: string; provenance: MaterialPropertyState }>;
+  status: "CONFLICT" | "NOT_COMPARABLE";
+  reason: string;
+  requiresResolution: true;
+}
+
+export interface ExperimentalValidationPlan {
+  experimentId: string;
+  projectId: string;
+  simulationId: string;
+  sourceCadRevision: string;
+  objective: string;
+  hypothesis: string;
+  testArticle: string;
+  instrumentation: string[];
+  loads: string[];
+  boundaryConditions: string[];
+  measurements: string[];
+  samplingRate?: string;
+  environment?: string;
+  acceptanceCriteria: string[];
+  uncertainties: string[];
+  repeatability: string;
+  safetyRequirements: string[];
+  simulationComparison: string;
+  status: "DRAFT" | "READY_FOR_REVIEW" | "NOT_READY" | "VALIDATED";
+  createdAt: string;
+}
+
+export interface CAEUncertaintyItem {
+  id: string;
+  category: "MATERIAL" | "GEOMETRY" | "LOAD" | "BOUNDARY" | "MEASUREMENT" | "MESH" | "SOLVER" | "EXPERIMENTAL_DATA";
+  statement: string;
+  magnitude?: string;
+  source: "EVIDENCE" | "ASSUMPTION" | "UNKNOWN" | "NOT_EXECUTED";
+  blocking: boolean;
+  evidenceIds: string[];
+}
+
+export interface CAEUncertaintyProfile {
+  simulationId: string;
+  items: CAEUncertaintyItem[];
+  summary: string;
+}
+
+export interface CAEReadinessEvidence {
+  id: string;
+  category: "REQUIREMENTS" | "CAD" | "MATERIAL" | "LOADS" | "BOUNDARIES" | "MESH" | "SOLVER" | "EXPERIMENT" | "VALIDATION";
+  status: "PASS" | "FAIL" | "UNKNOWN";
+  statement: string;
+  evidenceIds: string[];
+  blocking: boolean;
+}
+
+export interface CAEReadinessAssessment {
+  simulationId: string;
+  state: CAEReadinessState;
+  evidence: CAEReadinessEvidence[];
+  reason: string;
+}
+
+export interface CAEContextInvalidation {
+  invalidationId: string;
+  simulationId: string;
+  previousCadRevision: string;
+  observedCadRevision: string;
+  affectedAssumptions: string[];
+  status: "CURRENT" | "STALE";
+  reason: string;
+  createdAt: string;
+}
+
+export interface CAEEvidenceGraphNode {
+  id: string;
+  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "VALIDATION" | "RESULT";
+  label: string;
+  truthStatus: CAETruthStatus | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
+}
+
+export interface CAEEvidenceGraphEdge {
+  id: string;
+  fromId: string;
+  toId: string;
+  relationship: string;
+  status: "DECLARED" | "PROVEN" | "UNKNOWN";
+}
+
+export interface CAEEvidenceGraph {
+  projectId: string;
+  simulationId: string;
+  nodes: CAEEvidenceGraphNode[];
+  edges: CAEEvidenceGraphEdge[];
+  limitations: string[];
 }

@@ -122,3 +122,12 @@
 - [x] Phase 5.0: Build a mobile CAE workspace showing plans, reused viewer context, inspector, assumptions, materials, loads, constraints, contacts, evidence, knowledge gaps, review, critique, readiness, and no-solver status.
 - [x] Phase 5.0: Add deterministic CAE plan, analysis, material, load, boundary, contact, mesh, gap, readiness, truth, traceability, failure, critique, adversarial-review, difficult-mechanical acceptance, TypeScript, and full-regression tests.
 - [x] Phase 5.0: Save a verified checkpoint and report CAE architecture, contracts, reasoning, truth gates, CAD linkage, UI, tests, solver limitations, and Phase 5.0 completion without implementing a solver.
+
+- [x] Phase 5.1: Audit existing CAE plans, CAD provenance, persistent memory, file handling, truth states, APIs, tests, and mobile workspace seams for evidence and adapter extensions.
+- [x] Phase 5.1: Define versioned SolverAdapterContract, solver state, immutable material evidence, experimental validation, uncertainty, readiness, CAD invalidation, and evidence graph contracts.
+- [x] Phase 5.1: Implement project-isolated hash-tracked immutable material evidence, material property provenance/conflict detection, adapter capability negotiation, and stale CAD-context detection.
+- [x] Phase 5.1: Implement experimental validation plans, explicit uncertainty assessment, evidence graphs, strengthened readiness gates, experimental review, and self-critique without numerical-result claims.
+- [x] Phase 5.1: Expose capability-safe project-isolated evidence, experimental-plan, readiness, invalidation, graph, review, critique, and solver-adapter APIs without adding a solver.
+- [x] Phase 5.1: Extend the mobile CAE workspace with Material Evidence, Solver, Experimental Validation, Evidence Graph, uncertainty, readiness, stale-context, and truth-status controls.
+- [x] Phase 5.1: Add deterministic adapter versioning/capability, evidence/provenance/conflict, experiment, uncertainty, readiness, CAD invalidation, graph, review, critique, no-solver, TypeScript, and full-regression tests.
+- [x] Phase 5.1: Save a verified checkpoint and report solver adapters, material evidence, experiments, evidence graph, uncertainty, readiness, invalidation, UI, tests, and limits without starting Phase 6.

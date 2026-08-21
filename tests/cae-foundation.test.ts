@@ -18,7 +18,7 @@ describe("Phase 5.0 CAE Agent foundation", () => {
     expect(plan.unknowns.some((item) => item.kind === "KNOWLEDGE_GAP" && item.missingInformation.includes("No load"))).toBe(true);
     expect(plan.traceability).toEqual(expect.arrayContaining([expect.objectContaining({ fromType: "GEOMETRY", fromId: source.revisionId, toType: "SIMULATION" }), expect.objectContaining({ fromType: "CAD_FEATURE", fromId: "EXTRUDE-CIRCLE-001" }), expect.objectContaining({ fromType: "REQUIREMENT", fromId: "REQ-CRASH-INVESTIGATION" })]));
     const reviewed = await caller.cae.reviewPlan({ projectId: project.id, accessKey: project.accessKey, simulationId: plan.simulationId });
-    expect(reviewed.adversarialReview.map((item) => item.reviewer)).toEqual(["PHYSICS", "BOUNDARY", "MATERIAL", "MESH", "SOLVER", "VALIDATION"]);
+    expect(reviewed.adversarialReview.map((item) => item.reviewer)).toEqual(["PHYSICS", "BOUNDARY", "MATERIAL", "MESH", "SOLVER", "EXPERIMENTAL", "VALIDATION"]);
     expect(reviewed.adversarialReview.find((item) => item.reviewer === "SOLVER")).toMatchObject({ status: "FAIL", blocking: true });
     expect(reviewed.selfCritique.resultInterpretationRisks.join(" ")).toContain("No numerical output exists");
     const execution = await caller.cae.requestExecution({ projectId: project.id, accessKey: project.accessKey, simulationId: plan.simulationId });
