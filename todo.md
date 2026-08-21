@@ -172,3 +172,9 @@
 - [x] Phase 6.1: Implement project-isolated immutable readiness records, audit and graph links, capability-safe APIs, and fail-closed evaluation without solver, mesher, shell, plugin, network, process, credential, or arbitrary-filesystem execution.
 - [x] Phase 6.1: Build a mobile Runtime Readiness dashboard that exposes capacity, sandbox, attestation, threat coverage, tests, unknowns, decision, and missing-evidence states.
 - [x] Phase 6.1: Add deterministic acceptance tests, run TypeScript and full regression, save a verified checkpoint, report readiness, and stop without Phase 7 or runtime implementation.
+
+- [x] Phase 6.2: Define versioned external infrastructure-evidence, independent sandbox-review, isolated hostile-test environment, test-evidence provenance, lifecycle, contradiction, gate, and readiness contracts without fabricating verification.
+- [x] Phase 6.2: Implement immutable project-isolated external-evidence imports with original hashes, source provenance, verification states, expiration, revocation, supersession, and independent review records.
+- [x] Phase 6.2: Implement fail-closed actual-evidence readiness evaluation, isolated hostile-test environment checks, individual external-evidence gates, audit and graph links, and capability-safe APIs without execution paths.
+- [x] Phase 6.2: Build an External Verification mobile workspace showing infrastructure evidence, sandbox review, hostile-test evidence, provenance, expiration, open gaps, gate states, and readiness.
+- [x] Phase 6.2: Add deterministic evidence, lifecycle, expiration, restore, contradiction, isolation, readiness, no-execution, TypeScript, and full-regression acceptance tests; save a verified checkpoint and stop without Phase 7.

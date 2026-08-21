@@ -13,6 +13,7 @@ import { SolverTrustPanel } from "@/components/solver-trust-panel";
 import { TrustReadinessPanel } from "@/components/trust-readiness-panel";
 import { RuntimeArchitectureReviewPanel } from "@/components/runtime-architecture-review-panel";
 import { RuntimeReadinessPanel } from "@/components/runtime-readiness-panel";
+import { ExternalVerificationPanel } from "@/components/external-verification-panel";
 
 function color(status?: string) { if (["COMPLETED", "READY_FOR_SOLVER", "PASS", "INPUT_VERIFIED"].includes(status ?? "")) return "#62B39A"; if (["NOT_READY", "FAILED", "FAIL", "SOLVER_UNAVAILABLE"].includes(status ?? "")) return "#E78966"; return "#8EC4E8"; }
 function Badge({ label }: { label: string }) { const tint = color(label); return <View style={[styles.badge, { borderColor: tint, backgroundColor: `${tint}18` }]}><Text style={[styles.badgeText, { color: tint }]}>{label}</Text></View>; }
@@ -52,6 +53,7 @@ export function CAEWorkspace({ sourceCadRevision, model, selectedGeometry, featu
       <RuntimeArchitectureReviewPanel />
       <RuntimeReadinessPanel />
     </> : null}
+    <ExternalVerificationPanel />
     <Text style={styles.notice}>{notice}</Text>
   </View>;
 }
