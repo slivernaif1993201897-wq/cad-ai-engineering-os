@@ -357,4 +357,7 @@
 - [ ] Push the verified continuation checkpoint and observe one existing bounded fixed-benchmark GitHub Actions execution without promoting the hosted runner to an approved production sandbox.
 - [x] Verify GitHub execution authorization, inspect the bounded benchmark path, and implement or dispatch only a least-privilege workflow supported by actual repository permissions and runner evidence.
 - [x] Push the verified continuation checkpoint and observe one existing bounded fixed-benchmark GitHub Actions execution without promoting the hosted runner to an approved production sandbox.
+- [ ] Freeze fixed-benchmark evidence and implement a fail-closed immutable user-job manifest, admission contract, integrity checks, and bounded GitHub workflow path while recording GitHub-hosted sandbox insufficiency.
+- [ ] Implement immutable controlled user-job manifest validation with unknown-field, hash, authorization, solver, and path/command rejection tests.
+- [ ] Add a no-input GitHub workflow that validates only a checked-in manifest fixture and emits a blocked hosted-runner receipt without running a generic user solver job.
 - [ ] Latest shared-evidence retrieval: classify the newly supplied Manus file against the canonical repository without treating inaccessible content as verified evidence.

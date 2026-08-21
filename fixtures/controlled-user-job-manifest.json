@@ -1,0 +1,60 @@
+{
+  "manifestVersion": "1.0.0",
+  "jobId": "USER-JOB-ADMISSION-FIXTURE-001",
+  "projectId": "CAD-AI-PROJECT-FIXTURE",
+  "cadRevision": "CAD-REV-001",
+  "cadHash": "e0d9e6cdaf191597282cf0562099cb06c590e2837b5b15cd85120f488eeb0d4f",
+  "caePlanRevision": "CAE-PLAN-REV-001",
+  "caePlanHash": "1111111111111111111111111111111111111111111111111111111111111111",
+  "materialRevision": "MATERIAL-REV-001",
+  "materialHash": "2222222222222222222222222222222222222222222222222222222222222222",
+  "loadRevision": "LOAD-REV-001",
+  "loadHash": "3333333333333333333333333333333333333333333333333333333333333333",
+  "boundaryConditionRevision": "BOUNDARY-REV-001",
+  "boundaryConditionHash": "4444444444444444444444444444444444444444444444444444444444444444",
+  "meshConfiguration": {
+    "configurationId": "GMSH-FIXED-4.12.1",
+    "configurationHash": "5555555555555555555555555555555555555555555555555555555555555555",
+    "solverId": "GMSH",
+    "solverVersion": "4.12.1"
+  },
+  "solverConfiguration": {
+    "configurationId": "CALCULIX-FIXED-2.21",
+    "configurationHash": "6666666666666666666666666666666666666666666666666666666666666666",
+    "solverId": "CALCULIX",
+    "solverVersion": "2.21"
+  },
+  "environment": {
+    "environmentId": "GITHUB-HOSTED-CI",
+    "environmentHash": "7777777777777777777777777777777777777777777777777777777777777777",
+    "approvalEvidenceHash": "8888888888888888888888888888888888888888888888888888888888888888",
+    "executionClass": "GITHUB_HOSTED_CI"
+  },
+  "resourcePolicy": {
+    "policyId": "GITHUB-CI-BOUNDED-POLICY-V1",
+    "policyHash": "9999999999999999999999999999999999999999999999999999999999999999",
+    "limits": {
+      "cpuMilliCores": 2000,
+      "memoryMiB": 8192,
+      "storageMiB": 71680,
+      "processCount": 64,
+      "runtimeSeconds": 900,
+      "inputBytes": 10485760,
+      "outputBytes": 104857600,
+      "artifactBytes": 104857600
+    }
+  },
+  "expectedArtifacts": ["ADMISSION_RECEIPT", "EXECUTION_LOG", "PROVENANCE_BUNDLE"],
+  "validationPolicy": {
+    "policyId": "STATIC-STRUCTURAL-VALIDATION-V1",
+    "policyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "authorization": {
+    "authorizationId": "PROJECT-AUTHORIZATION-FIXTURE-001",
+    "authorizationEvidenceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "validFrom": "2026-01-01T00:00:00.000Z",
+    "validUntil": "2027-01-01T00:00:00.000Z",
+    "status": "AUTHORIZED"
+  },
+  "manifestHash": "3a614d828b8c350a60ec974ddc5ef2b80eb05b91581989439175a6e69fad69c3"
+}

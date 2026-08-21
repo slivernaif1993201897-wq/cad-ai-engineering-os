@@ -1,0 +1,62 @@
+name: Controlled CAD-AI User-Job Admission
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/controlled-user-job-admission.yml"
+      - "fixtures/controlled-user-job-manifest.json"
+      - "shared/controlledUserJob.ts"
+      - "scripts/ci/validate-controlled-user-job-manifest.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: controlled-user-job-admission-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-admission:
+    name: Validate immutable user-job admission only
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout immutable repository revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install locked JavaScript dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+      - name: Validate checked-in immutable manifest without solver execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts/controlled-user-job-admission
+          (
+            ulimit -t 60
+            ulimit -f 204800
+            ulimit -u 32
+            timeout --signal=TERM 60s pnpm exec tsx scripts/ci/validate-controlled-user-job-manifest.ts
+          ) 2>&1 | tee artifacts/controlled-user-job-admission/admission-validation.log
+          sha256sum fixtures/controlled-user-job-manifest.json artifacts/controlled-user-job-admission/admission-receipt.json artifacts/controlled-user-job-admission/admission-validation.log > artifacts/controlled-user-job-admission/admission-artifacts.sha256
+      - name: Assert no generic solver job was launched
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node -e "const r=require('./artifacts/controlled-user-job-admission/admission-receipt.json'); process.stdout.write(r.state)")" = "BLOCKED"
+          test "$(node -e "const r=require('./artifacts/controlled-user-job-admission/admission-receipt.json'); process.stdout.write(String(r.executionStarted))")" = "false"
+          test "$(node -e "const r=require('./artifacts/controlled-user-job-admission/admission-receipt.json'); process.stdout.write(String(r.genericSolverExecutionStarted))")" = "false"
+      - name: Upload blocked admission evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: controlled-user-job-admission-${{ github.run_id }}
+          path: artifacts/controlled-user-job-admission/
+          if-no-files-found: error
+          retention-days: 14
