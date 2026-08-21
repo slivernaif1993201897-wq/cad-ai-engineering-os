@@ -407,7 +407,7 @@ export interface CAEContextInvalidation {
 
 export interface CAEEvidenceGraphNode {
   id: string;
-  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "RUNTIME_ARCHITECTURE" | "RUNTIME_BOUNDARY" | "RUNTIME_THREAT" | "RUNTIME_PERMISSION" | "RUNTIME_LIMIT" | "RUNTIME_RESULT_CONTRACT" | "RUNTIME_APPROVAL_GATE" | "RUNTIME_TEST_PLAN" | "RUNTIME_DECISION" | "CAPACITY_POLICY" | "CAPACITY_VALIDATION" | "SANDBOX_DESIGN" | "INDEPENDENT_ATTESTATION" | "ATTACK_SIMULATION" | "SECURITY_INVARIANT" | "RUNTIME_ASSURANCE" | "RUNTIME_READINESS" | "EXTERNAL_INFRASTRUCTURE_EVIDENCE" | "EXTERNAL_SANDBOX_REVIEW" | "HOSTILE_TEST_ENVIRONMENT" | "EXTERNAL_HOSTILE_TEST_EVIDENCE" | "EXTERNAL_EVIDENCE_LIFECYCLE" | "EXTERNAL_VERIFICATION_GATE" | "EXTERNAL_VERIFICATION_READINESS" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
+  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "RUNTIME_ARCHITECTURE" | "RUNTIME_BOUNDARY" | "RUNTIME_THREAT" | "RUNTIME_PERMISSION" | "RUNTIME_LIMIT" | "RUNTIME_RESULT_CONTRACT" | "RUNTIME_APPROVAL_GATE" | "RUNTIME_TEST_PLAN" | "RUNTIME_DECISION" | "CAPACITY_POLICY" | "CAPACITY_VALIDATION" | "SANDBOX_DESIGN" | "INDEPENDENT_ATTESTATION" | "ATTACK_SIMULATION" | "SECURITY_INVARIANT" | "RUNTIME_ASSURANCE" | "RUNTIME_READINESS" | "EXTERNAL_INFRASTRUCTURE_EVIDENCE" | "EXTERNAL_SANDBOX_REVIEW" | "HOSTILE_TEST_ENVIRONMENT" | "EXTERNAL_HOSTILE_TEST_EVIDENCE" | "EXTERNAL_EVIDENCE_LIFECYCLE" | "EXTERNAL_VERIFICATION_GATE" | "EXTERNAL_VERIFICATION_READINESS" | "VERIFICATION_REVIEW" | "REVIEWER_SEPARATION_POLICY" | "EVIDENCE_RETENTION_POLICY" | "REVIEWER_REVOCATION_POLICY" | "GOVERNANCE_LIFECYCLE" | "VERIFICATION_CONFLICT" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
   label: string;
   truthStatus: CAETruthStatus | "DERIVED" | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
 }
@@ -737,8 +737,8 @@ export interface SecurityAuditEvent {
   eventId: string;
   projectId: string;
   actor: string;
-  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE_REVIEW" | "RUNTIME_READINESS_REVIEW" | "CAPACITY_POLICY_VALIDATION" | "INDEPENDENT_ATTESTATION_EVIDENCE" | "EXTERNAL_EVIDENCE_IMPORT" | "EXTERNAL_EVIDENCE_LIFECYCLE" | "EXTERNAL_VERIFICATION_READINESS";
-  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE" | "RUNTIME_READINESS" | "CAPACITY_POLICY" | "INDEPENDENT_ATTESTATION" | "EXTERNAL_EVIDENCE" | "SANDBOX_REVIEW" | "HOSTILE_TEST_ENVIRONMENT" | "HOSTILE_TEST_EVIDENCE" | "EXTERNAL_VERIFICATION_READINESS";
+  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE_REVIEW" | "RUNTIME_READINESS_REVIEW" | "CAPACITY_POLICY_VALIDATION" | "INDEPENDENT_ATTESTATION_EVIDENCE" | "EXTERNAL_EVIDENCE_IMPORT" | "EXTERNAL_EVIDENCE_LIFECYCLE" | "EXTERNAL_VERIFICATION_READINESS" | "GOVERNANCE_POLICY" | "VERIFICATION_REVIEW" | "VERIFICATION_CONFLICT";
+  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE" | "RUNTIME_READINESS" | "CAPACITY_POLICY" | "INDEPENDENT_ATTESTATION" | "EXTERNAL_EVIDENCE" | "SANDBOX_REVIEW" | "HOSTILE_TEST_ENVIRONMENT" | "HOSTILE_TEST_EVIDENCE" | "EXTERNAL_VERIFICATION_READINESS" | "VERIFICATION_REVIEW" | "RETENTION_POLICY" | "REVOCATION_POLICY" | "VERIFICATION_CONFLICT";
   objectId: string;
   timestamp: string;
   previousState?: string;
@@ -1192,6 +1192,103 @@ export interface ExternalVerificationReadiness {
   gates: ExternalVerificationGate[];
   openGaps: string[];
   contradictions: string[];
+  readiness: "NOT_READY" | "PARTIALLY_READY" | "READY_FOR_EXTERNAL_REVIEW";
+  executionApproval: "DISABLED";
+  executionEligible: false;
+  executable: false;
+  reason: string;
+  createdAt: string;
+}
+export const VERIFICATION_GOVERNANCE_CONTRACT_VERSION = "1.0.0" as const;
+export type GovernedEvidenceType = "INFRASTRUCTURE" | "SANDBOX_REVIEW" | "HOSTILE_TEST" | "HOSTILE_TEST_ENVIRONMENT";
+export interface ReviewerSeparationPolicy {
+  policyId: string;
+  projectId: string;
+  version: typeof VERIFICATION_GOVERNANCE_CONTRACT_VERSION;
+  allowSelfReview: false;
+  policyStatement: string;
+  createdAt: string;
+}
+export interface EvidenceRetentionPolicy {
+  retentionPolicyId: string;
+  projectId: string;
+  version: typeof VERIFICATION_GOVERNANCE_CONTRACT_VERSION;
+  evidenceClass: "EXTERNAL_INFRASTRUCTURE" | "SANDBOX_REVIEW" | "HOSTILE_TEST" | "VERIFICATION_REVIEW" | "AUDIT";
+  retentionPeriod: string;
+  archiveStatus: "ACTIVE" | "ARCHIVED" | "LEGAL_HOLD" | "UNKNOWN";
+  deletionPolicy: "NO_SILENT_DELETION" | "AUTHORIZED_RETENTION_EVENT_REQUIRED";
+  legalHold: boolean;
+  expirationBehavior: "HISTORICAL_NOT_GATE_VALID";
+  createdAt: string;
+}
+export interface ReviewerRevocationPolicy {
+  policyId: string;
+  projectId: string;
+  version: typeof VERIFICATION_GOVERNANCE_CONTRACT_VERSION;
+  reviewerStatusStates: Array<"ACTIVE" | "SUSPENDED" | "REVOKED">;
+  previouslyApprovedEvidence: "REQUIRES_REVIEW" | "REMAINS_VALID";
+  policyStatement: string;
+  createdAt: string;
+}
+export interface VerificationReview {
+  reviewId: string;
+  projectId: string;
+  evidenceType: GovernedEvidenceType;
+  evidenceReference: string;
+  submitterIdentity: string;
+  reviewerIdentity?: string;
+  reviewScope: string;
+  decision: "PENDING" | "ACCEPT" | "REJECT" | "EXPIRE" | "REVOKE";
+  reason: string;
+  status: "SUBMITTED" | "UNDER_REVIEW" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "REVOKED";
+  separationPolicyId: string;
+  timestamp: string;
+  revision: number;
+  createdAt: string;
+}
+export interface TestEnvironmentEvidenceImport {
+  importId: string;
+  projectId: string;
+  environmentId: string;
+  testRunId: string;
+  testVersion: string;
+  evidenceHash: string;
+  source: string;
+  timestamp: string;
+  reviewer?: string;
+  status: "SUBMITTED" | "ACCEPTED" | "REJECTED" | "UNKNOWN";
+  createdAt: string;
+}
+export interface VerificationGovernanceLifecycleEvent {
+  eventId: string;
+  projectId: string;
+  reviewId: string;
+  previousState?: VerificationReview["status"];
+  newState: VerificationReview["status"];
+  who: string;
+  why: string;
+  evidenceReference: string;
+  reviewerIdentity?: string;
+  policyVersion: typeof VERIFICATION_GOVERNANCE_CONTRACT_VERSION;
+  timestamp: string;
+}
+export interface VerificationConflict {
+  conflictId: string;
+  projectId: string;
+  evidenceType: GovernedEvidenceType;
+  evidenceReference: string;
+  reviewIds: string[];
+  status: "VERIFICATION_CONFLICT" | "RESOLVED";
+  resolutionReviewId?: string;
+  reason: string;
+  createdAt: string;
+}
+export interface VerificationGovernanceReadiness {
+  readinessId: string;
+  projectId: string;
+  version: typeof VERIFICATION_GOVERNANCE_CONTRACT_VERSION;
+  baseReadiness: ExternalVerificationReadiness["readiness"];
+  gates: Array<{ gate: "INDEPENDENT_REVIEW" | "REVIEWER_SEPARATION" | "REVIEWER_REVOCATION" | "RETENTION" | "VERIFICATION_CONFLICT"; status: "PASS" | "FAIL" | "UNKNOWN"; statement: string; evidenceIds: string[] }>;
   readiness: "NOT_READY" | "PARTIALLY_READY" | "READY_FOR_EXTERNAL_REVIEW";
   executionApproval: "DISABLED";
   executionEligible: false;

@@ -29,6 +29,7 @@ import { buildExecutionTrustGraph, evaluateExecutionTrustReadiness, ingestCertif
 import { buildRuntimeArchitectureGraph, createRuntimeArchitectureReview, listRuntimeArchitectureReviews } from "./runtimeArchitectureReview";
 import { buildRuntimeReadinessGraph, createCapacityPolicy, createRuntimeReadinessReview, listCapacityPolicies, listIndependentSandboxAttestations, listRuntimeReadinessReviews, registerIndependentSandboxAttestation, validateCapacityPolicy } from "./runtimeReadiness";
 import { buildExternalVerificationGraph, evaluateExternalVerificationReadiness, importHostileTestEvidence, importInfrastructureEvidence, importSandboxReview, listExternalVerificationReadiness, listHostileTestEnvironments, listHostileTestEvidence, listInfrastructureEvidence, listSandboxReviews, recordExternalEvidenceLifecycle, registerHostileTestEnvironment, verifyExternalEvidence } from "./externalVerification";
+import { assignVerificationReview, decideVerificationReview, ensureGovernancePolicies, evaluateVerificationGovernanceReadiness, importTestEnvironmentEvidenceReference, listGovernanceLifecycle, listGovernancePolicies, listTestEnvironmentEvidenceReferences, listVerificationConflicts, listVerificationGovernanceReadiness, listVerificationReviews, resolveVerificationConflict, revokeGovernanceReviewer, submitVerificationReview, transitionVerificationReview } from "./verificationGovernance";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -337,6 +338,51 @@ export const appRouter = router({
     externalVerificationGraph: publicProcedure
       .input(caeAccess.extend({ readinessId: z.string().trim().min(1).max(160).optional() }))
       .mutation(({ input }) => buildExternalVerificationGraph(input)),
+    ensureGovernancePolicies: publicProcedure
+      .input(caeAccess)
+      .mutation(({ input }) => ensureGovernancePolicies(input)),
+    listGovernancePolicies: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listGovernancePolicies(input)),
+    submitVerificationReview: publicProcedure
+      .input(caeAccess.extend({ evidenceType: z.enum(["INFRASTRUCTURE", "SANDBOX_REVIEW", "HOSTILE_TEST", "HOSTILE_TEST_ENVIRONMENT"]), evidenceReference: z.string().trim().min(1).max(160), submitterIdentity: z.string().trim().min(1).max(320), reviewScope: z.string().trim().min(1).max(2000), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => submitVerificationReview(input)),
+    assignVerificationReview: publicProcedure
+      .input(caeAccess.extend({ reviewId: z.string().trim().min(1).max(160), reviewerId: z.string().trim().min(1).max(160), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => assignVerificationReview(input)),
+    decideVerificationReview: publicProcedure
+      .input(caeAccess.extend({ reviewId: z.string().trim().min(1).max(160), reviewerId: z.string().trim().min(1).max(160), decision: z.enum(["ACCEPT", "REJECT"]), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => decideVerificationReview(input)),
+    transitionVerificationReview: publicProcedure
+      .input(caeAccess.extend({ reviewId: z.string().trim().min(1).max(160), reviewerId: z.string().trim().min(1).max(160), transition: z.enum(["EXPIRE", "REVOKE"]), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => transitionVerificationReview(input)),
+    listVerificationReviews: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listVerificationReviews(input)),
+    resolveVerificationConflict: publicProcedure
+      .input(caeAccess.extend({ conflictId: z.string().trim().min(1).max(160), reviewerId: z.string().trim().min(1).max(160), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => resolveVerificationConflict(input)),
+    listVerificationConflicts: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listVerificationConflicts(input)),
+    revokeGovernanceReviewer: publicProcedure
+      .input(caeAccess.extend({ reviewerId: z.string().trim().min(1).max(160), actor: z.string().trim().min(1).max(320), reason: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => revokeGovernanceReviewer(input)),
+    importTestEnvironmentEvidenceReference: publicProcedure
+      .input(caeAccess.extend({ environmentId: z.string().trim().min(1).max(160), testRunId: z.string().trim().min(1).max(160), testVersion: z.string().trim().min(1).max(160), evidenceHash: z.string().regex(/^[a-f0-9]{64}$/i), source: z.string().trim().min(1).max(1000), timestamp: z.string().trim().min(1).max(64), reviewer: z.string().trim().min(1).max(320).optional() }))
+      .mutation(({ input }) => importTestEnvironmentEvidenceReference(input)),
+    listTestEnvironmentEvidenceReferences: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listTestEnvironmentEvidenceReferences(input)),
+    listGovernanceLifecycle: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listGovernanceLifecycle(input)),
+    evaluateVerificationGovernanceReadiness: publicProcedure
+      .input(caeAccess)
+      .mutation(({ input }) => evaluateVerificationGovernanceReadiness(input)),
+    listVerificationGovernanceReadiness: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listVerificationGovernanceReadiness(input)),
   }),
 
   intelligence: router({

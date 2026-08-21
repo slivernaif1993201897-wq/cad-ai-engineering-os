@@ -178,3 +178,9 @@
 - [x] Phase 6.2: Implement fail-closed actual-evidence readiness evaluation, isolated hostile-test environment checks, individual external-evidence gates, audit and graph links, and capability-safe APIs without execution paths.
 - [x] Phase 6.2: Build an External Verification mobile workspace showing infrastructure evidence, sandbox review, hostile-test evidence, provenance, expiration, open gaps, gate states, and readiness.
 - [x] Phase 6.2: Add deterministic evidence, lifecycle, expiration, restore, contradiction, isolation, readiness, no-execution, TypeScript, and full-regression acceptance tests; save a verified checkpoint and stop without Phase 7.
+
+- [x] Phase 6.3: Define versioned independent review, reviewer-separation policy, segregated test-environment evidence import, retention, reviewer-revocation, immutable lifecycle, conflict, audit, and readiness contracts without execution capability.
+- [x] Phase 6.3: Implement immutable project-isolated review workflow records, explicit self-review prevention, no-anonymous verification, review revisioning, retention and revocation policies, lifecycle events, conflicts, and segregated test-environment evidence references.
+- [x] Phase 6.3: Implement fail-closed readiness recalculation, reviewer-revocation behavior, authorized conflict-resolution workflow, immutable audit records, evidence graph links, and capability-safe APIs without solver, mesher, shell, plugin, process, network, filesystem, or credential execution.
+- [x] Phase 6.3: Build a mobile Verification Governance workspace showing review queue, reviewer status, evidence lifecycle, retention, revocation, conflicts, readiness, and unknown-safe gate states.
+- [x] Phase 6.3: Add deterministic separation, self-review, revocation, expiration, retention, conflict, isolation, audit, readiness, no-execution, TypeScript, and full-regression acceptance tests; save a verified checkpoint and stop without Phase 7.
