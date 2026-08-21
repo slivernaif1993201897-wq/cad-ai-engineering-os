@@ -34,6 +34,7 @@ import { buildCAEPlanIntegrationGraph, captureValidatedCAEPlanSnapshot, convertC
 import { assessSolverInputPackageStaleness, buildSolverInputPackageGraph, createMeshQualityVerification, createSolverInputPackageManifest, listMeshQualityVerifications, listSolverInputPackages } from "./solverInputPackage";
 import { assessSolverConfigurationStaleness, buildSolverConfigurationGovernanceGraph, createSolverInputPackageDiff, listMeshQualityReviewerReassignments, listMeshQualityVerificationLifecycle, listSolverConfigurationRegistry, reassignMeshQualityVerification, registerSolverConfigurationSchema, transitionMeshQualityVerificationLifecycle, validateSolverConfiguration } from "./solverConfigurationGovernance";
 import { assessEvidenceIntegrityTraceability, authorizeReviewerForEvidence, listCADRevisionBindings, listReviewerAuthorizations, registerCADRevisionBinding } from "./evidenceIntegrity";
+import { assessSecurityEvidenceTraceability, createSandboxAttestationRubric, listArtifactSBOMReviews, listHostileTestEvidenceRecords, listSandboxAttestationRubrics, listSandboxSecurityAttestations, listSecurityEvidenceConflicts, listSecurityEvidenceLifecycle, recordArtifactSBOMReview, recordHostileTestEvidence, recordSandboxSecurityAttestation } from "./securityEvidenceFoundation";
 import { buildExternalVerificationGraph, evaluateExternalVerificationReadiness, importHostileTestEvidence, importInfrastructureEvidence, importSandboxReview, listExternalVerificationReadiness, listHostileTestEnvironments, listHostileTestEvidence, listInfrastructureEvidence, listSandboxReviews, recordExternalEvidenceLifecycle, registerHostileTestEnvironment, verifyExternalEvidence } from "./externalVerification";
 import { assignVerificationReview, decideVerificationReview, ensureGovernancePolicies, evaluateVerificationGovernanceReadiness, importTestEnvironmentEvidenceReference, listGovernanceLifecycle, listGovernancePolicies, listTestEnvironmentEvidenceReferences, listVerificationConflicts, listVerificationGovernanceReadiness, listVerificationReviews, resolveVerificationConflict, revokeGovernanceReviewer, submitVerificationReview, transitionVerificationReview } from "./verificationGovernance";
 
@@ -77,6 +78,11 @@ const cadBindingInput = z.object({ cadProjectId: boundedReference, cadRevision: 
 const reviewerAuthorizationInput = z.object({ reviewerId: boundedReference, organization: z.string().trim().min(1).max(320), role: z.string().trim().min(1).max(320), authorizationScope: z.array(reviewerPermission).min(1).max(4), authorizationSource: z.string().trim().min(1).max(1000), authorizationHash: sha256, issuedBy: z.string().trim().min(1).max(320), validFrom: z.string().trim().min(1).max(64), validUntil: z.string().trim().min(1).max(64), independenceStatement: z.string().trim().min(1).max(2000) });
 const solverConfigurationParameterInput = z.object({ name: boundedReference, type: z.enum(["NUMBER", "INTEGER", "BOOLEAN", "ENUM", "STRING"]), required: z.boolean(), allowedValues: z.array(z.union([z.string().trim().min(1).max(160), z.number().finite(), z.boolean()])).max(64).optional(), unit: z.string().trim().min(1).max(64).optional(), defaultValue: z.union([z.string().trim().min(1).max(160), z.number().finite(), z.boolean()]).optional(), minimum: z.number().finite().optional(), maximum: z.number().finite().optional(), constraints: z.array(z.string().trim().min(1).max(1000)).max(32), incompatibleWith: z.array(boundedReference).max(32) });
 const solverConfigurationRegistryInput = z.object({ solverName: boundedReference, solverVersion: boundedReference, analysisType: z.literal("STATIC_STRUCTURAL"), configurationSchemaVersion: boundedReference, supportedParameters: z.array(solverConfigurationParameterInput).max(64), provenance: z.array(z.string().trim().min(1).max(1000)).min(1).max(32), evidenceHashes: z.array(sha256).min(1).max(32), status: z.enum(["DRAFT", "REVIEWED", "DEPRECATED", "REVOKED", "UNKNOWN"]) });
+const securityControlInput = z.object({ controlId: z.enum(["PROCESS_ISOLATION", "FILESYSTEM_ISOLATION", "NETWORK_ISOLATION", "RESOURCE_LIMITS", "CPU_LIMITS", "MEMORY_LIMITS", "EXECUTION_TIMEOUT", "STORAGE_LIMITS", "PRIVILEGE_BOUNDARIES", "SECRET_ISOLATION", "DEPENDENCY_ISOLATION", "EGRESS_CONTROL", "FAILURE_CONTAINMENT", "AUDITABILITY", "REPRODUCIBILITY"]), state: z.enum(["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"]), evidenceIds: z.array(boundedReference).max(64), rationale: z.string().trim().min(1).max(2000) });
+const sandboxSecurityAttestationInput = z.object({ rubricId: boundedReference, attestationSubject: z.string().trim().min(1).max(320), attestationScope: z.string().trim().min(1).max(2000), attestorIdentity: boundedReference, attestorAuthorizationId: boundedReference, independence: z.enum(["INDEPENDENT", "SELF_ATTESTATION", "CONFLICT", "UNKNOWN"]), evidenceSource: z.string().trim().min(1).max(1000), evidenceHash: sha256, issuedAt: z.string().trim().min(1).max(64), validFrom: z.string().trim().min(1).max(64), validUntil: z.string().trim().min(1).max(64), controlAssessments: z.array(securityControlInput).length(15), selfAttestationReviewRequired: z.boolean() });
+const artifactDependencyInput = z.object({ name: z.string().trim().min(1).max(320), version: z.string().trim().min(1).max(160), sha256: sha256.optional(), source: z.string().trim().min(1).max(1000), knownVulnerabilityState: z.enum(["NONE_DECLARED", "KNOWN", "UNKNOWN", "CONFLICT"]), evidenceHash: sha256.optional() });
+const artifactSBOMReviewInput = z.object({ artifactIdentity: boundedReference, artifactVersion: boundedReference, artifactHash: sha256, signature: z.string().trim().min(1).max(20_000).optional(), signatureHash: sha256.optional(), publisher: z.string().trim().min(1).max(320), source: z.string().trim().min(1).max(1000), license: z.string().trim().min(1).max(1000), dependencies: z.array(artifactDependencyInput).min(1).max(128), sbomReference: boundedReference, sbomHash: sha256, knownVulnerabilities: z.array(z.string().trim().min(1).max(1000)).max(128), buildProvenance: z.array(z.string().trim().min(1).max(1000)).min(1).max(64), reproducibilityEvidence: z.array(z.string().trim().min(1).max(1000)).min(1).max(64), reviewerId: boundedReference.optional(), reviewerAuthorizationId: boundedReference.optional(), reviewIssuedAt: z.string().trim().min(1).max(64), reviewValidFrom: z.string().trim().min(1).max(64), reviewValidUntil: z.string().trim().min(1).max(64), reviewStatus: z.enum(["UNKNOWN", "UNDER_REVIEW", "APPROVED", "REJECTED", "REVOKED", "EXPIRED"]), revocationState: z.enum(["CURRENT", "EXPIRED", "REVOKED", "UNKNOWN", "CONFLICT"]).optional(), findings: z.array(z.string().trim().min(1).max(2000)).max(64) });
+const hostileTestEvidenceInput = z.object({ testId: boundedReference, testCategory: z.enum(["RESOURCE_EXHAUSTION", "MEMORY_EXHAUSTION", "TIMEOUT", "FILESYSTEM_ESCAPE", "NETWORK_ESCAPE", "PRIVILEGE_ESCALATION", "MALFORMED_INPUT", "CORRUPTED_ARTIFACT", "DEPENDENCY_COMPROMISE", "OUTPUT_TAMPERING", "RESULT_SPOOFING", "SANDBOX_BOUNDARY_VIOLATION"]), testObjective: z.string().trim().min(1).max(2000), environmentIdentity: boundedReference, testInputHash: sha256, expectedBehavior: z.string().trim().min(1).max(4000), observedBehavior: z.string().trim().min(1).max(4000), result: z.enum(["PASS", "FAIL", "UNKNOWN", "INCONCLUSIVE"]), rawEvidenceHash: sha256, timestamp: z.string().trim().min(1).max(64), reviewerId: boundedReference, reviewerAuthorizationId: boundedReference, limitations: z.array(z.string().trim().min(1).max(2000)).max(64), reproducibilityInformation: z.array(z.string().trim().min(1).max(2000)).min(1).max(64) });
 
 export const appRouter = router({
   system: systemRouter,
@@ -539,6 +545,39 @@ export const appRouter = router({
     assessEvidenceIntegrityTraceability: publicProcedure
       .input(caeAccess.extend({ jobId: boundedReference, packageId: boundedReference, configurationId: boundedReference, reviewerAuthorizationId: boundedReference.optional() }))
       .mutation(({ input }) => assessEvidenceIntegrityTraceability(input)),
+    createSandboxAttestationRubric: publicProcedure
+      .input(caeAccess.extend({ attestationSubject: z.string().trim().min(1).max(320), attestationScope: z.string().trim().min(1).max(2000) }))
+      .mutation(({ input }) => createSandboxAttestationRubric(input)),
+    listSandboxAttestationRubrics: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listSandboxAttestationRubrics(input)),
+    recordSandboxSecurityAttestation: publicProcedure
+      .input(caeAccess.extend(sandboxSecurityAttestationInput.shape))
+      .mutation(({ input }) => recordSandboxSecurityAttestation(input)),
+    listSandboxSecurityAttestations: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listSandboxSecurityAttestations(input)),
+    recordArtifactSBOMReview: publicProcedure
+      .input(caeAccess.extend(artifactSBOMReviewInput.shape))
+      .mutation(({ input }) => recordArtifactSBOMReview(input)),
+    listArtifactSBOMReviews: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listArtifactSBOMReviews(input)),
+    recordSecurityHostileTestEvidence: publicProcedure
+      .input(caeAccess.extend(hostileTestEvidenceInput.shape))
+      .mutation(({ input }) => recordHostileTestEvidence(input)),
+    listSecurityHostileTestEvidence: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listHostileTestEvidenceRecords(input)),
+    listSecurityEvidenceLifecycle: publicProcedure
+      .input(caeAccess.extend({ subjectId: boundedReference.optional() }))
+      .query(({ input }) => listSecurityEvidenceLifecycle(input)),
+    listSecurityEvidenceConflicts: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listSecurityEvidenceConflicts(input)),
+    assessSecurityEvidenceTraceability: publicProcedure
+      .input(caeAccess.extend({ runtimeArchitectureReviewId: boundedReference, rubricId: boundedReference.optional(), attestationEvidenceId: boundedReference.optional(), artifactReviewId: boundedReference.optional(), hostileTestEvidenceId: boundedReference.optional() }))
+      .mutation(({ input }) => assessSecurityEvidenceTraceability(input)),
   }),
 
   intelligence: router({

@@ -479,7 +479,7 @@ export interface CAEContextInvalidation {
 
 export interface CAEEvidenceGraphNode {
   id: string;
-  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "RUNTIME_ARCHITECTURE" | "RUNTIME_BOUNDARY" | "RUNTIME_THREAT" | "RUNTIME_PERMISSION" | "RUNTIME_LIMIT" | "RUNTIME_RESULT_CONTRACT" | "RUNTIME_APPROVAL_GATE" | "RUNTIME_TEST_PLAN" | "RUNTIME_DECISION" | "CAPACITY_POLICY" | "CAPACITY_VALIDATION" | "SANDBOX_DESIGN" | "INDEPENDENT_ATTESTATION" | "ATTACK_SIMULATION" | "SECURITY_INVARIANT" | "RUNTIME_ASSURANCE" | "RUNTIME_READINESS" | "EXTERNAL_INFRASTRUCTURE_EVIDENCE" | "EXTERNAL_SANDBOX_REVIEW" | "HOSTILE_TEST_ENVIRONMENT" | "EXTERNAL_HOSTILE_TEST_EVIDENCE" | "EXTERNAL_EVIDENCE_LIFECYCLE" | "EXTERNAL_VERIFICATION_GATE" | "EXTERNAL_VERIFICATION_READINESS" | "VERIFICATION_REVIEW" | "REVIEWER_SEPARATION_POLICY" | "EVIDENCE_RETENTION_POLICY" | "REVIEWER_REVOCATION_POLICY" | "GOVERNANCE_LIFECYCLE" | "VERIFICATION_CONFLICT" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
+  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "PUBLISHER" | "EXTERNAL_IDENTITY" | "ADAPTER_SIGNATURE" | "ADAPTER_TRUST_VERIFICATION" | "EXECUTION_TRUST_GATE" | "EXECUTION_ELIGIBILITY" | "REVIEWER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "CALIBRATION_CERTIFICATE" | "CERTIFICATE_VERIFICATION" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "SANDBOX_ATTESTATION_RUBRIC" | "SANDBOX_CONTROL" | "ARTIFACT_REVIEW" | "ARTIFACT_SBOM" | "HOSTILE_TEST_EVIDENCE" | "SECURITY_EVIDENCE_TRACEABILITY" | "SECURITY_EVIDENCE_READINESS" | "RUNTIME_ARCHITECTURE" | "RUNTIME_BOUNDARY" | "RUNTIME_THREAT" | "RUNTIME_PERMISSION" | "RUNTIME_LIMIT" | "RUNTIME_RESULT_CONTRACT" | "RUNTIME_APPROVAL_GATE" | "RUNTIME_TEST_PLAN" | "RUNTIME_DECISION" | "CAPACITY_POLICY" | "CAPACITY_VALIDATION" | "SANDBOX_DESIGN" | "INDEPENDENT_ATTESTATION" | "ATTACK_SIMULATION" | "SECURITY_INVARIANT" | "RUNTIME_ASSURANCE" | "RUNTIME_READINESS" | "EXTERNAL_INFRASTRUCTURE_EVIDENCE" | "EXTERNAL_SANDBOX_REVIEW" | "HOSTILE_TEST_ENVIRONMENT" | "EXTERNAL_HOSTILE_TEST_EVIDENCE" | "EXTERNAL_EVIDENCE_LIFECYCLE" | "EXTERNAL_VERIFICATION_GATE" | "EXTERNAL_VERIFICATION_READINESS" | "VERIFICATION_REVIEW" | "REVIEWER_SEPARATION_POLICY" | "EVIDENCE_RETENTION_POLICY" | "REVIEWER_REVOCATION_POLICY" | "GOVERNANCE_LIFECYCLE" | "VERIFICATION_CONFLICT" | "COMPARISON" | "ENGINEERING_DECISION" | "REVOCATION" | "SECURITY_AUDIT" | "VALIDATION" | "RESULT";
   label: string;
   truthStatus: CAETruthStatus | "DERIVED" | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
 }
@@ -809,8 +809,8 @@ export interface SecurityAuditEvent {
   eventId: string;
   projectId: string;
   actor: string;
-  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE_REVIEW" | "RUNTIME_READINESS_REVIEW" | "CAPACITY_POLICY_VALIDATION" | "INDEPENDENT_ATTESTATION_EVIDENCE" | "EXTERNAL_EVIDENCE_IMPORT" | "EXTERNAL_EVIDENCE_LIFECYCLE" | "EXTERNAL_VERIFICATION_READINESS" | "GOVERNANCE_POLICY" | "VERIFICATION_REVIEW" | "VERIFICATION_CONFLICT";
-  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE" | "RUNTIME_READINESS" | "CAPACITY_POLICY" | "INDEPENDENT_ATTESTATION" | "EXTERNAL_EVIDENCE" | "SANDBOX_REVIEW" | "HOSTILE_TEST_ENVIRONMENT" | "HOSTILE_TEST_EVIDENCE" | "EXTERNAL_VERIFICATION_READINESS" | "VERIFICATION_REVIEW" | "RETENTION_POLICY" | "REVOCATION_POLICY" | "VERIFICATION_CONFLICT";
+  action: "REGISTRATION" | "VERIFICATION" | "APPROVAL" | "REJECTION" | "REVOCATION" | "CERTIFICATE_VALIDATION" | "IDENTITY_CHANGE" | "PERMISSION_CHANGE" | "REVOCATION_SOURCE_INGESTION" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE_REVIEW" | "RUNTIME_READINESS_REVIEW" | "CAPACITY_POLICY_VALIDATION" | "INDEPENDENT_ATTESTATION_EVIDENCE" | "EXTERNAL_EVIDENCE_IMPORT" | "EXTERNAL_EVIDENCE_LIFECYCLE" | "EXTERNAL_VERIFICATION_READINESS" | "GOVERNANCE_POLICY" | "VERIFICATION_REVIEW" | "VERIFICATION_CONFLICT" | "SECURITY_EVIDENCE_RECORD";
+  objectType: "REVIEWER" | "ADAPTER" | "CERTIFICATE" | "DECISION" | "VERIFICATION" | "EXTERNAL_IDENTITY" | "REVOCATION_SOURCE" | "SANDBOX_ATTESTATION" | "TRUST_READINESS" | "RUNTIME_ARCHITECTURE" | "RUNTIME_READINESS" | "CAPACITY_POLICY" | "INDEPENDENT_ATTESTATION" | "EXTERNAL_EVIDENCE" | "SANDBOX_REVIEW" | "HOSTILE_TEST_ENVIRONMENT" | "HOSTILE_TEST_EVIDENCE" | "EXTERNAL_VERIFICATION_READINESS" | "VERIFICATION_REVIEW" | "RETENTION_POLICY" | "REVOCATION_POLICY" | "VERIFICATION_CONFLICT" | "SECURITY_EVIDENCE";
   objectId: string;
   timestamp: string;
   previousState?: string;
@@ -1965,4 +1965,168 @@ export interface SolverConfigurationTraceabilityLink {
   verificationEvidenceIds: string[];
   relationship: "CAE_JOB_TO_SOLVER_PACKAGE_TO_CONFIGURATION_TO_VERIFICATION";
   immutable: true;
+}
+
+export const SECURITY_EVIDENCE_FOUNDATION_VERSION = "1.0.0" as const;
+export const SECURITY_EVIDENCE_CONTROL_STATES = ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"] as const;
+export type SecurityEvidenceControlState = (typeof SECURITY_EVIDENCE_CONTROL_STATES)[number];
+export const SANDBOX_ATTESTATION_CONTROL_IDS = ["PROCESS_ISOLATION", "FILESYSTEM_ISOLATION", "NETWORK_ISOLATION", "RESOURCE_LIMITS", "CPU_LIMITS", "MEMORY_LIMITS", "EXECUTION_TIMEOUT", "STORAGE_LIMITS", "PRIVILEGE_BOUNDARIES", "SECRET_ISOLATION", "DEPENDENCY_ISOLATION", "EGRESS_CONTROL", "FAILURE_CONTAINMENT", "AUDITABILITY", "REPRODUCIBILITY"] as const;
+export type SandboxAttestationControlId = (typeof SANDBOX_ATTESTATION_CONTROL_IDS)[number];
+export interface SandboxAttestationControlRequirement {
+  controlId: SandboxAttestationControlId;
+  objective: string;
+  requiredEvidence: string[];
+  state: SecurityEvidenceControlState;
+  evidenceIds: string[];
+  rationale: string;
+  mandatory: true;
+}
+export interface IndependentSandboxAttestationRubric {
+  rubricId: string;
+  projectId: string;
+  contractVersion: typeof SECURITY_EVIDENCE_FOUNDATION_VERSION;
+  attestationSubject: string;
+  attestationScope: string;
+  controls: SandboxAttestationControlRequirement[];
+  requiredControlCount: 15;
+  noEvidenceMayPass: true;
+  selfAttestationPolicy: "GOVERNED_SEPARATELY";
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+  immutable: true;
+  retention: EvidenceRetentionMetadata;
+}
+export interface SandboxSecurityAttestationEvidence {
+  attestationEvidenceId: string;
+  projectId: string;
+  rubricId: string;
+  attestationSubject: string;
+  attestationScope: string;
+  attestorIdentity: string;
+  attestorAuthorizationId: string;
+  independence: "INDEPENDENT" | "SELF_ATTESTATION" | "CONFLICT" | "UNKNOWN";
+  evidenceSource: string;
+  evidenceHash: string;
+  issuedAt: string;
+  validFrom: string;
+  validUntil: string;
+  revocationState: "CURRENT" | "EXPIRED" | "REVOKED" | "UNKNOWN";
+  controlAssessments: SandboxAttestationControlRequirement[];
+  status: "PASS" | "FAIL" | "UNKNOWN" | "EXPIRED" | "REVOKED" | "CONFLICT";
+  selfAttestationReviewRequired: boolean;
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+  immutable: true;
+  retention: EvidenceRetentionMetadata;
+}
+export const ARTIFACT_REVIEW_STATES = ["UNKNOWN", "UNDER_REVIEW", "APPROVED", "REJECTED", "REVOKED", "EXPIRED"] as const;
+export type ArtifactReviewState = (typeof ARTIFACT_REVIEW_STATES)[number];
+export interface ArtifactDependencyEvidence {
+  name: string;
+  version: string;
+  sha256?: string;
+  source: string;
+  knownVulnerabilityState: "NONE_DECLARED" | "KNOWN" | "UNKNOWN" | "CONFLICT";
+  evidenceHash?: string;
+}
+export interface ArtifactSBOMReviewRecord {
+  artifactReviewId: string;
+  projectId: string;
+  artifactIdentity: string;
+  artifactVersion: string;
+  artifactHash: string;
+  signature?: string;
+  signatureHash?: string;
+  publisher: string;
+  source: string;
+  license: string;
+  dependencies: ArtifactDependencyEvidence[];
+  sbomReference: string;
+  sbomHash: string;
+  knownVulnerabilities: string[];
+  buildProvenance: string[];
+  reproducibilityEvidence: string[];
+  reviewerId?: string;
+  reviewerAuthorizationId?: string;
+  reviewIssuedAt: string;
+  reviewValidFrom: string;
+  reviewValidUntil: string;
+  reviewStatus: ArtifactReviewState;
+  revocationState: "CURRENT" | "EXPIRED" | "REVOKED" | "UNKNOWN" | "CONFLICT";
+  findings: string[];
+  registrationDoesNotAuthorizeExecution: true;
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+  immutable: true;
+  retention: EvidenceRetentionMetadata;
+}
+export const HOSTILE_TEST_EVIDENCE_CATEGORIES = ["RESOURCE_EXHAUSTION", "MEMORY_EXHAUSTION", "TIMEOUT", "FILESYSTEM_ESCAPE", "NETWORK_ESCAPE", "PRIVILEGE_ESCALATION", "MALFORMED_INPUT", "CORRUPTED_ARTIFACT", "DEPENDENCY_COMPROMISE", "OUTPUT_TAMPERING", "RESULT_SPOOFING", "SANDBOX_BOUNDARY_VIOLATION"] as const;
+export type HostileTestEvidenceCategory = (typeof HOSTILE_TEST_EVIDENCE_CATEGORIES)[number];
+export type HostileTestEvidenceResult = "PASS" | "FAIL" | "UNKNOWN" | "INCONCLUSIVE";
+export interface HostileTestEvidenceRecord {
+  hostileTestEvidenceId: string;
+  projectId: string;
+  testId: string;
+  testCategory: HostileTestEvidenceCategory;
+  testObjective: string;
+  environmentIdentity: string;
+  testInputHash: string;
+  expectedBehavior: string;
+  observedBehavior: string;
+  result: HostileTestEvidenceResult;
+  rawEvidenceHash: string;
+  timestamp: string;
+  reviewerId: string;
+  reviewerAuthorizationId: string;
+  limitations: string[];
+  reproducibilityInformation: string[];
+  actualTestExecutionClaimed: false;
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+  immutable: true;
+  retention: EvidenceRetentionMetadata;
+}
+export interface SecurityEvidenceLifecycleEvent {
+  lifecycleEventId: string;
+  projectId: string;
+  subjectType: "SANDBOX_ATTESTATION" | "ARTIFACT_REVIEW" | "HOSTILE_TEST_EVIDENCE";
+  subjectId: string;
+  previousState: "NOT_SET" | "CURRENT" | "EXPIRED" | "REVOKED" | "CONFLICT" | "UNKNOWN";
+  newState: "CURRENT" | "EXPIRED" | "REVOKED" | "CONFLICT" | "UNKNOWN";
+  reason: string;
+  reviewerAuthorizationId?: string;
+  actor: string;
+  timestamp: string;
+  immutable: true;
+}
+export interface SecurityEvidenceConflict {
+  conflictId: string;
+  projectId: string;
+  subjectType: "SANDBOX_ATTESTATION" | "ARTIFACT_REVIEW" | "HOSTILE_TEST_EVIDENCE";
+  subjectIds: string[];
+  field: string;
+  expected?: string;
+  observed?: string;
+  status: "CONFLICT";
+  reason: string;
+  createdAt: string;
+  immutable: true;
+}
+export interface SecurityEvidenceTraceabilityAssessment {
+  assessmentId: string;
+  projectId: string;
+  runtimeArchitectureReviewId: string;
+  rubricId?: string;
+  attestationEvidenceId?: string;
+  artifactReviewId?: string;
+  hostileTestEvidenceId?: string;
+  links: Array<{ from: "RUNTIME_ARCHITECTURE_REVIEW" | "SANDBOX_CONTROL" | "SANDBOX_ATTESTATION" | "ARTIFACT" | "SBOM" | "HOSTILE_TEST" | "REVIEWER" | "READINESS_GATE"; fromId: string; to: "RUNTIME_ARCHITECTURE_REVIEW" | "SANDBOX_CONTROL" | "SANDBOX_ATTESTATION" | "ARTIFACT" | "SBOM" | "HOSTILE_TEST" | "REVIEWER" | "READINESS_GATE"; toId: string; status: "RESOLVED" | "ORPHANED" | "STALE" | "CONFLICT" | "UNKNOWN"; reason: string }>;
+  status: "RESOLVED" | "ORPHANED" | "STALE" | "CONFLICT" | "UNKNOWN";
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
 }
