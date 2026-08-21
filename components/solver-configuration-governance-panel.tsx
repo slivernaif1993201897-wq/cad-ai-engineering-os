@@ -5,7 +5,7 @@ import { loadProjectAccess, type StoredProjectAccess } from "@/lib/project-memor
 import { trpc } from "@/lib/trpc";
 
 function tone(value?: string) {
-  if (["ACTIVE", "VERIFIED", "VALID", "FRESH", "REVIEWED", "UNCHANGED"].includes(value ?? "")) return "#62B39A";
+  if (["ACTIVE", "CURRENT", "VERIFIED", "VALID", "FRESH", "REVIEWED", "UNCHANGED"].includes(value ?? "")) return "#62B39A";
   if (["EXPIRED", "REVOKED", "REPLACED", "CONFLICT", "STALE", "INVALID", "FAIL", "CHANGED"].includes(value ?? "")) return "#E78966";
   return "#8EC4E8";
 }
@@ -30,6 +30,7 @@ export function SolverConfigurationGovernancePanel() {
   const [comparedPackageId, setComparedPackageId] = useState("");
   const [diffSummary, setDiffSummary] = useState<string>();
   const [graphSummary, setGraphSummary] = useState<string>();
+  const [integritySummary, setIntegritySummary] = useState<string>();
 
   useEffect(() => {
     let cancelled = false;
@@ -48,8 +49,11 @@ export function SolverConfigurationGovernancePanel() {
   const reassignments = trpc.cae.listMeshQualityReviewerReassignments.useQuery(access, { enabled: Boolean(project) });
   const packages = trpc.cae.listSolverInputPackages.useQuery(access, { enabled: Boolean(project) });
   const registry = trpc.cae.listSolverConfigurationRegistry.useQuery(access, { enabled: Boolean(project) });
+  const cadBindings = trpc.cae.listCADRevisionBindings.useQuery(access, { enabled: Boolean(project) });
+  const reviewerAuthorizations = trpc.cae.listReviewerAuthorizations.useQuery(access, { enabled: Boolean(project) });
   const diff = trpc.cae.createSolverInputPackageDiff.useMutation();
   const graph = trpc.cae.solverConfigurationGovernanceGraph.useMutation();
+  const integrity = trpc.cae.assessEvidenceIntegrityTraceability.useMutation();
 
   const pair = useMemo(() => {
     const items = packages.data ?? [];
@@ -59,7 +63,20 @@ export function SolverConfigurationGovernancePanel() {
     };
   }, [baselinePackageId, comparedPackageId, packages.data]);
   const selectedPackage = packages.data?.find((item) => item.packageId === pair.baseline) ?? packages.data?.[0];
-  const selectedConfiguration = registry.data?.[0];
+  const selectedConfiguration = registry.data?.find((item) => item.configurationId === selectedPackage?.solverConfiguration.configurationId) ?? registry.data?.[0];
+  const selectedVerification = verifications.data?.find((item) => item.verificationId === selectedPackage?.meshQualityVerificationId);
+  const selectedLifecycle = selectedVerification ? lifecycle.data?.find((item) => item.verificationId === selectedVerification.verificationId) : undefined;
+  const selectedAuthorization = reviewerAuthorizations.data?.find((item) => item.reviewerAuthorizationId === selectedVerification?.reviewerAuthorizationId);
+  const selectedCadBinding = cadBindings.data?.find((item) => item.cadBindingId === selectedPackage?.jobId ? false : item.cadRevision === selectedPackage?.cadRevision && item.cadGeometryHash === selectedPackage?.cadGeometryHash);
+  const validityState = useMemo(() => {
+    if (!selectedVerification?.validFrom || !selectedVerification.validUntil) return "UNKNOWN";
+    if (selectedLifecycle && ["REVOKED", "REPLACED", "EXPIRED"].includes(selectedLifecycle.newState)) return selectedLifecycle.newState;
+    const current = Date.now(); const start = Date.parse(selectedVerification.validFrom); const end = Date.parse(selectedVerification.validUntil);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return "UNKNOWN";
+    if (end < current) return "EXPIRED";
+    if (start > current) return "UNKNOWN";
+    return end - current < 86_400_000 ? "EXPIRING" : "CURRENT";
+  }, [selectedLifecycle, selectedVerification]);
 
   const inspectDiff = () => {
     if (!pair.baseline || !pair.compared) return;
@@ -80,10 +97,29 @@ export function SolverConfigurationGovernancePanel() {
     });
   };
 
+  const inspectIntegrity = () => {
+    if (!selectedPackage || !selectedConfiguration) return;
+    integrity.mutate({ ...access, jobId: selectedPackage.jobId, packageId: selectedPackage.packageId, configurationId: selectedConfiguration.configurationId, reviewerAuthorizationId: selectedAuthorization?.reviewerAuthorizationId }, {
+      onSuccess: (value) => setIntegritySummary(`${value.status} · ${value.links.filter((item) => item.status === "RESOLVED").length}/${value.links.length} resolvable links · executionEligible=${String(value.executionEligible)}`),
+      onError: (error) => setIntegritySummary(error.message),
+    });
+  };
+
   return <View style={styles.wrap}>
     <View style={styles.hero}>
-      <View style={styles.heroText}><Text style={styles.kicker}>PHASE 6.8 · SOLVER CONFIGURATION GOVERNANCE</Text><Text style={styles.title}>Verification validity, package diffs, and bounded configuration schema</Text><Text style={styles.copy}>This read-only inspector preserves immutable historical evidence. It cannot generate solver input, modify a package, renew a verification, invoke a mesher, run a solver, spawn a process, access the filesystem or network, or present numerical results.</Text></View>
+      <View style={styles.heroText}><Text style={styles.kicker}>PHASE 6.9 · EVIDENCE INTEGRITY</Text><Text style={styles.title}>Bound CAD, reviewer validity, package registry, and resolvable traceability</Text><Text style={styles.copy}>This read-only inspector preserves immutable historical evidence. It cannot generate solver input, modify a package, renew a verification, invoke a mesher, run a solver, spawn a process, access the filesystem or network, or present numerical results.</Text></View>
       <Badge value="NON-EXECUTABLE" />
+    </View>
+
+    <View style={styles.card}>
+      <View style={styles.row}><View><Text style={styles.kicker}>EVIDENCE INTEGRITY STATE</Text><Text style={styles.value}>Current package context only</Text></View><Badge value={validityState} /></View>
+      <Detail label="CAD REVISION / BINDING" value={selectedCadBinding ? `${selectedCadBinding.cadRevision} · ${selectedCadBinding.cadBindingId}` : selectedPackage ? `${selectedPackage.cadRevision} · BINDING UNKNOWN` : "UNKNOWN"} />
+      <Detail label="CONFIGURATION IDENTITY" value={selectedConfiguration ? `${selectedConfiguration.configurationId} · ${selectedConfiguration.configurationHash ?? "HASH UNKNOWN"} · ${selectedConfiguration.status}` : "UNKNOWN"} />
+      <Detail label="VERIFICATION VALIDITY" value={selectedVerification ? `${selectedVerification.validFrom ? dateLabel(selectedVerification.validFrom) : "UNKNOWN"} → ${selectedVerification.validUntil ? dateLabel(selectedVerification.validUntil) : "UNKNOWN"}` : "UNKNOWN"} />
+      <Detail label="REVIEWER AUTHORIZATION" value={selectedAuthorization ? `${selectedAuthorization.organization} · ${selectedAuthorization.role} · ${selectedAuthorization.status}` : "UNKNOWN"} />
+      <Text style={styles.meta}>CURRENT, EXPIRING, EXPIRED, REVOKED, STALE, CONFLICT, and UNKNOWN are evidence states—not solver states. Absence of a binding, validity interval, authorization, or identity fails closed.</Text>
+      <Pressable disabled={!selectedPackage || !selectedConfiguration || integrity.isPending} onPress={inspectIntegrity} style={({ pressed }) => [styles.inspect, (!selectedPackage || !selectedConfiguration || integrity.isPending) && styles.disabled, pressed && styles.pressed]}><Text style={styles.inspectText}>{integrity.isPending ? "CHECKING…" : "INSPECT RESOLVABLE TRACEABILITY"}</Text></Pressable>
+      {integritySummary ? <Text style={styles.meta}>{integritySummary}</Text> : null}
     </View>
 
     <View style={styles.card}>

@@ -36,20 +36,22 @@ const configurationParameters = [
 ];
 
 async function registerConfiguration(caller: ReturnType<typeof appRouter.createCaller>, access: { projectId: string; accessKey: string }, suffix: string, status: "DRAFT" | "REVIEWED" | "DEPRECATED" | "REVOKED" | "UNKNOWN") {
-  return caller.cae.registerSolverConfigurationSchema({ ...access, solverName: "CALCULIX_SCHEMA_ONLY", solverVersion: "V1", analysisType: "STATIC_STRUCTURAL", configurationSchemaVersion: "V1", supportedParameters: configurationParameters, provenance: [`Registry fixture ${suffix}; schema only, no adapter is created.`], evidenceHashes: [h("8")], status });
+  return caller.cae.registerSolverConfigurationSchema({ ...access, solverName: "CALCULIX_LINEAR_STATIC_SCHEMA_ONLY", solverVersion: "V1", analysisType: "STATIC_STRUCTURAL", configurationSchemaVersion: "V1", supportedParameters: configurationParameters, provenance: [`Registry fixture ${suffix}; schema only, no adapter is created.`], evidenceHashes: [h("8")], status });
 }
 
-async function createPackageFixture(caller: ReturnType<typeof appRouter.createCaller>, access: { projectId: string; accessKey: string }, reviewerId: string, suffix: string, hashSeed: string, loadMagnitude: number, configurationHashSeed: string) {
+function validity() { return { validFrom: new Date(Date.now() - 60_000).toISOString(), validUntil: new Date(Date.now() + 3_600_000).toISOString() }; }
+async function createPackageFixture(caller: ReturnType<typeof appRouter.createCaller>, access: { projectId: string; accessKey: string }, reviewerId: string, reviewerAuthorizationId: string, configuration: Awaited<ReturnType<typeof registerConfiguration>>, suffix: string, hashSeed: string, loadMagnitude: number) {
   const plan = await caller.cae.createPlan({ ...access, input: planInput(access.projectId, suffix, loadMagnitude) });
   const geometryHash = h(hashSeed);
-  const snapshot = await caller.cae.captureValidatedCAEPlanSnapshot({ ...access, simulationId: plan.simulationId, sourceCadGeometryHash: geometryHash, requirementRevision: `REQ-CFG-REV-${suffix}`, requirementHash: hs(hashSeed, 1), materialEvidenceHash: hs(hashSeed, 2), expectedOutputs: ["DISPLACEMENT", "VON_MISES_STRESS", "SOLVER_LOG", "EXECUTION_RECEIPT"] });
+  const cadBinding = await caller.cae.registerCADRevisionBinding({ ...access, cadProjectId: `CAD-PROJECT-CFG-${suffix}`, cadRevision: planInput(access.projectId, suffix, loadMagnitude).sourceCadRevision, cadGeometryHash: geometryHash, source: "TEST_CAD_BINDING", creator: "ConfigurationFixtureAuthor", revision: 1, provenance: ["Phase 6.9 immutable test CAD binding."] });
+  const snapshot = await caller.cae.captureValidatedCAEPlanSnapshot({ ...access, simulationId: plan.simulationId, cadBindingId: cadBinding.cadBindingId, sourceCadGeometryHash: geometryHash, requirementRevision: `REQ-CFG-REV-${suffix}`, requirementHash: hs(hashSeed, 1), materialEvidenceHash: hs(hashSeed, 2), expectedOutputs: ["DISPLACEMENT", "VON_MISES_STRESS", "SOLVER_LOG", "EXECUTION_RECEIPT"] });
   const resourcePolicy = { policyReference: `RESOURCE-CFG-${suffix}`, policyVersion: "V1", policyHash: hs(hashSeed, 3), environmentReference: `ENV-CFG-${suffix}`, constraints: [...limits] };
   const job = (await caller.cae.convertCAEPlanSnapshotToJob({ ...access, snapshotId: snapshot.snapshotId, solverVersion: "V1", environmentReference: `ENV-CFG-${suffix}`, resourcePolicy, createdBy: "ConfigurationFixtureAuthor" })).job;
   const mesh = await caller.cae.registerNonExecutableMeshArtifact({ ...access, input: { jobId: job.jobId, sourceCadHash: geometryHash, nodeCount: 0, elementCount: 0, elementTypes: ["UNKNOWN"], coordinatesHash: hs(hashSeed, 4), connectivityHash: hs(hashSeed, 5), qualitySummary: "NOT_MEASURED", units: "UNKNOWN", generatorReference: `MESH-CFG-${suffix}`, generatorVersion: "V1" } });
   const quality = await caller.cae.registerMeshQualityEvidence({ ...access, input: { meshId: mesh.meshId, jobId: job.jobId, sourceCadHash: geometryHash, meshGenerator: `MESH-CFG-${suffix}`, meshGeneratorVersion: "V1", elementTypes: ["UNKNOWN"], elementCount: 0, nodeCount: 0, qualityMetrics: [{ metric: "UNKNOWN", source: "UNKNOWN", status: "UNKNOWN" }], qualityThresholds: [{ metric: "ASPECT_RATIO", value: 1, unit: "schema-unit", source: "Threshold evidence schema", version: "T-CFG-1", rationale: "Contract fixture only; no engineering threshold is claimed.", evidenceHash: hs(hashSeed, 6) }], provenance: { cadRevision: job.cadRevision, cadGeometryHash: geometryHash, jobId: job.jobId, jobRevision: job.revision, meshArtifactId: mesh.meshId, meshGenerator: `MESH-CFG-${suffix}`, meshGeneratorVersion: "V1", qualityAlgorithm: "QUALITY-CFG-SCHEMA", qualityAlgorithmVersion: "V1", thresholdVersion: "T-CFG-1", references: ["Provenance schema only"] }, reportedStatus: "PASS" } });
-  const verification = await caller.cae.createMeshQualityVerification({ ...access, meshQualityEvidenceId: quality.evidenceId, submitter: `EvidenceSubmitter-${suffix}`, verifier: reviewerId, verificationMethod: "INDEPENDENT_REVIEW", verificationVersion: "V1", findings: ["Independent identity review only; no meshing or solving occurred."], requestedStatus: "VERIFIED" });
-  const pkg = await caller.cae.createSolverInputPackageManifest({ ...access, jobId: job.jobId, meshId: mesh.meshId, meshHash: mesh.artifactHash, meshQualityEvidenceId: quality.evidenceId, meshQualityVerificationId: verification.verificationId, solverConfigurationReference: `CONFIG-DECL-${suffix}`, solverConfigurationHash: h(configurationHashSeed) });
-  return { plan, job, mesh, quality, verification, pkg };
+  const verification = await caller.cae.createMeshQualityVerification({ ...access, meshQualityEvidenceId: quality.evidenceId, submitter: `EvidenceSubmitter-${suffix}`, verifier: reviewerId, reviewerAuthorizationId, ...validity(), verificationMethod: "INDEPENDENT_REVIEW", verificationVersion: "V1", findings: ["Independent identity review only; no meshing or solving occurred."], requestedStatus: "VERIFIED" });
+  const pkg = await caller.cae.createSolverInputPackageManifest({ ...access, jobId: job.jobId, meshId: mesh.meshId, meshHash: mesh.artifactHash, meshQualityEvidenceId: quality.evidenceId, meshQualityVerificationId: verification.verificationId, solverConfigurationId: configuration.configurationId, solverConfigurationHash: configuration.configurationHash! });
+  return { plan, cadBinding, job, mesh, quality, verification, pkg };
 }
 
 describe("Phase 6.8 Solver Configuration Governance", () => {
@@ -57,6 +59,7 @@ describe("Phase 6.8 Solver Configuration Governance", () => {
   let access: { projectId: string; accessKey: string };
   let otherAccess: { projectId: string; accessKey: string };
   let approverId: string;
+  let approverAuthorizationId: string;
   let replacementReviewerId: string;
   let unverifiedReviewerId: string;
   let packageOne: Awaited<ReturnType<typeof createPackageFixture>>;
@@ -67,6 +70,7 @@ describe("Phase 6.8 Solver Configuration Governance", () => {
   let verificationSelfReview: string;
   let verificationUnauthorized: string;
   let reviewedConfiguration: Awaited<ReturnType<typeof registerConfiguration>>;
+  let reviewedConfigurationTwo: Awaited<ReturnType<typeof registerConfiguration>>;
   let deprecatedConfiguration: Awaited<ReturnType<typeof registerConfiguration>>;
 
   beforeAll(async () => {
@@ -76,25 +80,27 @@ describe("Phase 6.8 Solver Configuration Governance", () => {
     otherAccess = { projectId: other.id, accessKey: other.accessKey };
     const approver = await caller.cae.registerReviewer({ ...access, displayName: "Configuration Approver", role: "Validation Reviewer", projectScope: [project.id], permissions: ["APPROVE_VALIDATION"], actor: "GovernanceAdmin" });
     approverId = (await caller.cae.verifyReviewer({ ...access, reviewerId: approver.reviewerId, verificationMethod: "DIRECT_IDENTITY_VERIFICATION", actor: "GovernanceAdmin" })).reviewerId;
+    approverAuthorizationId = (await caller.cae.authorizeReviewerForEvidence({ ...access, reviewerId: approverId, organization: "Independent Review Organization", role: "Validation Reviewer", authorizationScope: ["APPROVE_VALIDATION"], authorizationSource: "Independent authorization fixture", authorizationHash: h("a"), issuedBy: "IndependentAuthorizationIssuer", ...validity(), independenceStatement: "Issuer is independent from reviewer and submitters." })).reviewerAuthorizationId;
     const replacement = await caller.cae.registerReviewer({ ...access, displayName: "Replacement Reviewer", role: "Validation Reviewer", projectScope: [project.id], permissions: ["APPROVE_VALIDATION"], actor: "GovernanceAdmin" });
     replacementReviewerId = (await caller.cae.verifyReviewer({ ...access, reviewerId: replacement.reviewerId, verificationMethod: "DIRECT_IDENTITY_VERIFICATION", actor: "GovernanceAdmin" })).reviewerId;
     const unverified = await caller.cae.registerReviewer({ ...access, displayName: "Unverified Reviewer", role: "Validation Reviewer", projectScope: [project.id], permissions: ["APPROVE_VALIDATION"], actor: "GovernanceAdmin" });
     unverifiedReviewerId = unverified.reviewerId;
-    packageOne = await createPackageFixture(caller, access, approverId, "ONE", "a", 100, "1");
-    packageTwo = await createPackageFixture(caller, access, approverId, "TWO", "b", 200, "2");
-    const reviewRecords = await Promise.all(["EXPIRY", "REVOCATION", "REASSIGNMENT", "SELF", "UNAUTHORIZED"].map(async (suffix) => createPackageFixture(caller, access, approverId, suffix, suffix === "EXPIRY" ? "c" : suffix === "REVOCATION" ? "d" : suffix === "REASSIGNMENT" ? "e" : suffix === "SELF" ? "f" : "7", 125, suffix === "EXPIRY" ? "3" : suffix === "REVOCATION" ? "4" : suffix === "REASSIGNMENT" ? "5" : suffix === "SELF" ? "6" : "7")));
+    await registerConfiguration(caller, access, "DRAFT", "DRAFT");
+    reviewedConfiguration = await registerConfiguration(caller, access, "REVIEWED", "REVIEWED");
+    reviewedConfigurationTwo = await registerConfiguration(caller, access, "REVIEWED-TWO", "REVIEWED");
+    deprecatedConfiguration = await registerConfiguration(caller, access, "DEPRECATED", "DEPRECATED");
+    packageOne = await createPackageFixture(caller, access, approverId, approverAuthorizationId, reviewedConfiguration, "ONE", "a", 100);
+    packageTwo = await createPackageFixture(caller, access, approverId, approverAuthorizationId, reviewedConfigurationTwo, "TWO", "b", 200);
+    const reviewRecords = await Promise.all(["EXPIRY", "REVOCATION", "REASSIGNMENT", "SELF", "UNAUTHORIZED"].map(async (suffix) => createPackageFixture(caller, access, approverId, approverAuthorizationId, reviewedConfiguration, suffix, suffix === "EXPIRY" ? "c" : suffix === "REVOCATION" ? "d" : suffix === "REASSIGNMENT" ? "e" : suffix === "SELF" ? "f" : "7", 125)));
     verificationExpiry = reviewRecords[0]!.verification.verificationId;
     verificationRevocation = reviewRecords[1]!.verification.verificationId;
     verificationReassignment = reviewRecords[2]!.verification.verificationId;
     verificationSelfReview = reviewRecords[3]!.verification.verificationId;
     verificationUnauthorized = reviewRecords[4]!.verification.verificationId;
-    await registerConfiguration(caller, access, "DRAFT", "DRAFT");
-    reviewedConfiguration = await registerConfiguration(caller, access, "REVIEWED", "REVIEWED");
-    deprecatedConfiguration = await registerConfiguration(caller, access, "DEPRECATED", "DEPRECATED");
-  });
+  }, 30000);
 
   it("1. records verification expiry as ACTIVE → EXPIRING → EXPIRED without renewal", async () => {
-    const active = await caller.cae.transitionMeshQualityVerificationLifecycle({ ...access, verificationId: verificationExpiry, newState: "ACTIVE", reason: "Initial bounded validity declaration.", authorization: "APPROVE_VALIDATION", actor: approverId });
+    const active = (await caller.cae.listMeshQualityVerificationLifecycle({ ...access, verificationId: verificationExpiry }))[0]!;
     const expiring = await caller.cae.transitionMeshQualityVerificationLifecycle({ ...access, verificationId: verificationExpiry, newState: "EXPIRING", reason: "Validity window is ending.", authorization: "APPROVE_VALIDATION", actor: approverId });
     const expired = await caller.cae.transitionMeshQualityVerificationLifecycle({ ...access, verificationId: verificationExpiry, newState: "EXPIRED", reason: "Validity window ended; replacement evidence is required.", authorization: "APPROVE_VALIDATION", actor: approverId });
     expect([active.newState, expiring.newState, expired.newState]).toEqual(["ACTIVE", "EXPIRING", "EXPIRED"]);

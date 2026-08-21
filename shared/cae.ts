@@ -202,6 +202,7 @@ export interface CAESimulationPlan {
   projectId: string;
   createdAt: string;
   sourceCadRevision: string;
+  cadBindingId?: string;
   engineeringQuestion: string;
   analysisType: CAEAnalysisType;
   physicsModel: string[];
@@ -229,6 +230,8 @@ export interface CAESimulationPlan {
 export interface CAEPlanInput {
   projectId: string;
   sourceCadRevision: string;
+  sourceCadGeometryHash?: string;
+  cadBindingId?: string;
   sourceCadBranch?: string;
   engineeringQuestion: string;
   analysisType?: CAEAnalysisType;
@@ -253,6 +256,75 @@ export interface CAEPlanSummary {
   truthStatus: CAETruthStatus;
   unknownCount: number;
   blockingGapCount: number;
+  createdAt: string;
+}
+
+export const EVIDENCE_INTEGRITY_CONTRACT_VERSION = "1.0.0" as const;
+export type EvidenceIntegrityState = "CURRENT" | "EXPIRING" | "EXPIRED" | "REVOKED" | "STALE" | "CONFLICT" | "UNKNOWN";
+export interface EvidenceRetentionMetadata {
+  policyVersion: typeof EVIDENCE_INTEGRITY_CONTRACT_VERSION;
+  retentionStatus: "ACTIVE" | "EXPIRED_HISTORICAL" | "REVOKED_HISTORICAL" | "LEGAL_HOLD" | "UNKNOWN";
+  deletionPolicy: "NO_SILENT_DELETION";
+  retainUntil?: string;
+  historicalRecordPreserved: true;
+}
+export interface CADRevisionBinding {
+  cadBindingId: string;
+  projectId: string;
+  cadProjectId: string;
+  cadRevision: string;
+  cadGeometryHash: string;
+  source: string;
+  creator: string;
+  revision: number;
+  provenance: string[];
+  state: EvidenceIntegrityState;
+  createdAt: string;
+  immutable: true;
+  retention: EvidenceRetentionMetadata;
+}
+export interface CAEPlanCADBinding {
+  planCadBindingId: string;
+  projectId: string;
+  simulationId: string;
+  cadBindingId: string;
+  cadProjectId: string;
+  cadRevision: string;
+  cadGeometryHash: string;
+  planHash: string;
+  createdAt: string;
+  immutable: true;
+  retention: EvidenceRetentionMetadata;
+}
+export interface ReviewerAuthorizationEvidence {
+  reviewerAuthorizationId: string;
+  projectId: string;
+  reviewerId: string;
+  organization: string;
+  role: string;
+  authorizationScope: ReviewerPermission[];
+  authorizationSource: string;
+  authorizationHash: string;
+  issuedBy: string;
+  validFrom: string;
+  validUntil: string;
+  independenceStatement: string;
+  status: "AUTHORIZED" | "EXPIRED" | "REVOKED" | "UNKNOWN";
+  createdAt: string;
+  immutable: true;
+  retention: EvidenceRetentionMetadata;
+}
+export interface EvidenceIntegrityTraceabilityAssessment {
+  assessmentId: string;
+  projectId: string;
+  jobId: string;
+  packageId: string;
+  configurationId: string;
+  reviewerAuthorizationId?: string;
+  links: Array<{ from: "CAD_REVISION" | "CAE_PLAN" | "CAE_JOB" | "MESH" | "MESH_VERIFICATION" | "SOLVER_INPUT_PACKAGE" | "SOLVER_CONFIGURATION" | "REVIEWER_AUTHORIZATION"; fromId: string; to: "CAD_REVISION" | "CAE_PLAN" | "CAE_JOB" | "MESH" | "MESH_VERIFICATION" | "SOLVER_INPUT_PACKAGE" | "SOLVER_CONFIGURATION" | "REVIEWER_AUTHORIZATION"; toId: string; status: "RESOLVED" | "ORPHANED" | "STALE" | "UNKNOWN"; reason: string }>;
+  status: "RESOLVED" | "ORPHANED" | "STALE" | "UNKNOWN" | "CONFLICT";
+  executionEligible: false;
+  executable: false;
   createdAt: string;
 }
 
@@ -1451,6 +1523,8 @@ export interface CAEJobProvenance {
   requirementHash: string;
   cadRevision: string;
   cadGeometryHash: string;
+  cadBindingId?: string;
+  cadProjectId?: string;
   materialReference: string;
   materialEvidenceHash: string;
   sourcePlanId?: string;
@@ -1465,6 +1539,8 @@ export interface CanonicalCAEJobContract {
   revisionOf?: string;
   cadRevision: string;
   cadGeometryHash: string;
+  cadBindingId?: string;
+  cadProjectId?: string;
   requirementRevision: string;
   analysisType: "STATIC_STRUCTURAL";
   analysisVersion: string;
@@ -1591,6 +1667,8 @@ export interface ValidatedCAEPlanSnapshot {
   planHash: string;
   sourceCadRevision: string;
   sourceCadGeometryHash: string;
+  cadBindingId?: string;
+  planCadBindingId?: string;
   requirementRevision: string;
   requirementHash: string;
   materialReference: string;
@@ -1718,10 +1796,15 @@ export interface MeshQualityVerification {
   verificationVersion: string;
   evidenceHash: string;
   verificationTimestamp: string;
+  issuedAt?: string;
+  validFrom?: string;
+  validUntil?: string;
+  reviewerAuthorizationId?: string;
   status: MeshQualityVerificationStatus;
   findings: string[];
   provenance: { cadRevision: string; cadGeometryHash: string; jobRevision: number; meshGenerator: string; qualityAlgorithmVersion: string; thresholdVersion: string; reviewerIdentityHash: string };
   executable: false;
+  retention?: EvidenceRetentionMetadata;
 }
 
 export const SOLVER_INPUT_PACKAGE_VERSION = "1.0.0" as const;
@@ -1749,7 +1832,7 @@ export interface SolverInputPackageManifest {
   analysisType: "STATIC_STRUCTURAL";
   units: string[];
   solverReference: string;
-  solverConfiguration: { configurationReference: string; configurationHash: string; declaredOnly: true };
+  solverConfiguration: { configurationReference: string; configurationHash: string; configurationId?: string; solverName?: string; solverVersion?: string; configurationSchemaVersion?: string; declaredOnly: true };
   verificationRequirements: CanonicalCAEJobContract["verificationRequirements"];
   manifestHash: string;
   status: SolverInputPackageStatus;
@@ -1760,6 +1843,7 @@ export interface SolverInputPackageManifest {
   executionEligible: false;
   executable: false;
   createdAt: string;
+  retention?: EvidenceRetentionMetadata;
 }
 export interface SolverInputPackageStalenessAssessment {
   assessmentId: string;
@@ -1842,10 +1926,12 @@ export interface SolverConfigurationSchemaRegistryRecord {
   supportedParameters: SolverConfigurationParameterSchema[];
   provenance: string[];
   evidenceHashes: string[];
+  configurationHash?: string;
   status: SolverConfigurationStatus;
   securityBoundary: { prohibited: Array<"SHELL_COMMAND" | "EXECUTABLE_PATH" | "PROCESS_SPAWN" | "FILESYSTEM_EXECUTION" | "NETWORK_COMMAND" | "CREDENTIAL" | "SECRET_ENVIRONMENT_VARIABLE">; describesConfigurationOnly: true; executable: false };
   createdAt: string;
   immutable: true;
+  retention?: EvidenceRetentionMetadata;
 }
 export interface SolverConfigurationValidation {
   validationId: string;
