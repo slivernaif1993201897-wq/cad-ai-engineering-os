@@ -131,3 +131,12 @@
 - [x] Phase 5.1: Extend the mobile CAE workspace with Material Evidence, Solver, Experimental Validation, Evidence Graph, uncertainty, readiness, stale-context, and truth-status controls.
 - [x] Phase 5.1: Add deterministic adapter versioning/capability, evidence/provenance/conflict, experiment, uncertainty, readiness, CAD invalidation, graph, review, critique, no-solver, TypeScript, and full-regression tests.
 - [x] Phase 5.1: Save a verified checkpoint and report solver adapters, material evidence, experiments, evidence graph, uncertainty, readiness, invalidation, UI, tests, and limits without starting Phase 6.
+
+- [x] Phase 5.2: Audit existing CAE evidence, material conflict, experiments, uncertainty, graph, storage, APIs, persistent memory, tests, and mobile workspace seams for evidence reconciliation and calibration extensions.
+- [x] Phase 5.2: Define material reconciliation/review, measured dataset/metadata, calibration, data quality, processing lineage, comparison, calibration candidate, graph, and signed adapter onboarding contracts.
+- [x] Phase 5.2: Implement project-isolated immutable material reconciliation with unit normalization, condition/conflict detection, explicit human review decisions, measured dataset ingestion, data quality, calibration, and processing provenance.
+- [x] Phase 5.2: Implement experiment-to-measurement links, no-value-fabrication comparison contracts, calibration candidates, extended evidence graph links, and signed external-solver registration gates.
+- [x] Phase 5.2: Expose capability-safe project-isolated APIs for reconciliation, decisions, datasets, calibration, comparisons, graph inspection, and non-executable adapter registration.
+- [x] Phase 5.2: Extend the mobile CAE workspace with prominent Material Evidence Review, measured-data, calibration, comparison, decision, graph, and adapter-onboarding controls.
+- [x] Phase 5.2: Add deterministic reconciliation, normalization, condition, human-review, dataset immutability/quality, calibration, provenance, comparison, graph, adapter-gate, TypeScript, and full-regression tests.
+- [x] Phase 5.2: Save a verified checkpoint and report material reconciliation, measurement, calibration, comparison, evidence graph, signing/onboarding security, UI, tests, and limits without starting Phase 6.

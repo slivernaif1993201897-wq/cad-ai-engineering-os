@@ -311,10 +311,17 @@ export interface MaterialEvidence {
   source: string;
   sourceDate?: string;
   material: string;
+  materialGrade?: string;
   property: CAEMaterialProperty["name"];
   value?: number;
   unit?: string;
   condition?: string;
+  measurementUncertainty?: string;
+  temperature?: string;
+  strainRate?: string;
+  direction?: string;
+  batch?: string;
+  measurementDate?: string;
   provenance: MaterialPropertyState;
   verificationStatus: "VERIFIED" | "UNVALIDATED" | "CONFLICT" | "UNKNOWN";
   storage: MaterialEvidenceStorage;
@@ -400,7 +407,7 @@ export interface CAEContextInvalidation {
 
 export interface CAEEvidenceGraphNode {
   id: string;
-  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "VALIDATION" | "RESULT";
+  type: "REQUIREMENT" | "ASSUMPTION" | "CAD_REVISION" | "CAE_SIMULATION" | "SOLVER_ADAPTER" | "ADAPTER_REGISTRATION" | "MATERIAL_EVIDENCE" | "EXPERIMENT" | "MEASUREMENT" | "MEASURED_DATASET" | "DATASET_PROCESSING" | "CALIBRATION" | "COMPARISON" | "ENGINEERING_DECISION" | "VALIDATION" | "RESULT";
   label: string;
   truthStatus: CAETruthStatus | "VERIFIED" | "ASSUMED" | "UNKNOWN" | "UNVALIDATED";
 }
@@ -419,4 +426,202 @@ export interface CAEEvidenceGraph {
   nodes: CAEEvidenceGraphNode[];
   edges: CAEEvidenceGraphEdge[];
   limitations: string[];
+}
+
+export const MATERIAL_RECONCILIATION_STATES = ["UNREVIEWED", "CONSISTENT", "CONFLICT", "RESOLVED", "REJECTED", "UNKNOWN"] as const;
+export type MaterialReconciliationState = (typeof MATERIAL_RECONCILIATION_STATES)[number];
+export const MATERIAL_RECONCILIATION_CONFLICTS = ["UNIT_CONFLICT", "VALUE_CONFLICT", "CONDITION_CONFLICT", "MATERIAL_GRADE_CONFLICT", "SOURCE_CONFLICT", "MEASUREMENT_UNCERTAINTY_CONFLICT"] as const;
+export type MaterialReconciliationConflictKind = (typeof MATERIAL_RECONCILIATION_CONFLICTS)[number];
+export const EVIDENCE_TRUTH_CATEGORIES = ["MEASURED", "SIMULATED", "CALCULATED", "DERIVED", "ASSUMED", "UNKNOWN"] as const;
+export type EvidenceTruthCategory = (typeof EVIDENCE_TRUTH_CATEGORIES)[number];
+
+export interface MaterialReconciliationCandidate {
+  evidenceId: string;
+  property: MaterialEvidence["property"];
+  value?: number;
+  unit?: string;
+  normalizedValue?: number;
+  normalizedUnit?: string;
+  condition?: string;
+  source: string;
+  sourceHash: string;
+  provenance: MaterialPropertyState;
+  verificationStatus: MaterialEvidence["verificationStatus"];
+  measurementUncertainty?: string;
+  temperature?: string;
+  strainRate?: string;
+  direction?: string;
+  batch?: string;
+  date?: string;
+}
+
+export interface MaterialPropertyReconciliation {
+  reconciliationId: string;
+  projectId: string;
+  material: string;
+  property: MaterialEvidence["property"];
+  candidates: MaterialReconciliationCandidate[];
+  conflicts: Array<{ kind: MaterialReconciliationConflictKind; statement: string; evidenceIds: string[] }>;
+  state: MaterialReconciliationState;
+  decisionId?: string;
+  selectedValue?: number;
+  selectedUnit?: string;
+  revision: number;
+  createdAt: string;
+}
+
+export interface EngineeringReviewDecision {
+  decisionId: string;
+  projectId: string;
+  reconciliationId: string;
+  reviewer: string;
+  reviewerRole?: string;
+  decision: "RESOLVE" | "REJECT" | "REQUEST_EVIDENCE";
+  selectedValue?: number;
+  selectedUnit?: string;
+  reason: string;
+  evidenceIds: string[];
+  timestamp: string;
+  revision: number;
+  authorType: "HUMAN";
+}
+
+export const MEASUREMENT_DATA_QUALITY_STATUSES = ["COMPLETE", "INCOMPLETE", "INCONSISTENT", "UNVERIFIED", "INVALID"] as const;
+export type MeasurementDataQualityStatus = (typeof MEASUREMENT_DATA_QUALITY_STATUSES)[number];
+export const DATASET_PROCESSING_STAGES = ["RAW", "NORMALIZED", "FILTERED", "DERIVED"] as const;
+export type DatasetProcessingStage = (typeof DATASET_PROCESSING_STAGES)[number];
+
+export interface MeasurementDatasetMetadata {
+  source: string;
+  instrument?: string;
+  instrumentId?: string;
+  operator?: string;
+  testDate?: string;
+  units?: string;
+  samplingRate?: string;
+  environment?: string;
+  temperature?: string;
+  humidity?: string;
+  testArticle?: string;
+  testRevision?: string;
+  calibrationStatus: "CALIBRATED" | "UNCALIBRATED" | "UNKNOWN";
+  uncertainty?: string;
+  provenance: EvidenceTruthCategory;
+}
+
+export interface MeasurementDataQualityAssessment {
+  status: MeasurementDataQualityStatus;
+  rowCount?: number;
+  columnNames: string[];
+  missingValues: number;
+  duplicateSamples: number;
+  timestampsPresent: boolean;
+  samplingConsistency: "CONSISTENT" | "INCONSISTENT" | "UNKNOWN";
+  unitsPresent: boolean;
+  rangeAnomalies: string[];
+  findings: string[];
+}
+
+export interface MeasurementDataset {
+  datasetId: string;
+  projectId: string;
+  experimentId?: string;
+  simulationId?: string;
+  fileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  fileHash: string;
+  storage: MaterialEvidenceStorage;
+  metadata: MeasurementDatasetMetadata;
+  quality: MeasurementDataQualityAssessment;
+  stage: "RAW";
+  truthCategory: "MEASURED" | "UNKNOWN";
+  createdAt: string;
+}
+
+export interface DatasetProcessingRecord {
+  recordId: string;
+  projectId: string;
+  datasetId: string;
+  parentRecordId?: string;
+  stage: DatasetProcessingStage;
+  transformation: string;
+  sourceHash: string;
+  outputHash?: string;
+  evidenceIds: string[];
+  truthCategory: "DERIVED" | "UNKNOWN";
+  createdAt: string;
+}
+
+export interface CalibrationRecord {
+  calibrationId: string;
+  projectId: string;
+  datasetId?: string;
+  instrument: string;
+  calibrationDate?: string;
+  calibrationSource?: string;
+  certificateReference?: string;
+  validFrom?: string;
+  validUntil?: string;
+  uncertainty?: string;
+  status: "CALIBRATED" | "EXPIRED" | "UNCALIBRATED" | "UNKNOWN";
+  evidenceIds: string[];
+  truthCategory: "MEASURED" | "DERIVED" | "UNKNOWN";
+  createdAt: string;
+}
+
+export interface SimulationMeasurementComparison {
+  comparisonId: string;
+  projectId: string;
+  simulationId: string;
+  simulationRevision: string;
+  datasetId: string;
+  quantity: string;
+  location?: string;
+  timeWindow?: string;
+  simulationValue?: number;
+  measurementValue?: number;
+  difference?: number;
+  relativeDifference?: number;
+  uncertainty?: string;
+  comparisonMethod: string;
+  status: "NO_SIMULATION_RESULT" | "MISSING_MEASUREMENT_VALUE" | "READY_FOR_REVIEW" | "CALIBRATION_CANDIDATE" | "INVALID";
+  truthCategory: "DERIVED" | "UNKNOWN";
+  createdAt: string;
+}
+
+export interface CalibrationCandidate {
+  candidateId: string;
+  projectId: string;
+  comparisonId: string;
+  status: "CALIBRATION_CANDIDATE";
+  statement: string;
+  requiresHumanReview: true;
+  prohibitsAutomaticParameterChange: true;
+  createdAt: string;
+}
+
+export interface ExternalSolverAdapterRegistration {
+  registrationId: string;
+  projectId: string;
+  solverId: string;
+  solverName: string;
+  version: string;
+  provider: string;
+  adapterVersion: string;
+  supportedAnalysisTypes: CAEAnalysisType[];
+  capabilities: string[];
+  executionMode: "LOCAL_ADAPTER" | "REMOTE_ADAPTER" | "CLOUD_UNCONFIGURED";
+  inputSchemaVersion: string;
+  outputSchemaVersion: string;
+  securityRequirements: string[];
+  adapterManifest: string;
+  adapterHash: string;
+  publisherIdentity: string;
+  signature?: string;
+  capabilityManifest: string[];
+  verificationStatus: "UNVERIFIED" | "REJECTED" | "VERIFIED_NON_EXECUTABLE";
+  executable: false;
+  revocable: true;
+  createdAt: string;
 }

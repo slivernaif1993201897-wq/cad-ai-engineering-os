@@ -8,6 +8,7 @@ import type { CADAgentResult } from "@/shared/cadAgent";
 import type { GeometrySelectionContext } from "@/shared/cadWorkbench";
 import type { CAESimulationPlan } from "@/shared/cae";
 import { CAEEvidencePanel } from "@/components/cae-evidence-panel";
+import { CAEReconciliationPanel } from "@/components/cae-reconciliation-panel";
 
 function color(status?: string) { if (["COMPLETED", "READY_FOR_SOLVER", "PASS", "INPUT_VERIFIED"].includes(status ?? "")) return "#62B39A"; if (["NOT_READY", "FAILED", "FAIL", "SOLVER_UNAVAILABLE"].includes(status ?? "")) return "#E78966"; return "#8EC4E8"; }
 function Badge({ label }: { label: string }) { const tint = color(label); return <View style={[styles.badge, { borderColor: tint, backgroundColor: `${tint}18` }]}><Text style={[styles.badgeText, { color: tint }]}>{label}</Text></View>; }
@@ -41,6 +42,7 @@ export function CAEWorkspace({ sourceCadRevision, model, selectedGeometry, featu
       <View style={styles.card}><View style={styles.row}><View><Text style={styles.cardKicker}>ADVERSARIAL REVIEW & SELF-CRITIQUE</Text><Text style={styles.meta}>{selected.adversarialReview.length ? `${selected.adversarialReview.length} deterministic reviewer findings` : "Not run"}</Text></View><Pressable style={styles.secondary} disabled={review.isPending} onPress={runReview}><Text style={styles.secondaryText}>{review.isPending ? "REVIEWING…" : "CHALLENGE THIS SETUP"}</Text></Pressable></View>{selected.adversarialReview.length ? <Text style={styles.copy}>{short(selected.adversarialReview.map((item) => `${item.reviewer} ${item.status}: ${item.finding}`), "No review evidence.")}</Text> : null}{selected.selfCritique.correctedSummary ? <Text style={styles.meta}>{selected.selfCritique.correctedSummary}</Text> : null}</View>
       <View style={styles.noSolver}><Text style={styles.cardKicker}>EXECUTION SAFETY GATE</Text><Text style={styles.copy}>Execution is disabled. This action records a refusal because required inputs and an executable numerical solver do not exist.</Text><Pressable style={styles.secondary} disabled={execute.isPending} onPress={requestSolver}><Text style={styles.secondaryText}>{execute.isPending ? "CHECKING…" : "REQUEST SOLVER EXECUTION"}</Text></Pressable></View>
       <CAEEvidencePanel simulationId={selected.simulationId} observedCadRevision={sourceCadRevision} />
+      <CAEReconciliationPanel simulationId={selected.simulationId} />
     </> : null}
     <Text style={styles.notice}>{notice}</Text>
   </View>;
