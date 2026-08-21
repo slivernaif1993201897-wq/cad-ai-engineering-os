@@ -37,7 +37,7 @@
       "cpuMilliCores": 2000,
       "memoryMiB": 8192,
       "storageMiB": 71680,
-      "processCount": 64,
+      "processCount": 256,
       "runtimeSeconds": 900,
       "inputBytes": 10485760,
       "outputBytes": 104857600,
@@ -56,5 +56,5 @@
     "validUntil": "2027-01-01T00:00:00.000Z",
     "status": "AUTHORIZED"
   },
-  "manifestHash": "3a614d828b8c350a60ec974ddc5ef2b80eb05b91581989439175a6e69fad69c3"
+  "manifestHash": "21f20968b67a97b5754cb8139b17e92cb827d3a5223ecf6b8decc829fa56d545"
 }

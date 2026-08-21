@@ -42,7 +42,9 @@ jobs:
           (
             ulimit -t 60
             ulimit -f 204800
-            ulimit -u 32
+            # The hosted runner has ambient platform processes before this validation begins.
+            # This bounded cap is deliberately above that baseline so `timeout` can fork the validator.
+            ulimit -u 256
             timeout --signal=TERM 60s pnpm exec tsx scripts/ci/validate-controlled-user-job-manifest.ts
           ) 2>&1 | tee artifacts/controlled-user-job-admission/admission-validation.log
           sha256sum fixtures/controlled-user-job-manifest.json artifacts/controlled-user-job-admission/admission-receipt.json artifacts/controlled-user-job-admission/admission-validation.log > artifacts/controlled-user-job-admission/admission-artifacts.sha256
