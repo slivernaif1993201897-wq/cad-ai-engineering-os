@@ -1399,3 +1399,186 @@ export interface RuntimeImplementationReadinessReview {
   executable: false;
   createdAt: string;
 }
+
+export const CAE_JOB_CONTRACT_VERSION = "1.0.0" as const;
+export const CAE_JOB_STALENESS_STATES = ["FRESH", "STALE", "UNKNOWN"] as const;
+export type CAEJobStalenessState = (typeof CAE_JOB_STALENESS_STATES)[number];
+export const CAE_JOB_LIFECYCLE_STATES = ["CREATED", "VALIDATED", "STALE", "REJECTED", "READY_FOR_EXECUTION", "EXECUTING", "FAILED", "COMPLETED", "VERIFICATION_FAILED", "VERIFIED"] as const;
+export type CAEJobLifecycleState = (typeof CAE_JOB_LIFECYCLE_STATES)[number];
+export interface CAEJobBoundaryCondition {
+  boundaryId: string;
+  geometryReference: string;
+  type: "FIXED" | "DISPLACEMENT" | "SYMMETRY" | "ROLLER";
+  magnitude?: number;
+  unit?: "mm" | "m";
+  sourceHash: string;
+}
+export interface CAEJobLoad {
+  loadId: string;
+  geometryReference: string;
+  type: "FORCE" | "PRESSURE";
+  magnitude: number;
+  unit: "N" | "kN" | "Pa" | "MPa";
+  direction: "GLOBAL_X" | "GLOBAL_Y" | "GLOBAL_Z" | "NORMAL";
+  sourceHash: string;
+}
+export interface CAEJobContact {
+  contactId: string;
+  type: "BONDED" | "FRICTIONLESS" | "FRICTIONAL" | "NO_SEPARATION";
+  primaryGeometryReference: string;
+  secondaryGeometryReference: string;
+  sourceHash: string;
+}
+export interface CAEJobMeshStrategy {
+  strategyReference: string;
+  strategyHash: string;
+  elementIntent: "TETRAHEDRAL" | "HEXA_HYBRID" | "SHELL" | "BEAM";
+  targetSize?: number;
+  unit?: "mm" | "m";
+  qualityRequirements: string[];
+  status: "PLANNED" | "NOT_EXECUTED" | "UNKNOWN";
+}
+export interface CAEJobResourcePolicy {
+  policyReference: string;
+  policyVersion: string;
+  policyHash: string;
+  environmentReference: string;
+  constraints: Array<"CPU_LIMIT" | "MEMORY_LIMIT" | "DISK_LIMIT" | "EXECUTION_TIMEOUT" | "INPUT_SIZE_LIMIT" | "OUTPUT_SIZE_LIMIT" | "PROCESS_LIMIT" | "CONCURRENT_JOB_LIMIT">;
+}
+export interface CAEJobProvenance {
+  requirementIds: string[];
+  requirementRevision: string;
+  requirementHash: string;
+  cadRevision: string;
+  cadGeometryHash: string;
+  materialReference: string;
+  materialEvidenceHash: string;
+  sourcePlanId?: string;
+  createdBy: string;
+  createdAt: string;
+}
+export interface CanonicalCAEJobContract {
+  jobId: string;
+  projectId: string;
+  contractVersion: typeof CAE_JOB_CONTRACT_VERSION;
+  revision: number;
+  revisionOf?: string;
+  cadRevision: string;
+  cadGeometryHash: string;
+  requirementRevision: string;
+  analysisType: "STATIC_STRUCTURAL";
+  analysisVersion: string;
+  materialReference: string;
+  materialEvidenceHash: string;
+  boundaryConditions: CAEJobBoundaryCondition[];
+  loads: CAEJobLoad[];
+  contacts: CAEJobContact[];
+  meshStrategy: CAEJobMeshStrategy;
+  solverReference: string;
+  solverVersion: string;
+  environmentReference: string;
+  resourcePolicy: CAEJobResourcePolicy;
+  expectedOutputs: Array<"DISPLACEMENT" | "VON_MISES_STRESS" | "SOLVER_LOG" | "EXECUTION_RECEIPT">;
+  verificationRequirements: Array<"INPUT_INTEGRITY" | "CAD_IDENTITY" | "MESH_IDENTITY" | "SOLVER_IDENTITY" | "SOLVER_VERSION" | "UNITS" | "BOUNDARY_CONDITIONS" | "MATERIAL" | "CONVERGENCE" | "WARNINGS" | "RESULT_INTEGRITY" | "REPRODUCIBILITY">;
+  provenance: CAEJobProvenance;
+  contractHash: string;
+  lifecycleState: "VALIDATED";
+  readinessState: "DISABLED";
+  executionEligible: false;
+  executable: false;
+  createdBy: string;
+  createdAt: string;
+}
+export interface CAEJobStalenessCheck {
+  dimension: "CAD" | "REQUIREMENTS" | "MATERIAL_EVIDENCE" | "MESH_STRATEGY" | "SOLVER_DEFINITION";
+  status: CAEJobStalenessState;
+  expected: string;
+  observed?: string;
+  reason: string;
+}
+export interface CAEJobStalenessAssessment {
+  assessmentId: string;
+  projectId: string;
+  jobId: string;
+  checks: CAEJobStalenessCheck[];
+  status: CAEJobStalenessState;
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+}
+export interface NonExecutableMeshArtifact {
+  meshId: string;
+  projectId: string;
+  jobId: string;
+  sourceCadHash: string;
+  nodeCount?: number;
+  elementCount?: number;
+  elementTypes: Array<"TETRA4" | "TETRA10" | "HEXA8" | "SHELL4" | "BEAM2" | "UNKNOWN">;
+  coordinatesHash: string;
+  connectivityHash: string;
+  qualitySummary: "NOT_MEASURED" | "UNKNOWN";
+  units: "mm" | "m" | "UNKNOWN";
+  generatorReference: string;
+  generatorVersion: string;
+  artifactHash: string;
+  status: "SCHEMA_REGISTERED";
+  executable: false;
+  createdAt: string;
+}
+export interface AllowlistedSolverArtifact {
+  artifactId: string;
+  projectId: string;
+  solverName: string;
+  solverVersion: string;
+  artifactHash: string;
+  source: string;
+  signatureStatus: "UNVERIFIED" | "VERIFIED_NON_EXECUTABLE" | "INVALID" | "UNKNOWN";
+  allowlistStatus: "ALLOWLISTED_NON_EXECUTABLE" | "NOT_ALLOWLISTED" | "REVOKED" | "UNKNOWN";
+  capabilities: CAEAnalysisType[];
+  licenseReference: string;
+  provenance: string[];
+  executable: false;
+  createdAt: string;
+}
+export interface FutureCAEJobResultArtifact {
+  resultId: string;
+  projectId: string;
+  jobId: string;
+  solverReference: string;
+  inputHash: string;
+  meshHash: string;
+  resultHash: string;
+  resultTypes: Array<"DISPLACEMENT" | "VON_MISES_STRESS" | "REACTION_FORCE" | "UNKNOWN">;
+  units: string[];
+  convergenceStatus: "NOT_AVAILABLE" | "UNKNOWN" | "CONVERGED" | "DIVERGED";
+  warnings: string[];
+  verificationStatus: "NOT_VERIFIED";
+  provenance: string[];
+  numericalResults: never[];
+  createdAt: string;
+}
+export interface CAEJobVerificationRecord {
+  verificationId: string;
+  projectId: string;
+  jobId: string;
+  checks: Array<{ requirement: CanonicalCAEJobContract["verificationRequirements"][number]; status: "NOT_VERIFIED" | "PASS" | "FAIL" | "UNKNOWN"; statement: string; evidenceIds: string[] }>;
+  status: "NOT_VERIFIED" | "PASS" | "FAIL" | "UNKNOWN";
+  resultId?: string;
+  createdAt: string;
+}
+export interface CAEJobTraceabilityLink {
+  linkId: string;
+  projectId: string;
+  jobId: string;
+  from: "REQUIREMENT" | "CAD_REVISION" | "CAE_JOB" | "MESH" | "SOLVER" | "RESULT" | "VERIFICATION" | "EVIDENCE";
+  fromId: string;
+  to: "REQUIREMENT" | "CAD_REVISION" | "CAE_JOB" | "MESH" | "SOLVER" | "RESULT" | "VERIFICATION" | "EVIDENCE";
+  toId: string;
+  relationship: string;
+  status: "DECLARED" | "PROVEN" | "UNKNOWN";
+}
+export interface CAEJobFailureModel {
+  states: CAEJobLifecycleState[];
+  readyForExecutionBehavior: "DISABLED_IN_PHASE_6_5";
+  prohibited: Array<"ARBITRARY_COMMAND" | "ARBITRARY_PATH" | "ARBITRARY_EXECUTABLE" | "ARBITRARY_NETWORK" | "ARBITRARY_FILESYSTEM">;
+}

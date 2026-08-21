@@ -190,3 +190,9 @@
 - [x] Phase 6.4: Implement immutable project-isolated runtime implementation readiness review, evidence graph/audit records, final decision, and capability-safe read-only APIs without solver, mesher, process, network, filesystem, plugin, shell, or credential execution.
 - [x] Phase 6.4: Build a mobile Runtime Implementation Readiness Review workspace showing inventory, blockers, solver/meshing options, MV-CAE, boundary, trust, security, failures, implementation plan, complexity, sources, and decision.
 - [x] Phase 6.4: Add deterministic review acceptance coverage, run TypeScript and serialized full regression, save a verified checkpoint, report the decision, and stop without Phase 7 or execution implementation.
+
+- [x] Phase 6.5: Define versioned immutable canonical CAE Job Contract, job revision, staleness, non-executable mesh artifact, allowlisted solver artifact, future result artifact, verification, traceability, failure, and security-boundary contracts.
+- [x] Phase 6.5: Implement project-isolated immutable job submission and revision records, strict required-field/unit/reference/hash/analysis/solver/resource/provenance validation, and fail-closed stale-context detection.
+- [x] Phase 6.5: Implement non-executable mesh, solver, and result artifact registration schemas; verification/traceability/failure records; immutable audit/graph links; and capability-safe APIs without runtime execution.
+- [x] Phase 6.5: Build a read-only mobile CAE Job Contract Inspector exposing job identity, CAD/requirements/material/loads/boundaries, mesh/solver references, hashes, provenance, staleness, verification, traceability, failure states, and execution-disabled status.
+- [x] Phase 6.5: Add deterministic valid/invalid/unit/missing/stale/revision/artifact/traceability/fail-closed acceptance tests, run TypeScript and serialized full regression, save a verified checkpoint, report outcomes, and stop without Phase 7.

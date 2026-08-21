@@ -29,6 +29,7 @@ import { buildExecutionTrustGraph, evaluateExecutionTrustReadiness, ingestCertif
 import { buildRuntimeArchitectureGraph, createRuntimeArchitectureReview, listRuntimeArchitectureReviews } from "./runtimeArchitectureReview";
 import { buildRuntimeReadinessGraph, createCapacityPolicy, createRuntimeReadinessReview, listCapacityPolicies, listIndependentSandboxAttestations, listRuntimeReadinessReviews, registerIndependentSandboxAttestation, validateCapacityPolicy } from "./runtimeReadiness";
 import { buildRuntimeImplementationReadinessGraph, createRuntimeImplementationReadinessReview, listRuntimeImplementationReadinessReviews } from "./runtimeImplementationReadiness";
+import { buildCAEJobContractGraph, buildCAEJobTraceability, caeJobFailureModel, createCAEJobVerificationRecord, evaluateCAEJobStaleness, getCAEJobContract, listCAEJobContracts, listCAEJobStaleness, registerAllowlistedSolverArtifact, registerFutureCAEJobResultArtifact, registerNonExecutableMeshArtifact, reviseCAEJobContract, submitCAEJobContract } from "./caeJobContract";
 import { buildExternalVerificationGraph, evaluateExternalVerificationReadiness, importHostileTestEvidence, importInfrastructureEvidence, importSandboxReview, listExternalVerificationReadiness, listHostileTestEnvironments, listHostileTestEvidence, listInfrastructureEvidence, listSandboxReviews, recordExternalEvidenceLifecycle, registerHostileTestEnvironment, verifyExternalEvidence } from "./externalVerification";
 import { assignVerificationReview, decideVerificationReview, ensureGovernancePolicies, evaluateVerificationGovernanceReadiness, importTestEnvironmentEvidenceReference, listGovernanceLifecycle, listGovernancePolicies, listTestEnvironmentEvidenceReferences, listVerificationConflicts, listVerificationGovernanceReadiness, listVerificationReviews, resolveVerificationConflict, revokeGovernanceReviewer, submitVerificationReview, transitionVerificationReview } from "./verificationGovernance";
 
@@ -56,6 +57,12 @@ const adapterRegistrationInput = z.object({ solverId: z.string().trim().min(1).m
 const reviewerPermission = z.enum(["APPROVE_MATERIAL", "APPROVE_CALIBRATION", "APPROVE_SOLVER_ADAPTER", "APPROVE_VALIDATION"]);
 const adapterPermission = z.enum(["READ_CAD", "READ_REQUIREMENTS", "READ_MATERIAL_EVIDENCE", "READ_CAE_PLAN", "WRITE_RESULTS", "WRITE_LOGS", "NETWORK_ACCESS", "FILESYSTEM_ACCESS"]);
 const sandboxInput = z.object({ sandboxType: z.enum(["DECLARATION_ONLY", "CONTAINER", "VM", "UNKNOWN"]).optional(), resourceLimits: z.array(z.string().trim().min(1).max(240)).max(32).optional(), filesystemScope: z.array(z.string().trim().min(1).max(240)).max(32).optional(), networkPolicy: z.enum(["NO_NETWORK", "DECLARATION_ONLY"]).optional(), timeoutSeconds: z.number().int().positive().max(86_400).optional(), memoryLimitMiB: z.number().int().positive().max(1_048_576).optional(), cpuLimit: z.number().positive().max(4096).optional(), allowedInputs: z.array(z.string().trim().min(1).max(240)).max(32).optional(), allowedOutputs: z.array(z.string().trim().min(1).max(240)).max(32).optional() }).optional();
+const sha256 = z.string().regex(/^[a-f0-9]{64}$/i);
+const boundedReference = z.string().trim().min(1).max(320).regex(/^[A-Za-z0-9][A-Za-z0-9._:@-]*$/);
+const caeJobInput = z.object({ cadRevision: boundedReference, cadGeometryHash: sha256, requirementRevision: boundedReference, analysisType: z.literal("STATIC_STRUCTURAL"), analysisVersion: boundedReference, materialReference: boundedReference, materialEvidenceHash: sha256, boundaryConditions: z.array(z.object({ boundaryId: boundedReference, geometryReference: boundedReference, type: z.enum(["FIXED", "DISPLACEMENT", "SYMMETRY", "ROLLER"]), magnitude: z.number().finite().optional(), unit: z.enum(["mm", "m"]).optional(), sourceHash: sha256 })).min(1).max(32), loads: z.array(z.object({ loadId: boundedReference, geometryReference: boundedReference, type: z.enum(["FORCE", "PRESSURE"]), magnitude: z.number().finite(), unit: z.enum(["N", "kN", "Pa", "MPa"]), direction: z.enum(["GLOBAL_X", "GLOBAL_Y", "GLOBAL_Z", "NORMAL"]), sourceHash: sha256 })).min(1).max(32), contacts: z.array(z.object({ contactId: boundedReference, type: z.enum(["BONDED", "FRICTIONLESS", "FRICTIONAL", "NO_SEPARATION"]), primaryGeometryReference: boundedReference, secondaryGeometryReference: boundedReference, sourceHash: sha256 })).max(32), meshStrategy: z.object({ strategyReference: boundedReference, strategyHash: sha256, elementIntent: z.enum(["TETRAHEDRAL", "HEXA_HYBRID", "SHELL", "BEAM"]), targetSize: z.number().positive().finite().optional(), unit: z.enum(["mm", "m"]).optional(), qualityRequirements: z.array(z.string().trim().min(1).max(1000)).min(1).max(32), status: z.enum(["PLANNED", "NOT_EXECUTED", "UNKNOWN"]) }), solverReference: z.literal("CALCULIX_LINEAR_STATIC_SCHEMA_ONLY"), solverVersion: boundedReference, environmentReference: boundedReference, resourcePolicy: z.object({ policyReference: boundedReference, policyVersion: boundedReference, policyHash: sha256, environmentReference: boundedReference, constraints: z.array(z.enum(["CPU_LIMIT", "MEMORY_LIMIT", "DISK_LIMIT", "EXECUTION_TIMEOUT", "INPUT_SIZE_LIMIT", "OUTPUT_SIZE_LIMIT", "PROCESS_LIMIT", "CONCURRENT_JOB_LIMIT"])).length(8) }), expectedOutputs: z.array(z.enum(["DISPLACEMENT", "VON_MISES_STRESS", "SOLVER_LOG", "EXECUTION_RECEIPT"])).min(2).max(4), verificationRequirements: z.array(z.enum(["INPUT_INTEGRITY", "CAD_IDENTITY", "MESH_IDENTITY", "SOLVER_IDENTITY", "SOLVER_VERSION", "UNITS", "BOUNDARY_CONDITIONS", "MATERIAL", "CONVERGENCE", "WARNINGS", "RESULT_INTEGRITY", "REPRODUCIBILITY"])).length(12), provenance: z.object({ requirementIds: z.array(boundedReference).min(1).max(128), requirementRevision: boundedReference, requirementHash: sha256, cadRevision: boundedReference, cadGeometryHash: sha256, materialReference: boundedReference, materialEvidenceHash: sha256, sourcePlanId: boundedReference.optional(), createdBy: z.string().trim().min(1).max(160), createdAt: z.string().trim().min(1).max(64).optional() }), createdBy: z.string().trim().min(1).max(160) });
+const meshArtifactInput = z.object({ jobId: z.string().trim().min(1).max(160), sourceCadHash: sha256, nodeCount: z.number().int().nonnegative().optional(), elementCount: z.number().int().nonnegative().optional(), elementTypes: z.array(z.enum(["TETRA4", "TETRA10", "HEXA8", "SHELL4", "BEAM2", "UNKNOWN"])).min(1).max(16), coordinatesHash: sha256, connectivityHash: sha256, qualitySummary: z.enum(["NOT_MEASURED", "UNKNOWN"]), units: z.enum(["mm", "m", "UNKNOWN"]), generatorReference: boundedReference, generatorVersion: boundedReference });
+const solverArtifactInput = z.object({ solverName: boundedReference, solverVersion: boundedReference, artifactHash: sha256, source: boundedReference, signatureStatus: z.enum(["UNVERIFIED", "VERIFIED_NON_EXECUTABLE", "INVALID", "UNKNOWN"]), allowlistStatus: z.enum(["ALLOWLISTED_NON_EXECUTABLE", "NOT_ALLOWLISTED", "REVOKED", "UNKNOWN"]), capabilities: z.array(z.enum(["STATIC_STRUCTURAL", "DYNAMIC", "MODAL", "THERMAL", "THERMAL_STRUCTURAL", "CONTACT", "BUCKLING", "FATIGUE"])).max(8), licenseReference: z.string().trim().min(1).max(1000), provenance: z.array(z.string().trim().min(1).max(1000)).min(1).max(32) });
+const resultArtifactInput = z.object({ jobId: z.string().trim().min(1).max(160), solverReference: z.literal("CALCULIX_LINEAR_STATIC_SCHEMA_ONLY"), inputHash: sha256, meshHash: sha256, resultHash: sha256, resultTypes: z.array(z.enum(["DISPLACEMENT", "VON_MISES_STRESS", "REACTION_FORCE", "UNKNOWN"])).min(1).max(8), units: z.array(z.string().trim().min(1).max(64)).max(16), convergenceStatus: z.enum(["NOT_AVAILABLE", "UNKNOWN", "DIVERGED"]), warnings: z.array(z.string().trim().min(1).max(1000)).max(64), provenance: z.array(z.string().trim().min(1).max(1000)).min(1).max(32) });
 
 export const appRouter = router({
   system: systemRouter,
@@ -393,6 +400,44 @@ export const appRouter = router({
     listVerificationGovernanceReadiness: publicProcedure
       .input(caeAccess)
       .query(({ input }) => listVerificationGovernanceReadiness(input)),
+    submitCAEJobContract: publicProcedure
+      .input(caeAccess.extend({ input: caeJobInput }))
+      .mutation(({ input }) => submitCAEJobContract({ ...input, input: input.input })),
+    listCAEJobContracts: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listCAEJobContracts(input)),
+    getCAEJobContract: publicProcedure
+      .input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) }))
+      .query(({ input }) => getCAEJobContract(input)),
+    reviseCAEJobContract: publicProcedure
+      .input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160), input: caeJobInput }))
+      .mutation(({ input }) => reviseCAEJobContract({ ...input, input: input.input })),
+    evaluateCAEJobStaleness: publicProcedure
+      .input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160), observedCadRevision: boundedReference.optional(), observedRequirementRevision: boundedReference.optional(), observedMaterialEvidenceHash: sha256.optional(), observedMeshStrategyHash: sha256.optional(), observedSolverVersion: boundedReference.optional() }))
+      .mutation(({ input }) => evaluateCAEJobStaleness(input)),
+    listCAEJobStaleness: publicProcedure
+      .input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160).optional() }))
+      .query(({ input }) => listCAEJobStaleness(input)),
+    registerNonExecutableMeshArtifact: publicProcedure
+      .input(caeAccess.extend({ input: meshArtifactInput }))
+      .mutation(({ input }) => registerNonExecutableMeshArtifact({ ...input, input: input.input })),
+    registerAllowlistedSolverArtifact: publicProcedure
+      .input(caeAccess.extend({ input: solverArtifactInput }))
+      .mutation(({ input }) => registerAllowlistedSolverArtifact({ ...input, input: input.input })),
+    registerFutureCAEJobResultArtifact: publicProcedure
+      .input(caeAccess.extend({ input: resultArtifactInput }))
+      .mutation(({ input }) => registerFutureCAEJobResultArtifact({ ...input, input: input.input })),
+    createCAEJobVerificationRecord: publicProcedure
+      .input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160), resultId: z.string().trim().min(1).max(160).optional() }))
+      .mutation(({ input }) => createCAEJobVerificationRecord(input)),
+    buildCAEJobTraceability: publicProcedure
+      .input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => buildCAEJobTraceability(input)),
+    caeJobFailureModel: publicProcedure
+      .query(() => caeJobFailureModel()),
+    caeJobContractGraph: publicProcedure
+      .input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) }))
+      .mutation(({ input }) => buildCAEJobContractGraph(input)),
   }),
 
   intelligence: router({
