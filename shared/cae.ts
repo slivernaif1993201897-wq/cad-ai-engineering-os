@@ -1700,3 +1700,74 @@ export interface MeshQualityStalenessAssessment {
   executable: false;
   createdAt: string;
 }
+
+export const MESH_QUALITY_VERIFICATION_VERSION = "1.0.0" as const;
+export const MESH_QUALITY_VERIFICATION_STATUSES = ["NOT_VERIFIED", "VERIFIED", "REJECTED", "CONFLICT", "EXPIRED", "REVOKED", "UNKNOWN"] as const;
+export type MeshQualityVerificationStatus = (typeof MESH_QUALITY_VERIFICATION_STATUSES)[number];
+export interface MeshQualityVerification {
+  verificationId: string;
+  projectId: string;
+  meshQualityEvidenceId: string;
+  meshId: string;
+  jobId: string;
+  submitter: string;
+  verifier: string;
+  verifierIdentity: string;
+  verificationScope: "MESH_QUALITY_EVIDENCE";
+  verificationMethod: string;
+  verificationVersion: string;
+  evidenceHash: string;
+  verificationTimestamp: string;
+  status: MeshQualityVerificationStatus;
+  findings: string[];
+  provenance: { cadRevision: string; cadGeometryHash: string; jobRevision: number; meshGenerator: string; qualityAlgorithmVersion: string; thresholdVersion: string; reviewerIdentityHash: string };
+  executable: false;
+}
+
+export const SOLVER_INPUT_PACKAGE_VERSION = "1.0.0" as const;
+export const SOLVER_INPUT_PACKAGE_STATUSES = ["DRAFT", "VALID", "STALE", "INVALID", "CONFLICT", "UNKNOWN", "VERIFIED"] as const;
+export type SolverInputPackageStatus = (typeof SOLVER_INPUT_PACKAGE_STATUSES)[number];
+export interface SolverInputPackageManifest {
+  packageId: string;
+  projectId: string;
+  packageVersion: typeof SOLVER_INPUT_PACKAGE_VERSION;
+  jobId: string;
+  jobContractHash: string;
+  jobRevision: number;
+  sourcePlanId: string;
+  cadRevision: string;
+  cadGeometryHash: string;
+  meshArtifactId: string;
+  meshHash: string;
+  meshQualityEvidenceId: string;
+  meshQualityVerificationId?: string;
+  materialReference: string;
+  materialEvidenceHash: string;
+  loadsHash: string;
+  boundaryConditionsHash: string;
+  contactsHash: string;
+  analysisType: "STATIC_STRUCTURAL";
+  units: string[];
+  solverReference: string;
+  solverConfiguration: { configurationReference: string; configurationHash: string; declaredOnly: true };
+  verificationRequirements: CanonicalCAEJobContract["verificationRequirements"];
+  manifestHash: string;
+  status: SolverInputPackageStatus;
+  staleReasons: string[];
+  conflicts: string[];
+  traceability: Array<{ from: "REQUIREMENT" | "CAD_REVISION" | "CAE_PLAN" | "CAE_JOB" | "MESH" | "MESH_QUALITY" | "SOLVER_INPUT_PACKAGE"; fromId: string; to: "CAD_REVISION" | "CAE_PLAN" | "CAE_JOB" | "MESH" | "MESH_QUALITY" | "SOLVER_INPUT_PACKAGE"; toId: string; relationship: string }>;
+  securityBoundary: { prohibited: Array<"ARBITRARY_COMMAND" | "ARBITRARY_EXECUTABLE" | "ARBITRARY_FILESYSTEM" | "ARBITRARY_NETWORK" | "CREDENTIAL" | "ENVIRONMENT_SECRET">; immutableReferencesOnly: true; nonExecutable: true };
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+}
+export interface SolverInputPackageStalenessAssessment {
+  assessmentId: string;
+  projectId: string;
+  packageId: string;
+  status: "FRESH" | "STALE" | "UNKNOWN" | "CONFLICT";
+  checks: Array<{ dimension: "CAD_REVISION" | "CAD_HASH" | "JOB_REVISION" | "MESH" | "MESH_HASH" | "MATERIAL_EVIDENCE" | "MESH_QUALITY_VERIFICATION"; expected: string; observed?: string; status: "FRESH" | "STALE" | "UNKNOWN" | "CONFLICT"; reason: string }>;
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+}

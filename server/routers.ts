@@ -31,6 +31,7 @@ import { buildRuntimeReadinessGraph, createCapacityPolicy, createRuntimeReadines
 import { buildRuntimeImplementationReadinessGraph, createRuntimeImplementationReadinessReview, listRuntimeImplementationReadinessReviews } from "./runtimeImplementationReadiness";
 import { buildCAEJobContractGraph, buildCAEJobTraceability, caeJobFailureModel, createCAEJobVerificationRecord, evaluateCAEJobStaleness, getCAEJobContract, listCAEJobContracts, listCAEJobStaleness, registerAllowlistedSolverArtifact, registerFutureCAEJobResultArtifact, registerNonExecutableMeshArtifact, reviseCAEJobContract, submitCAEJobContract } from "./caeJobContract";
 import { buildCAEPlanIntegrationGraph, captureValidatedCAEPlanSnapshot, convertCAEPlanSnapshotToJob, createCAEJobDiff, evaluateMeshQualityStaleness, listCAEPlanSnapshots, listMeshQualityEvidence, registerMeshQualityEvidence } from "./caePlanIntegration";
+import { assessSolverInputPackageStaleness, buildSolverInputPackageGraph, createMeshQualityVerification, createSolverInputPackageManifest, listMeshQualityVerifications, listSolverInputPackages } from "./solverInputPackage";
 import { buildExternalVerificationGraph, evaluateExternalVerificationReadiness, importHostileTestEvidence, importInfrastructureEvidence, importSandboxReview, listExternalVerificationReadiness, listHostileTestEnvironments, listHostileTestEvidence, listInfrastructureEvidence, listSandboxReviews, recordExternalEvidenceLifecycle, registerHostileTestEnvironment, verifyExternalEvidence } from "./externalVerification";
 import { assignVerificationReview, decideVerificationReview, ensureGovernancePolicies, evaluateVerificationGovernanceReadiness, importTestEnvironmentEvidenceReference, listGovernanceLifecycle, listGovernancePolicies, listTestEnvironmentEvidenceReferences, listVerificationConflicts, listVerificationGovernanceReadiness, listVerificationReviews, resolveVerificationConflict, revokeGovernanceReviewer, submitVerificationReview, transitionVerificationReview } from "./verificationGovernance";
 
@@ -68,6 +69,8 @@ const planSnapshotInput = z.object({ simulationId: boundedReference, sourceCadGe
 const meshQualityMetricInput = z.object({ metric: z.enum(["ASPECT_RATIO", "SKEWNESS", "JACOBIAN", "WARPAGE", "MINIMUM_ELEMENT_QUALITY", "MAXIMUM_ELEMENT_QUALITY", "DEGENERATE_ELEMENTS", "INVERTED_ELEMENTS", "DUPLICATE_NODES", "FREE_EDGES", "UNKNOWN"]), value: z.number().finite().optional(), unit: z.string().trim().min(1).max(64).optional(), source: z.enum(["MEASURED", "DECLARED", "UNKNOWN"]), status: z.enum(["KNOWN", "UNKNOWN", "NOT_AVAILABLE"]), evidenceHash: sha256.optional() });
 const meshQualityThresholdInput = z.object({ metric: z.enum(["ASPECT_RATIO", "SKEWNESS", "JACOBIAN", "WARPAGE", "MINIMUM_ELEMENT_QUALITY", "MAXIMUM_ELEMENT_QUALITY", "DEGENERATE_ELEMENTS", "INVERTED_ELEMENTS", "DUPLICATE_NODES", "FREE_EDGES", "UNKNOWN"]), value: z.number().finite(), unit: z.string().trim().min(1).max(64), source: z.string().trim().min(1).max(500), version: z.string().trim().min(1).max(96), rationale: z.string().trim().min(1).max(2000), evidenceHash: sha256 });
 const meshQualityEvidenceInput = z.object({ meshId: boundedReference, jobId: boundedReference, sourceCadHash: sha256, meshGenerator: boundedReference, meshGeneratorVersion: boundedReference, elementTypes: z.array(z.enum(["TETRA4", "TETRA10", "HEXA8", "SHELL4", "BEAM2", "UNKNOWN"])).min(1).max(16), elementCount: z.number().int().nonnegative().optional(), nodeCount: z.number().int().nonnegative().optional(), qualityMetrics: z.array(meshQualityMetricInput).min(1).max(32), qualityThresholds: z.array(meshQualityThresholdInput).min(1).max(32), provenance: z.object({ cadRevision: boundedReference, cadGeometryHash: sha256, jobId: boundedReference, jobRevision: z.number().int().positive(), meshArtifactId: boundedReference, meshGenerator: boundedReference, meshGeneratorVersion: boundedReference, qualityAlgorithm: boundedReference, qualityAlgorithmVersion: boundedReference, thresholdVersion: z.string().trim().min(1).max(96), references: z.array(z.string().trim().min(1).max(500)).min(1).max(32) }), reportedStatus: z.enum(["NOT_AVAILABLE", "UNKNOWN", "PASS", "FAIL", "WARNING"]).optional() });
+const meshQualityVerificationInput = z.object({ meshQualityEvidenceId: boundedReference, submitter: z.string().trim().min(1).max(160), verifier: boundedReference, verificationMethod: boundedReference, verificationVersion: boundedReference, findings: z.array(z.string().trim().min(1).max(2000)).max(32), requestedStatus: z.enum(["VERIFIED", "REJECTED", "CONFLICT", "UNKNOWN"]) });
+const solverInputPackageInput = z.object({ jobId: boundedReference, meshId: boundedReference, meshHash: sha256, meshQualityEvidenceId: boundedReference, meshQualityVerificationId: boundedReference.optional(), solverConfigurationReference: boundedReference, solverConfigurationHash: sha256 });
 
 export const appRouter = router({
   system: systemRouter,
@@ -467,6 +470,24 @@ export const appRouter = router({
     caePlanIntegrationGraph: publicProcedure
       .input(caeAccess.extend({ jobId: boundedReference }))
       .mutation(({ input }) => buildCAEPlanIntegrationGraph(input)),
+    createMeshQualityVerification: publicProcedure
+      .input(caeAccess.extend(meshQualityVerificationInput.shape))
+      .mutation(({ input }) => createMeshQualityVerification(input)),
+    listMeshQualityVerifications: publicProcedure
+      .input(caeAccess.extend({ meshQualityEvidenceId: boundedReference.optional(), meshId: boundedReference.optional(), jobId: boundedReference.optional() }))
+      .query(({ input }) => listMeshQualityVerifications(input)),
+    createSolverInputPackageManifest: publicProcedure
+      .input(caeAccess.extend(solverInputPackageInput.shape))
+      .mutation(({ input }) => createSolverInputPackageManifest(input)),
+    listSolverInputPackages: publicProcedure
+      .input(caeAccess.extend({ cadRevision: boundedReference.optional(), cadGeometryHash: sha256.optional(), jobRevision: z.number().int().positive().optional(), meshId: boundedReference.optional(), meshHash: sha256.optional() }))
+      .query(({ input }) => listSolverInputPackages(input)),
+    assessSolverInputPackageStaleness: publicProcedure
+      .input(caeAccess.extend({ packageId: boundedReference, observedCadRevision: boundedReference.optional(), observedCadGeometryHash: sha256.optional(), observedJobRevision: z.number().int().positive().optional(), observedMeshId: boundedReference.optional(), observedMeshHash: sha256.optional(), observedMaterialEvidenceHash: sha256.optional(), observedMeshQualityVerificationId: boundedReference.optional() }))
+      .mutation(({ input }) => assessSolverInputPackageStaleness(input)),
+    solverInputPackageGraph: publicProcedure
+      .input(caeAccess.extend({ packageId: boundedReference }))
+      .mutation(({ input }) => buildSolverInputPackageGraph(input)),
   }),
 
   intelligence: router({
