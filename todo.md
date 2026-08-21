@@ -215,3 +215,7 @@
 - [x] Phase 6.8: Implement configuration/verification staleness, dependency traceability, audit/graph links, and capability-safe APIs without solver, mesher, runtime, process, shell, plugin, network, filesystem, credential, environment-secret, or numerical-result execution.
 - [x] Phase 6.8: Build read-only mobile Verification History, Reviewer Assignment, Manifest Diff, and Solver Configuration Registry inspectors with prominent NON-EXECUTABLE status.
 - [x] Phase 6.8: Add deterministic expiry, revocation, reassignment, self-review, unauthorized reassignment, manifest diff, deterministic diff, configuration registration/validation, unknown parameter, version conflict, deprecated/revoked/stale configuration, traceability, security, TypeScript, and serialized full-regression tests; save a verified checkpoint and stop without Phase 7.
+
+- [x] Phase 6.8 Review Gate: Inspect the implemented Requirements, CAD, CAE plan/job, mesh, verification, package, configuration, governance, audit, traceability, staleness, conflict, provenance, and mobile-inspector evidence without implementing capability changes.
+- [x] Phase 6.8 Review Gate: Evaluate actual end-to-end traceability, architecture gaps, execution readiness, security prerequisites, governance policy ambiguity, and actionable mobile UI/UX findings without execution enablement.
+- [x] Phase 6.8 Review Gate: Run TypeScript, focused Phase 6.8, and serialized full regression; produce the final review-only verdict, recommendations, and stop without Phase 7 or any execution capability.
