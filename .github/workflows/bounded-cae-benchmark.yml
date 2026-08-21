@@ -1,0 +1,183 @@
+name: Bounded CAD-AI CAE Benchmark
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/bounded-cae-benchmark.yml"
+      - "scripts/ci/**"
+      - "server/cadKernel.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bounded-cae-benchmark-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fixed-benchmark:
+    name: Fixed OpenCascade → Gmsh → CalculiX benchmark
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      BENCHMARK_ID: CAD-AI-AXIAL-BAR-OPEN-CASCADE-V1
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Checkout immutable repository revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Prepare fixed workspace and observe runner limits
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/{cad,mesh,solver,logs,provenance}
+          {
+            echo "benchmark_id=${BENCHMARK_ID}"
+            echo "workflow_run_id=${GITHUB_RUN_ID}"
+            echo "workflow_run_attempt=${GITHUB_RUN_ATTEMPT}"
+            echo "commit_sha=${GITHUB_SHA}"
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            echo "runner_environment=${RUNNER_ENVIRONMENT:-unknown}"
+            echo "generated_at=$(date --iso-8601=seconds)"
+            echo "cpu_count=$(nproc)"
+            echo "memory_kib=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+            echo "filesystem=$(df -B1 . | tail -1)"
+            echo "ulimit=$(ulimit -a)"
+          } > artifacts/provenance/runner-observation.txt
+          sha256sum artifacts/provenance/runner-observation.txt > artifacts/provenance/runner-observation.sha256
+
+      - name: Install fixed solver and verifier packages from Ubuntu repositories
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gmsh calculix-ccx python3-meshio
+          {
+            echo "--- package versions ---"
+            dpkg-query -W -f='${binary:Package}\t${Version}\n' gmsh calculix-ccx python3-meshio
+            echo "--- binaries ---"
+            command -v gmsh
+            command -v ccx
+            echo "--- gmsh version ---"
+            gmsh --version
+            echo "--- calculix version ---"
+            ccx -v || true
+            echo "--- gmsh dependencies ---"
+            ldd "$(command -v gmsh)" || true
+            echo "--- calculix dependencies ---"
+            ldd "$(command -v ccx)" || true
+          } > artifacts/provenance/solver-sbom.txt
+          sha256sum "$(command -v gmsh)" "$(command -v ccx)" artifacts/provenance/solver-sbom.txt > artifacts/provenance/solver-identities.sha256
+
+      - name: Install locked JavaScript dependencies
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Generate real OpenCascade STEP benchmark geometry
+        shell: bash
+        run: pnpm exec tsx scripts/ci/generate-cad-axial-bar.ts
+
+      - name: Run real Gmsh against the OpenCascade STEP artifact
+        id: gmsh
+        shell: bash
+        run: |
+          set +e
+          (
+            ulimit -t 180
+            ulimit -f 1048576
+            ulimit -u 64
+            timeout --signal=TERM 180s gmsh -3 artifacts/cad/axial-bar.step -format msh41 -clmin 10 -clmax 10 -o artifacts/mesh/axial-bar.msh
+          ) 2>&1 | tee artifacts/logs/gmsh.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          sha256sum artifacts/cad/axial-bar.step artifacts/mesh/axial-bar.msh artifacts/logs/gmsh.log > artifacts/provenance/gmsh-artifacts.sha256 2>/dev/null || true
+          exit 0
+
+      - name: Independently verify real mesh and build fixed CalculiX input
+        if: steps.gmsh.outputs.exit_code == '0'
+        id: mesh
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/ci/verify_mesh_and_build_ccx.py 2>&1 | tee artifacts/logs/mesh-verifier.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          sha256sum artifacts/mesh/mesh-verification.json artifacts/solver/axial-bar.inp artifacts/solver/axial-bar.input.json artifacts/logs/mesh-verifier.log > artifacts/provenance/mesh-and-input.sha256 2>/dev/null || true
+          exit 0
+
+      - name: Run real CalculiX on the independently verified Gmsh mesh
+        if: steps.mesh.outputs.exit_code == '0'
+        id: calculix
+        shell: bash
+        working-directory: artifacts/solver
+        run: |
+          set +e
+          (
+            ulimit -t 180
+            ulimit -f 1048576
+            ulimit -u 64
+            timeout --signal=TERM 180s ccx axial-bar
+          ) 2>&1 | tee ../logs/calculix.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          sha256sum axial-bar.inp axial-bar.dat axial-bar.frd ../logs/calculix.log > ../provenance/calculix-artifacts.sha256 2>/dev/null || true
+          exit 0
+
+      - name: Validate observed CalculiX result against a calculated axial-bar reference
+        if: steps.calculix.outputs.exit_code == '0'
+        id: numerical
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/ci/validate_ccx_results.py 2>&1 | tee artifacts/logs/numerical-validation.log
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          sha256sum artifacts/solver/numerical-validation.json artifacts/logs/numerical-validation.log > artifacts/provenance/numerical-validation.sha256 2>/dev/null || true
+          exit 0
+
+      - name: Write observed execution summary
+        if: always()
+        shell: bash
+        run: |
+          cat > artifacts/provenance/execution-summary.json <<EOF
+          {
+            "benchmarkId": "${BENCHMARK_ID}",
+            "workflowRunId": "${GITHUB_RUN_ID}",
+            "commitSha": "${GITHUB_SHA}",
+            "runner": {"os": "${RUNNER_OS}", "arch": "${RUNNER_ARCH}", "environment": "${RUNNER_ENVIRONMENT:-unknown}"},
+            "gmshExitCode": "${{ steps.gmsh.outputs.exit_code || 'NOT_RUN' }}",
+            "meshVerifierExitCode": "${{ steps.mesh.outputs.exit_code || 'NOT_RUN' }}",
+            "calculixExitCode": "${{ steps.calculix.outputs.exit_code || 'NOT_RUN' }}",
+            "numericalValidationExitCode": "${{ steps.numerical.outputs.exit_code || 'NOT_RUN' }}",
+            "workflowScope": "FIXED_REPOSITORY_BENCHMARK_ONLY",
+            "canonicalUserCAEJob": "NOT_PROVIDED",
+            "runtimeAdmissionDispatch": "NOT_IMPLEMENTED_IN_DEPLOYED_APPLICATION",
+            "productionReadiness": "BLOCKED_PENDING_INDEPENDENT_ENVIRONMENT_SANDBOX_SECURITY_AND_REVIEW_EVIDENCE"
+          }
+          EOF
+          find artifacts -type f -print0 | sort -z | xargs -0 sha256sum > artifacts/provenance/all-artifacts.sha256
+
+      - name: Upload immutable benchmark evidence bundle
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: bounded-cae-evidence-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Fail the workflow if real benchmark execution or validation did not succeed
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.gmsh.outputs.exit_code }}" = "0"
+          test "${{ steps.mesh.outputs.exit_code }}" = "0"
+          test "${{ steps.calculix.outputs.exit_code }}" = "0"
+          test "${{ steps.numerical.outputs.exit_code }}" = "0"
