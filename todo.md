@@ -279,3 +279,5 @@
 
 - [ ] Final Completion Directive: Audit and close every independently actionable CAD, CAE-contract, result-integrity, controlled-failure, reproducibility, security-package, review-package, and mobile-traceability gap with deterministic acceptance coverage; retain exact external infrastructure, authorization, artifact, independent-review, and observed-evidence blockers for all real runtime operations.
 - [x] Final Completion Directive: Harden runtime admission to recompute assurance from current project records for every request and reject expired, future-dated, malformed, or otherwise non-current environment evidence before it can affect a recorded admission decision.
+
+- [x] Final Execution Closure Directive: Inspect every legitimately authorized integration, execution host, container, VM, CI runner, isolated worker, artifact source, security-test resource, reviewer workflow, and deployment route; use only an approved resource for real runtime work, otherwise close every independent internal gap and report the single exact external dependency.
