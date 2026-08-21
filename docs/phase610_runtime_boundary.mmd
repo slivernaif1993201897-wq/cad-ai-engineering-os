@@ -1,0 +1,30 @@
+flowchart LR
+  U[User
+Untrusted request source] --> CAD[CAD-AI
+Bounded evidence producer]
+  CAD --> CAE[CAE Agent
+Plan only]
+  CAE --> JC[Future Job Compiler
+Must be isolated]
+  JC --> MG[Future Mesh Generator
+Untrusted compute]
+  MG --> SA[Future Solver Adapter
+Untrusted code]
+  SA --> SB[Future Sandbox
+Trusted enforcement substrate]
+  SB --> SOL[Future Solver
+Untrusted compute]
+  SOL --> RC[Future Result Collector
+Untrusted parser boundary]
+  RC --> RV[Future Result Verifier
+Trusted policy evaluator]
+  RV --> ES[Evidence Store
+Append-only provenance]
+
+  classDef trusted fill:#163d35,stroke:#62b39a,color:#f3f1ea;
+  classDef untrusted fill:#542d2c,stroke:#e78966,color:#f3f1ea;
+  classDef partial fill:#283e50,stroke:#8ec4e8,color:#f3f1ea;
+  classDef future fill:#3e3530,stroke:#f4b860,color:#f3f1ea;
+  class U,MG,SA,SOL,RC untrusted;
+  class CAD,CAE,RV,ES partial;
+  class JC,SB future;
