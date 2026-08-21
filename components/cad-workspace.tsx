@@ -15,6 +15,7 @@ import { PatternInstanceInspector } from "@/components/pattern-instance-inspecto
 import { MirrorFeaturePanel } from "@/components/mirror-feature-panel";
 import { CAEWorkspace } from "@/components/cae-workspace";
 import { EngineeringThreadPlanningPanel } from "@/components/engineering-thread-planning-panel";
+import { OptimizationInspectorPanel } from "@/components/optimization-inspector-panel";
 import { trpc } from "@/lib/trpc";
 import type { MountingBlockInput } from "@/shared/cad";
 import type { CADAgentResult, CADConfiguration, CADModelStatus } from "@/shared/cadAgent";
@@ -168,6 +169,8 @@ export function CADWorkspace() {
     <Section title="PHASE 5.0 · CAE AGENT FOUNDATION"><CAEWorkspace sourceCadRevision={activeId} model={active} selectedGeometry={workbenchSelection} featureIds={features.map((feature) => feature.id)} geometryValidated={modelStatus === "VALIDATED"} /></Section>
 
     <Section title="INTEGRATED ENGINEERING THREAD · DRAWING / BOM / PLM / MANUFACTURING"><EngineeringThreadPlanningPanel /></Section>
+
+    <Section title="INTEGRATED ENGINEERING THREAD · CONCEPTUAL OPTIMIZATION"><OptimizationInspectorPanel /></Section>
 
     <Section title="PHASE 3.7 · CAD AGENT CONVERSATIONAL WORKBENCH"><CADAgentWorkbench projectId={activeId ?? "WORKSPACE-EXPLORATION"} projectName={active?.configuration.name ?? "Mounting Block Study"} modelName={active?.configuration.name} configurationId={activeId} selectedGeometry={workbenchSelection} requirementSummary={requirementSet ? `${requirementSet.requirements.length} requirements · ${requirementSet.validation_status}` : "Requirements not validated"} featureSummary={selectedFeature ? `Selected feature ${selectedFeature}` : `${features.length} planned features`} parameterSummary={`Width ${input.width} mm · Depth ${input.depth} mm · Height ${input.height} mm · Hole Ø ${input.holeDiameter} mm · Offset ${input.holeEdgeOffset} mm · Fillet ${input.filletRadius} mm`} conceptSummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.candidates.length} engineering candidates attached` : "No intelligence candidates attached"} memorySummary={active?.configuration.engineeringIntelligence ? `${active.configuration.engineeringIntelligence.memory.length} project-session memory records` : "No project memory attached"} validationStage={workbenchValidationStage} onApplyProposal={applyWorkbenchProposal} onPreviewProposal={previewWorkbenchProposal} onProposalCreated={setExecutionProposal} /></Section>
 
