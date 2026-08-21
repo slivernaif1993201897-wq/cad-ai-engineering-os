@@ -32,6 +32,7 @@ import { buildRuntimeImplementationReadinessGraph, createRuntimeImplementationRe
 import { buildCAEJobContractGraph, buildCAEJobTraceability, caeJobFailureModel, createCAEJobVerificationRecord, evaluateCAEJobStaleness, getCAEJobContract, listCAEJobContracts, listCAEJobStaleness, registerAllowlistedSolverArtifact, registerFutureCAEJobResultArtifact, registerNonExecutableMeshArtifact, reviseCAEJobContract, submitCAEJobContract } from "./caeJobContract";
 import { buildCAEPlanIntegrationGraph, captureValidatedCAEPlanSnapshot, convertCAEPlanSnapshotToJob, createCAEJobDiff, evaluateMeshQualityStaleness, listCAEPlanSnapshots, listMeshQualityEvidence, registerMeshQualityEvidence } from "./caePlanIntegration";
 import { assessSolverInputPackageStaleness, buildSolverInputPackageGraph, createMeshQualityVerification, createSolverInputPackageManifest, listMeshQualityVerifications, listSolverInputPackages } from "./solverInputPackage";
+import { assessSolverConfigurationStaleness, buildSolverConfigurationGovernanceGraph, createSolverInputPackageDiff, listMeshQualityReviewerReassignments, listMeshQualityVerificationLifecycle, listSolverConfigurationRegistry, reassignMeshQualityVerification, registerSolverConfigurationSchema, transitionMeshQualityVerificationLifecycle, validateSolverConfiguration } from "./solverConfigurationGovernance";
 import { buildExternalVerificationGraph, evaluateExternalVerificationReadiness, importHostileTestEvidence, importInfrastructureEvidence, importSandboxReview, listExternalVerificationReadiness, listHostileTestEnvironments, listHostileTestEvidence, listInfrastructureEvidence, listSandboxReviews, recordExternalEvidenceLifecycle, registerHostileTestEnvironment, verifyExternalEvidence } from "./externalVerification";
 import { assignVerificationReview, decideVerificationReview, ensureGovernancePolicies, evaluateVerificationGovernanceReadiness, importTestEnvironmentEvidenceReference, listGovernanceLifecycle, listGovernancePolicies, listTestEnvironmentEvidenceReferences, listVerificationConflicts, listVerificationGovernanceReadiness, listVerificationReviews, resolveVerificationConflict, revokeGovernanceReviewer, submitVerificationReview, transitionVerificationReview } from "./verificationGovernance";
 
@@ -71,6 +72,8 @@ const meshQualityThresholdInput = z.object({ metric: z.enum(["ASPECT_RATIO", "SK
 const meshQualityEvidenceInput = z.object({ meshId: boundedReference, jobId: boundedReference, sourceCadHash: sha256, meshGenerator: boundedReference, meshGeneratorVersion: boundedReference, elementTypes: z.array(z.enum(["TETRA4", "TETRA10", "HEXA8", "SHELL4", "BEAM2", "UNKNOWN"])).min(1).max(16), elementCount: z.number().int().nonnegative().optional(), nodeCount: z.number().int().nonnegative().optional(), qualityMetrics: z.array(meshQualityMetricInput).min(1).max(32), qualityThresholds: z.array(meshQualityThresholdInput).min(1).max(32), provenance: z.object({ cadRevision: boundedReference, cadGeometryHash: sha256, jobId: boundedReference, jobRevision: z.number().int().positive(), meshArtifactId: boundedReference, meshGenerator: boundedReference, meshGeneratorVersion: boundedReference, qualityAlgorithm: boundedReference, qualityAlgorithmVersion: boundedReference, thresholdVersion: z.string().trim().min(1).max(96), references: z.array(z.string().trim().min(1).max(500)).min(1).max(32) }), reportedStatus: z.enum(["NOT_AVAILABLE", "UNKNOWN", "PASS", "FAIL", "WARNING"]).optional() });
 const meshQualityVerificationInput = z.object({ meshQualityEvidenceId: boundedReference, submitter: z.string().trim().min(1).max(160), verifier: boundedReference, verificationMethod: boundedReference, verificationVersion: boundedReference, findings: z.array(z.string().trim().min(1).max(2000)).max(32), requestedStatus: z.enum(["VERIFIED", "REJECTED", "CONFLICT", "UNKNOWN"]) });
 const solverInputPackageInput = z.object({ jobId: boundedReference, meshId: boundedReference, meshHash: sha256, meshQualityEvidenceId: boundedReference, meshQualityVerificationId: boundedReference.optional(), solverConfigurationReference: boundedReference, solverConfigurationHash: sha256 });
+const solverConfigurationParameterInput = z.object({ name: boundedReference, type: z.enum(["NUMBER", "INTEGER", "BOOLEAN", "ENUM", "STRING"]), required: z.boolean(), allowedValues: z.array(z.union([z.string().trim().min(1).max(160), z.number().finite(), z.boolean()])).max(64).optional(), unit: z.string().trim().min(1).max(64).optional(), defaultValue: z.union([z.string().trim().min(1).max(160), z.number().finite(), z.boolean()]).optional(), minimum: z.number().finite().optional(), maximum: z.number().finite().optional(), constraints: z.array(z.string().trim().min(1).max(1000)).max(32), incompatibleWith: z.array(boundedReference).max(32) });
+const solverConfigurationRegistryInput = z.object({ solverName: boundedReference, solverVersion: boundedReference, analysisType: z.literal("STATIC_STRUCTURAL"), configurationSchemaVersion: boundedReference, supportedParameters: z.array(solverConfigurationParameterInput).max(64), provenance: z.array(z.string().trim().min(1).max(1000)).min(1).max(32), evidenceHashes: z.array(sha256).min(1).max(32), status: z.enum(["DRAFT", "REVIEWED", "DEPRECATED", "REVOKED", "UNKNOWN"]) });
 
 export const appRouter = router({
   system: systemRouter,
@@ -488,6 +491,36 @@ export const appRouter = router({
     solverInputPackageGraph: publicProcedure
       .input(caeAccess.extend({ packageId: boundedReference }))
       .mutation(({ input }) => buildSolverInputPackageGraph(input)),
+    transitionMeshQualityVerificationLifecycle: publicProcedure
+      .input(caeAccess.extend({ verificationId: boundedReference, newState: z.enum(["ACTIVE", "EXPIRING", "EXPIRED", "REVOKED"]), reason: z.string().trim().min(1).max(2000), authorization: z.string().trim().min(1).max(1000), actor: boundedReference }))
+      .mutation(({ input }) => transitionMeshQualityVerificationLifecycle(input)),
+    listMeshQualityVerificationLifecycle: publicProcedure
+      .input(caeAccess.extend({ verificationId: boundedReference.optional() }))
+      .query(({ input }) => listMeshQualityVerificationLifecycle(input)),
+    reassignMeshQualityVerification: publicProcedure
+      .input(caeAccess.extend({ verificationId: boundedReference, newReviewer: boundedReference, reason: z.string().trim().min(1).max(2000), authorization: z.string().trim().min(1).max(1000), actor: boundedReference }))
+      .mutation(({ input }) => reassignMeshQualityVerification(input)),
+    listMeshQualityReviewerReassignments: publicProcedure
+      .input(caeAccess.extend({ verificationId: boundedReference.optional() }))
+      .query(({ input }) => listMeshQualityReviewerReassignments(input)),
+    createSolverInputPackageDiff: publicProcedure
+      .input(caeAccess.extend({ baselinePackageId: boundedReference, comparedPackageId: boundedReference }))
+      .mutation(({ input }) => createSolverInputPackageDiff(input)),
+    registerSolverConfigurationSchema: publicProcedure
+      .input(caeAccess.extend(solverConfigurationRegistryInput.shape))
+      .mutation(({ input }) => registerSolverConfigurationSchema(input)),
+    listSolverConfigurationRegistry: publicProcedure
+      .input(caeAccess.extend({ configurationId: boundedReference.optional() }))
+      .query(({ input }) => listSolverConfigurationRegistry(input)),
+    validateSolverConfiguration: publicProcedure
+      .input(caeAccess.extend({ configurationId: boundedReference, configurationSchemaVersion: boundedReference, parameters: z.record(boundedReference, z.union([z.string().trim().min(1).max(160), z.number().finite(), z.boolean()])), units: z.record(boundedReference, z.string().trim().min(1).max(64)) }))
+      .mutation(({ input }) => validateSolverConfiguration(input)),
+    assessSolverConfigurationStaleness: publicProcedure
+      .input(caeAccess.extend({ packageId: boundedReference, configurationId: boundedReference, observedSolverVersion: boundedReference.optional(), observedSchemaVersion: boundedReference.optional(), observedJobHash: sha256.optional(), observedMeshHash: sha256.optional(), observedMaterialEvidenceHash: sha256.optional(), observedVerificationLifecycle: z.string().trim().min(1).max(160).optional() }))
+      .mutation(({ input }) => assessSolverConfigurationStaleness(input)),
+    solverConfigurationGovernanceGraph: publicProcedure
+      .input(caeAccess.extend({ packageId: boundedReference, configurationId: boundedReference }))
+      .mutation(({ input }) => buildSolverConfigurationGovernanceGraph(input)),
   }),
 
   intelligence: router({

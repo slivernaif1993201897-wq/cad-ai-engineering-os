@@ -1771,3 +1771,112 @@ export interface SolverInputPackageStalenessAssessment {
   executable: false;
   createdAt: string;
 }
+
+export const SOLVER_CONFIGURATION_GOVERNANCE_VERSION = "1.0.0" as const;
+export const MESH_QUALITY_VERIFICATION_LIFECYCLE_STATES = ["ACTIVE", "EXPIRING", "EXPIRED", "REVOKED", "REPLACED"] as const;
+export type MeshQualityVerificationLifecycleState = (typeof MESH_QUALITY_VERIFICATION_LIFECYCLE_STATES)[number];
+export interface MeshQualityVerificationLifecycleEvent {
+  eventId: string;
+  projectId: string;
+  verificationId: string;
+  previousState: MeshQualityVerificationLifecycleState | "NOT_SET";
+  newState: MeshQualityVerificationLifecycleState;
+  reason: string;
+  authorization: string;
+  actor: string;
+  timestamp: string;
+  immutable: true;
+}
+export interface MeshQualityReviewerReassignment {
+  reassignmentId: string;
+  projectId: string;
+  verificationId: string;
+  originalReviewer: string;
+  newReviewer: string;
+  reason: string;
+  authorization: string;
+  previousState: MeshQualityVerificationLifecycleState;
+  newState: "REPLACED";
+  timestamp: string;
+  immutable: true;
+}
+export type SolverInputPackageDiffStatus = "ADDED" | "REMOVED" | "CHANGED" | "UNCHANGED" | "STALE" | "CONFLICT" | "UNKNOWN";
+export interface SolverInputPackageDiffEntry {
+  field: "CAD" | "CAD_HASH" | "CAE_JOB" | "MESH" | "MESH_HASH" | "MATERIAL" | "LOADS" | "BOUNDARY_CONDITIONS" | "CONTACTS" | "ANALYSIS_TYPE" | "UNITS" | "SOLVER_REFERENCE" | "SOLVER_CONFIGURATION" | "VERIFICATION_REQUIREMENTS";
+  status: SolverInputPackageDiffStatus;
+  before?: string;
+  after?: string;
+  reason: string;
+}
+export interface SolverInputPackageDiff {
+  diffId: string;
+  projectId: string;
+  baselinePackageId: string;
+  comparedPackageId: string;
+  entries: SolverInputPackageDiffEntry[];
+  readOnly: true;
+  createdAt: string;
+}
+export type SolverConfigurationStatus = "DRAFT" | "REVIEWED" | "DEPRECATED" | "REVOKED" | "UNKNOWN";
+export type SolverConfigurationParameterType = "NUMBER" | "INTEGER" | "BOOLEAN" | "ENUM" | "STRING";
+export interface SolverConfigurationParameterSchema {
+  name: string;
+  type: SolverConfigurationParameterType;
+  required: boolean;
+  allowedValues?: Array<string | number | boolean>;
+  unit?: string;
+  defaultValue?: string | number | boolean;
+  minimum?: number;
+  maximum?: number;
+  constraints: string[];
+  incompatibleWith: string[];
+}
+export interface SolverConfigurationSchemaRegistryRecord {
+  configurationId: string;
+  projectId: string;
+  contractVersion: typeof SOLVER_CONFIGURATION_GOVERNANCE_VERSION;
+  solverName: string;
+  solverVersion: string;
+  analysisType: "STATIC_STRUCTURAL";
+  configurationSchemaVersion: string;
+  supportedParameters: SolverConfigurationParameterSchema[];
+  provenance: string[];
+  evidenceHashes: string[];
+  status: SolverConfigurationStatus;
+  securityBoundary: { prohibited: Array<"SHELL_COMMAND" | "EXECUTABLE_PATH" | "PROCESS_SPAWN" | "FILESYSTEM_EXECUTION" | "NETWORK_COMMAND" | "CREDENTIAL" | "SECRET_ENVIRONMENT_VARIABLE">; describesConfigurationOnly: true; executable: false };
+  createdAt: string;
+  immutable: true;
+}
+export interface SolverConfigurationValidation {
+  validationId: string;
+  projectId: string;
+  configurationId: string;
+  configurationSchemaVersion: string;
+  providedParameters: Record<string, string | number | boolean>;
+  checks: Array<{ parameter: string; status: "PASS" | "FAIL" | "UNKNOWN"; reason: string }>;
+  status: "VALID" | "INVALID" | "UNKNOWN";
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+}
+export interface SolverConfigurationStalenessAssessment {
+  assessmentId: string;
+  projectId: string;
+  packageId: string;
+  configurationId: string;
+  status: "FRESH" | "STALE" | "UNKNOWN" | "CONFLICT";
+  checks: Array<{ dimension: "SOLVER_VERSION" | "CONFIGURATION_SCHEMA" | "JOB" | "MESH" | "MATERIAL_EVIDENCE" | "VERIFICATION"; expected: string; observed?: string; status: "FRESH" | "STALE" | "UNKNOWN" | "CONFLICT"; reason: string }>;
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+}
+export interface SolverConfigurationTraceabilityLink {
+  linkId: string;
+  projectId: string;
+  jobId: string;
+  packageId: string;
+  configurationId: string;
+  verificationEvidenceIds: string[];
+  relationship: "CAE_JOB_TO_SOLVER_PACKAGE_TO_CONFIGURATION_TO_VERIFICATION";
+  immutable: true;
+}
