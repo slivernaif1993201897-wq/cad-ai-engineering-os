@@ -22,6 +22,7 @@ import { SolverInputPackageInspector } from "@/components/solver-input-package-i
 import { SolverConfigurationGovernancePanel } from "@/components/solver-configuration-governance-panel";
 import { SecurityEvidenceFoundationPanel } from "@/components/security-evidence-foundation-panel";
 import { StrictRuntimeReadinessPanel } from "@/components/strict-runtime-readiness-panel";
+import { RuntimeAssuranceDashboard } from "@/components/runtime-assurance-dashboard";
 
 function color(status?: string) { if (["COMPLETED", "READY_FOR_SOLVER", "PASS", "INPUT_VERIFIED"].includes(status ?? "")) return "#62B39A"; if (["NOT_READY", "FAILED", "FAIL", "SOLVER_UNAVAILABLE"].includes(status ?? "")) return "#E78966"; return "#8EC4E8"; }
 function Badge({ label }: { label: string }) { const tint = color(label); return <View style={[styles.badge, { borderColor: tint, backgroundColor: `${tint}18` }]}><Text style={[styles.badgeText, { color: tint }]}>{label}</Text></View>; }
@@ -70,6 +71,7 @@ export function CAEWorkspace({ sourceCadRevision, model, selectedGeometry, featu
     <SolverConfigurationGovernancePanel />
     <SecurityEvidenceFoundationPanel />
     <StrictRuntimeReadinessPanel />
+    <RuntimeAssuranceDashboard />
     <Text style={styles.notice}>{notice}</Text>
   </View>;
 }
