@@ -1582,3 +1582,121 @@ export interface CAEJobFailureModel {
   readyForExecutionBehavior: "DISABLED_IN_PHASE_6_5";
   prohibited: Array<"ARBITRARY_COMMAND" | "ARBITRARY_PATH" | "ARBITRARY_EXECUTABLE" | "ARBITRARY_NETWORK" | "ARBITRARY_FILESYSTEM">;
 }
+
+export const CAE_PLAN_SNAPSHOT_VERSION = "1.0.0" as const;
+export interface ValidatedCAEPlanSnapshot {
+  snapshotId: string;
+  projectId: string;
+  simulationId: string;
+  planHash: string;
+  sourceCadRevision: string;
+  sourceCadGeometryHash: string;
+  requirementRevision: string;
+  requirementHash: string;
+  materialReference: string;
+  materialEvidenceHash: string;
+  analysisType: "STATIC_STRUCTURAL";
+  boundaryConditions: CAESimulationPlan["boundaryConditions"];
+  loads: CAESimulationPlan["loads"];
+  contacts: CAESimulationPlan["contacts"];
+  meshStrategy: CAESimulationPlan["meshStrategy"];
+  expectedOutputs: CanonicalCAEJobContract["expectedOutputs"];
+  requirementIds: string[];
+  validationStatus: "VALIDATED" | "REJECTED" | "UNKNOWN";
+  validationFindings: string[];
+  capturedAt: string;
+  immutable: true;
+}
+export interface CAEPlanJobConversion {
+  conversionId: string;
+  projectId: string;
+  snapshotId: string;
+  sourceSimulationId: string;
+  jobId: string;
+  sourcePlanHash: string;
+  targetJobHash: string;
+  preservedFields: Array<"ANALYSIS_INTENT" | "MATERIAL" | "MATERIAL_EVIDENCE" | "LOADS" | "BOUNDARY_CONDITIONS" | "CONTACTS" | "MESH_STRATEGY" | "EXPECTED_OUTPUTS" | "REQUIREMENTS" | "CAD_REVISION" | "CAD_GEOMETRY_HASH">;
+  informationLoss: never[];
+  status: "CONVERTED_NON_EXECUTABLE";
+  createdAt: string;
+}
+export type CAEJobDiffStatus = "ADDED" | "REMOVED" | "CHANGED" | "UNCHANGED" | "UNKNOWN";
+export interface CAEJobDiffEntry {
+  field: "CAD_REVISION" | "CAD_HASH" | "REQUIREMENTS_REVISION" | "MATERIAL_EVIDENCE" | "LOADS" | "BOUNDARY_CONDITIONS" | "CONTACTS" | "MESH_STRATEGY" | "SOLVER_REFERENCE" | "VERIFICATION_REQUIREMENTS";
+  status: CAEJobDiffStatus;
+  before?: string;
+  after?: string;
+  reason: string;
+}
+export interface CAEJobDiff {
+  diffId: string;
+  projectId: string;
+  baselineJobId: string;
+  comparedJobId: string;
+  entries: CAEJobDiffEntry[];
+  createdAt: string;
+  readOnly: true;
+}
+export const MESH_QUALITY_METRICS = ["ASPECT_RATIO", "SKEWNESS", "JACOBIAN", "WARPAGE", "MINIMUM_ELEMENT_QUALITY", "MAXIMUM_ELEMENT_QUALITY", "DEGENERATE_ELEMENTS", "INVERTED_ELEMENTS", "DUPLICATE_NODES", "FREE_EDGES", "UNKNOWN"] as const;
+export type MeshQualityMetricName = (typeof MESH_QUALITY_METRICS)[number];
+export const MESH_QUALITY_STATUSES = ["NOT_AVAILABLE", "UNKNOWN", "PASS", "FAIL", "WARNING", "CONFLICT", "STALE"] as const;
+export type MeshQualityStatus = (typeof MESH_QUALITY_STATUSES)[number];
+export interface MeshQualityMetricEvidence {
+  metric: MeshQualityMetricName;
+  value?: number;
+  unit?: string;
+  source: "MEASURED" | "DECLARED" | "UNKNOWN";
+  status: "KNOWN" | "UNKNOWN" | "NOT_AVAILABLE";
+  evidenceHash?: string;
+}
+export interface MeshQualityThreshold {
+  metric: MeshQualityMetricName;
+  value: number;
+  unit: string;
+  source: string;
+  version: string;
+  rationale: string;
+  evidenceHash: string;
+}
+export interface MeshQualityProvenance {
+  cadRevision: string;
+  cadGeometryHash: string;
+  jobId: string;
+  jobRevision: number;
+  meshArtifactId: string;
+  meshGenerator: string;
+  meshGeneratorVersion: string;
+  qualityAlgorithm: string;
+  qualityAlgorithmVersion: string;
+  thresholdVersion: string;
+  references: string[];
+}
+export interface MeshQualityEvidence {
+  evidenceId: string;
+  projectId: string;
+  meshId: string;
+  jobId: string;
+  sourceCadHash: string;
+  meshGenerator: string;
+  meshGeneratorVersion: string;
+  elementTypes: NonExecutableMeshArtifact["elementTypes"];
+  elementCount?: number;
+  nodeCount?: number;
+  qualityMetrics: MeshQualityMetricEvidence[];
+  qualityThresholds: MeshQualityThreshold[];
+  qualityStatus: MeshQualityStatus;
+  evidenceHash: string;
+  provenance: MeshQualityProvenance;
+  timestamp: string;
+  executable: false;
+}
+export interface MeshQualityStalenessAssessment {
+  assessmentId: string;
+  projectId: string;
+  evidenceId: string;
+  status: "FRESH" | "STALE" | "UNKNOWN" | "CONFLICT";
+  checks: Array<{ dimension: "CAD" | "JOB" | "MESH" | "QUALITY_ALGORITHM" | "THRESHOLD_VERSION"; expected: string; observed?: string; status: "FRESH" | "STALE" | "UNKNOWN" | "CONFLICT"; reason: string }>;
+  executionEligible: false;
+  executable: false;
+  createdAt: string;
+}

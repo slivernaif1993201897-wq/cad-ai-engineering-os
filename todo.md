@@ -196,3 +196,9 @@
 - [x] Phase 6.5: Implement non-executable mesh, solver, and result artifact registration schemas; verification/traceability/failure records; immutable audit/graph links; and capability-safe APIs without runtime execution.
 - [x] Phase 6.5: Build a read-only mobile CAE Job Contract Inspector exposing job identity, CAD/requirements/material/loads/boundaries, mesh/solver references, hashes, provenance, staleness, verification, traceability, failure states, and execution-disabled status.
 - [x] Phase 6.5: Add deterministic valid/invalid/unit/missing/stale/revision/artifact/traceability/fail-closed acceptance tests, run TypeScript and serialized full regression, save a verified checkpoint, report outcomes, and stop without Phase 7.
+
+- [x] Phase 6.6: Define versioned immutable CAE-plan snapshot, deterministic plan-to-job conversion, read-only job diff, non-executable mesh-quality evidence, metric, threshold, provenance, stale, conflict, and fail-closed contracts.
+- [x] Phase 6.6: Implement project-isolated snapshot capture, bounded validated plan-to-job conversion, immutable job revision lineage, and read-only diffs without silent information loss.
+- [x] Phase 6.6: Implement non-executable mesh-quality evidence and threshold registration, no-measurement honesty, provenance, stale/conflict evaluation, audit/graph links, and capability-safe APIs without a solver, mesher, runtime, process, shell, plugin, network, filesystem, or numerical result.
+- [x] Phase 6.6: Build read-only mobile CAE Plan Snapshot, Job Contract Integration, Job Diff, and Mesh Quality Evidence panels exposing verified, unverified, unknown, stale, and conflict states.
+- [x] Phase 6.6: Add deterministic conversion, missing-plan-field, snapshot immutability, mismatch, job revision, diff, mesh-quality, unknown metric, threshold version, stale, provenance, conflict, fail-closed, TypeScript, and serialized full-regression tests; save a verified checkpoint and stop without Phase 7.
