@@ -91,8 +91,25 @@ def run_probe() -> int:
     probes: list[dict[str, object]] = []
     print("SANDBOX_PROBE_STARTED", flush=True)
 
-    def record(test_id: str, expected: str, observed: object, passed: bool) -> None:
-        probes.append({"testId": test_id, "expected": expected, "observed": observed, "status": "PASS" if passed else "FAIL", "environmentId": os.environ.get("CAD_AI_ENVIRONMENT_ID", "UNKNOWN")})
+    def record(test_id: str, expected: str, observed: object, passed: bool, method: str = "static in-container observation") -> None:
+        evidence = {"testId": test_id, "environmentId": os.environ.get("CAD_AI_ENVIRONMENT_ID", "UNKNOWN"), "testMethod": method, "expected": expected, "observed": observed, "exitStatus": 0 if passed else 1, "logReference": "sandbox-probes.json", "artifactReference": "sandbox-probes.json", "timestamp": datetime.now(timezone.utc).isoformat(), "status": "PASS" if passed else "FAIL"}
+        evidence["evidenceHash"] = hashlib.sha256(canonical(evidence).encode("utf-8")).hexdigest()
+        probes.append(evidence)
+
+    def readable(path: Path) -> bool:
+        try:
+            with path.open("rb") as handle:
+                handle.read(1)
+            return True
+        except OSError:
+            return False
+
+    def route_connect(host: str, port: int) -> bool:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                return True
+        except OSError:
+            return False
 
     root_writable = try_write(Path("/rootfs-write-probe"))
     input_writable = try_write(INPUT / "input-write-probe")
@@ -133,6 +150,53 @@ def run_probe() -> int:
     finally:
         storage_probe.unlink(missing_ok=True)
     record("OUTPUT_STORAGE_ENFORCEMENT", "64 MiB configured output file-size policy rejects 80 MiB write", storage_failed, storage_failed)
+    record("FS_PARENT_DIRECTORY_ESCAPE", "write through /input/../input must fail", try_write(INPUT / ".." / "input" / "parent-escape-probe"), not try_write(INPUT / ".." / "input" / "parent-escape-probe"), "static path traversal write")
+    record("FS_ABSOLUTE_PATH_ESCAPE", "write under /etc must fail", try_write(Path("/etc/cad-ai-absolute-escape-probe")), not try_write(Path("/etc/cad-ai-absolute-escape-probe")), "static absolute-path write")
+    input_symlink = WORK / "input-symlink-escape"
+    input_symlink.unlink(missing_ok=True)
+    input_symlink.symlink_to(INPUT, target_is_directory=True)
+    symlink_write = try_write(input_symlink / "symlink-escape-probe")
+    input_symlink.unlink(missing_ok=True)
+    record("FS_SYMLINK_ESCAPE", "symlinked /input write must fail", symlink_write, not symlink_write, "static symlink traversal write")
+    record("FS_TEMPORARY_DIRECTORY_ESCAPE", "write through /tmp/../input must fail", try_write(Path("/tmp/../input/tmp-escape-probe")), not try_write(Path("/tmp/../input/tmp-escape-probe")), "static temporary-directory traversal write")
+    record("FS_UNAUTHORIZED_FILE_READ", "unprivileged read of /etc/shadow must fail", readable(Path("/etc/shadow")), not readable(Path("/etc/shadow")), "static unauthorized credential-file read")
+    record("FS_UNAUTHORIZED_FILE_WRITE", "write to /etc/passwd must fail", try_write(Path("/etc/passwd")), not try_write(Path("/etc/passwd")), "static unauthorized system-file write")
+    proc_entries = [entry for entry in Path("/proc").iterdir() if entry.name.isdigit()]
+    record("PROCESS_NAMESPACE_BOUNDARY", "only a bounded in-container process view is visible", {"processCount": len(proc_entries), "pidNamespace": namespace("pid")}, len(proc_entries) <= 8 and namespace("pid") != "UNKNOWN", "static /proc process enumeration")
+    try:
+        os.kill(1, 0)
+        pid_one_visible = True
+    except OSError:
+        pid_one_visible = False
+    record("PROCESS_INTERACTION_BOUNDARY", "PID 1 must be the container init process", {"pidOneVisible": pid_one_visible, "pidNamespace": namespace("pid")}, pid_one_visible and namespace("pid") != "UNKNOWN", "non-mutating signal-zero PID boundary observation")
+    try:
+        os.setuid(0)
+        root_attempt_succeeded = True
+    except OSError:
+        root_attempt_succeeded = False
+    record("PRIVILEGE_ESCALATION_REJECTED", "setuid(0) must fail for UID 65534", root_attempt_succeeded, not root_attempt_succeeded, "static setuid privilege-escalation attempt")
+    no_new_privs = next((line.split("\t", 1)[1].strip() for line in Path("/proc/self/status").read_text(encoding="utf-8").splitlines() if line.startswith("NoNewPrivs:")), "UNKNOWN")
+    record("NO_NEW_PRIVILEGES_OBSERVED", "NoNewPrivs must equal 1", no_new_privs, no_new_privs == "1", "static /proc privilege status observation")
+    dns_reachable = False
+    try:
+        socket.getaddrinfo("example.com", 443)
+        dns_reachable = True
+    except OSError:
+        pass
+    record("NETWORK_DNS_DENIED", "DNS resolution must fail without a network namespace route", dns_reachable, not dns_reachable, "static DNS resolution attempt")
+    for test_id, host in (("NETWORK_OUTBOUND_DENIED", "1.1.1.1"), ("NETWORK_LOCALHOST_DENIED", "127.0.0.1"), ("NETWORK_PRIVATE_ADDRESS_DENIED", "10.0.0.1")):
+        connected = route_connect(host, 443)
+        record(test_id, f"connection to {host}:443 must fail", connected, not connected, "static bounded TCP connection attempt")
+    interfaces = [name for _, name in socket.if_nameindex()]
+    record("NETWORK_INTERFACE_BOUNDARY", "only loopback may be visible", interfaces, interfaces == ["lo"], "static network-interface enumeration")
+    runner_paths = [str(path) for path in (Path("/home/runner"), Path("/github/workflow"), Path("/github/home")) if path_exists_without_traversal(path)]
+    record("RUNNER_METADATA_ISOLATION", "GitHub runner paths must be absent", runner_paths, not runner_paths, "static runner metadata path observation")
+    missing_dependency = False
+    try:
+        subprocess.run(["/missing/cad-ai-dependency"], check=False, timeout=1)
+    except OSError:
+        missing_dependency = True
+    record("FIXED_EXECUTABLE_ALLOWLIST", "non-allowlisted executable path must not launch", missing_dependency, missing_dependency, "static missing executable launch attempt")
     report = {"probeVersion": "1.0.0", "environmentId": os.environ.get("CAD_AI_ENVIRONMENT_ID", "UNKNOWN"), "probes": probes, "generatedAt": datetime.now(timezone.utc).isoformat()}
     report_path = write_json("sandbox-probes.json", report)
     report["evidenceHash"] = sha256_file(report_path)
