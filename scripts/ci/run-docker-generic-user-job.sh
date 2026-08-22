@@ -53,10 +53,12 @@ run_container() {
     --env "CAD_AI_FAILURE_EXERCISE=${CAD_AI_FAILURE_EXERCISE:-}" \
     "$IMAGE" "$mode")
   docker inspect "$container" > "$destination/docker-inspect.json"
-  set +e
-  docker start -a "$container" > "$destination/container.log" 2>&1
-  local status=$?
-  set -e
+  local status=0
+  if docker start -a "$container" > "$destination/container.log" 2>&1; then
+    status=0
+  else
+    status=$?
+  fi
   docker inspect "$container" > "$destination/docker-inspect-after.json"
   if [ "$status" -ne 0 ]; then
     docker logs "$container" > "$destination/docker-engine.log" 2>&1 || true
