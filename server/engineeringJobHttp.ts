@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 
 import { getEngineeringJob, listEngineeringJobs, submitEngineeringJob } from "./engineeringJob";
 import { openPersistentProject } from "./persistentMemory";
+import { createSeatDesign, createSeatEngineeringReport, getSeatDesign, listSeatDesigns } from "./seatEngineering";
 
 type ProjectAccess = { projectId: string; accessKey: string };
 
@@ -13,6 +14,11 @@ function projectAccess(req: Request): ProjectAccess | null {
 
 function sendAccessRequired(res: Response) {
   return res.status(401).json({ error: "PROJECT_ACCESS_REQUIRED" });
+}
+
+function isAccessFailure(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("access") || normalized.includes("denied");
 }
 
 async function jobForRequest(req: Request, res: Response) {
@@ -54,6 +60,51 @@ export function registerEngineeringJobHttp(app: Express) {
       return res.json(await listEngineeringJobs({ projectId: req.params.projectId, accessKey }));
     } catch {
       return res.status(403).json({ error: "PROJECT_ACCESS_DENIED" });
+    }
+  });
+
+  app.post("/api/projects/:projectId/seat-designs", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try {
+      return res.status(201).json(await createSeatDesign({ projectId: req.params.projectId, accessKey, input: req.body }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SEAT_DESIGN_REJECTED";
+      return res.status(message === "PERSISTENT_DATABASE_REQUIRED" ? 503 : isAccessFailure(message) ? 403 : 422).json({ error: message });
+    }
+  });
+
+  app.get("/api/projects/:projectId/seat-designs", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try {
+      return res.json(await listSeatDesigns({ projectId: req.params.projectId, accessKey }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SEAT_DESIGN_READ_FAILED";
+      return res.status(isAccessFailure(message) ? 403 : 503).json({ error: message });
+    }
+  });
+
+  app.get("/api/projects/:projectId/seat-designs/:seatDesignId", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try {
+      return res.json(await getSeatDesign({ projectId: req.params.projectId, accessKey, seatDesignId: req.params.seatDesignId }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SEAT_DESIGN_READ_FAILED";
+      return res.status(isAccessFailure(message) ? 403 : message === "SEAT_DESIGN_NOT_FOUND" ? 404 : 503).json({ error: message });
+    }
+  });
+
+  app.get("/api/projects/:projectId/seat-designs/:seatDesignId/report", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    const jobId = typeof req.query.jobId === "string" ? req.query.jobId : undefined;
+    try {
+      return res.json(await createSeatEngineeringReport({ projectId: req.params.projectId, accessKey, seatDesignId: req.params.seatDesignId, jobId }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SEAT_REPORT_READ_FAILED";
+      return res.status(isAccessFailure(message) ? 403 : message.includes("NOT_FOUND") ? 404 : 503).json({ error: message });
     }
   });
 

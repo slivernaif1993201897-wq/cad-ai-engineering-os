@@ -138,3 +138,77 @@ export const engineeringCadFiles = mysqlTable("engineering_cad_files", {
 ]);
 
 export type EngineeringCadFile = typeof engineeringCadFiles.$inferSelect;
+
+/** Product-domain seat records are project-scoped and never imply CAD/CAE execution without a separately bound engineering job. */
+export const seatDesigns = mysqlTable("seat_designs", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["CONCEPT", "REVIEW", "VERIFIED", "RELEASED", "ARCHIVED"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("seat_designs_project_status_idx").on(table.projectId, table.status)]);
+
+export const seatRevisions = mysqlTable("seat_revisions", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  seatDesignId: varchar("seatDesignId", { length: 96 }).notNull(),
+  revisionNumber: int("revisionNumber").notNull(),
+  status: mysqlEnum("status", ["DRAFT", "REVIEW", "VERIFIED", "RELEASED", "SUPERSEDED"]).notNull(),
+  description: text("description").notNull(),
+  designSnapshotHash: varchar("designSnapshotHash", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("seat_revisions_design_revision_idx").on(table.seatDesignId, table.revisionNumber), index("seat_revisions_project_idx").on(table.projectId)]);
+
+export const seatMaterials = mysqlTable("seat_materials", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  specification: varchar("specification", { length: 255 }).notNull(),
+  propertiesJson: text("propertiesJson").notNull(),
+  validationStatus: mysqlEnum("validationStatus", ["UNKNOWN", "VALID", "INVALID"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("seat_materials_project_name_idx").on(table.projectId, table.name)]);
+
+export const seatComponents = mysqlTable("seat_components", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  seatRevisionId: varchar("seatRevisionId", { length: 96 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  componentType: varchar("componentType", { length: 96 }).notNull(),
+  materialId: varchar("materialId", { length: 96 }),
+  quantity: int("quantity").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("seat_components_revision_idx").on(table.seatRevisionId), index("seat_components_project_idx").on(table.projectId)]);
+
+export const seatRequirements = mysqlTable("seat_requirements", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  seatDesignId: varchar("seatDesignId", { length: 96 }).notNull(),
+  requirementId: varchar("requirementId", { length: 96 }).notNull(),
+  description: text("description").notNull(),
+  constraintJson: text("constraintJson").notNull(),
+  verificationMethod: varchar("verificationMethod", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["OPEN", "VERIFIED", "BLOCKED", "REJECTED"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("seat_requirements_design_idx").on(table.seatDesignId), index("seat_requirements_project_idx").on(table.projectId)]);
+
+export const seatTraceLinks = mysqlTable("seat_trace_links", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  sourceType: varchar("sourceType", { length: 64 }).notNull(),
+  sourceId: varchar("sourceId", { length: 96 }).notNull(),
+  targetType: varchar("targetType", { length: 64 }).notNull(),
+  targetId: varchar("targetId", { length: 96 }).notNull(),
+  relationship: varchar("relationship", { length: 96 }).notNull(),
+  reason: text("reason").notNull(),
+  evidenceJson: text("evidenceJson").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("seat_trace_source_idx").on(table.projectId, table.sourceType, table.sourceId), index("seat_trace_target_idx").on(table.projectId, table.targetType, table.targetId)]);
+
+export type SeatDesign = typeof seatDesigns.$inferSelect;
+export type SeatRevision = typeof seatRevisions.$inferSelect;
+export type SeatMaterial = typeof seatMaterials.$inferSelect;
+export type SeatComponent = typeof seatComponents.$inferSelect;
+export type SeatRequirement = typeof seatRequirements.$inferSelect;
+export type SeatTraceLink = typeof seatTraceLinks.$inferSelect;
