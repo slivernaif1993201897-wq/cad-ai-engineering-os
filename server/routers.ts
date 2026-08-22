@@ -43,6 +43,7 @@ import { assessOptimizationStudy, createOptimizationCandidate, createOptimizatio
 import { assessRuntimeAssurance, buildRuntimeAssuranceReviewPackage, listRuntimeAssuranceAssessments, listRuntimeAssuranceEnvironments, listRuntimeAssuranceFailures, listRuntimeAssuranceObservedTests, listRuntimeAssuranceRepairAttempts, recordRuntimeAssuranceEnvironment, recordRuntimeAssuranceFailure, recordRuntimeAssuranceObservedTest, recordRuntimeAssuranceRepairAttempt } from "./runtimeAssurance";
 import { evaluateRuntimeAdmission, listRuntimeAdmissionDecisions } from "./runtimeAdmission";
 import { readAuthoritativeRuntimeEvidence } from "./runtimeEvidenceApi";
+import { getEngineeringJob, listEngineeringJobs, reconcileEngineeringJobFromAuthoritativeEvidence, submitEngineeringJob } from "./engineeringJob";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -52,6 +53,11 @@ const mountingBlockInput = z.object({
   holeEdgeOffset: z.number().positive(),
   filletRadius: z.number().nonnegative(),
   approveAssumption: z.boolean(),
+});
+const engineeringJobInput = z.object({
+  name: z.string().trim().min(1).max(160),
+  sourceText: z.string().trim().min(1).max(5000),
+  mountingBlock: mountingBlockInput,
 });
 
 const mountingBlockInputPatch = mountingBlockInput.partial();
@@ -122,6 +128,33 @@ export const appRouter = router({
       return {
         success: true,
       } as const;
+    }),
+  }),
+
+  engineeringJobs: router({
+    submit: publicProcedure.input(caeAccess.extend({ request: engineeringJobInput })).mutation(({ input }) => submitEngineeringJob({ projectId: input.projectId, accessKey: input.accessKey, request: input.request })),
+    list: publicProcedure.input(caeAccess).query(({ input }) => listEngineeringJobs(input)),
+    get: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(({ input }) => getEngineeringJob(input)),
+    reconcileAuthoritativeRuntime: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).mutation(({ input }) => reconcileEngineeringJobFromAuthoritativeEvidence(input)),
+    status: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(async ({ input }) => {
+      const job = await getEngineeringJob(input);
+      return job ? { jobId: job.jobId, state: job.state, runtimeDispatch: job.runtimeDispatch, updatedAt: job.updatedAt, events: job.events } : null;
+    }),
+    requirements: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(async ({ input }) => (await getEngineeringJob(input))?.requirementSet ?? null),
+    cad: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(async ({ input }) => (await getEngineeringJob(input))?.cad ?? null),
+    cae: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(async ({ input }) => (await getEngineeringJob(input))?.caeConfiguration ?? null),
+    manifest: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(async ({ input }) => (await getEngineeringJob(input))?.manifest ?? null),
+    mesh: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(async ({ input }) => {
+      const job = await getEngineeringJob(input);
+      return job ? job.runtimeEvidence ? { jobId: job.jobId, available: true, gmshHash: job.runtimeEvidence.gmshHash, meshHash: job.runtimeEvidence.meshHash, executionLogHash: job.runtimeEvidence.executionLogHash } : { jobId: job.jobId, available: false, reason: "No verified runtime mesh artifact has been reconciled into this persistent engineering job." } : null;
+    }),
+    result: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(async ({ input }) => {
+      const job = await getEngineeringJob(input);
+      return job ? job.runtimeEvidence ? { jobId: job.jobId, available: true, calculixHash: job.runtimeEvidence.calculixHash, inputHash: job.runtimeEvidence.inputHash, outputHash: job.runtimeEvidence.outputHash, resultHash: job.runtimeEvidence.resultHash, evidenceHash: job.runtimeEvidence.evidenceHash } : { jobId: job.jobId, available: false, reason: "No verified runtime CalculiX result has been reconciled into this persistent engineering job." } : null;
+    }),
+    evidence: publicProcedure.input(caeAccess.extend({ jobId: z.string().trim().min(1).max(160) })).query(async ({ input }) => {
+      const job = await getEngineeringJob(input);
+      return job ? { jobId: job.jobId, events: job.events, manifestHash: job.manifest?.manifestHash, runtimeDispatch: job.runtimeDispatch } : null;
     }),
   }),
 

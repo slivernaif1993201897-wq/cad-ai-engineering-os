@@ -1,46 +1,29 @@
-import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { createMountingBlockConfiguration, getValidatedStepExport } from "../../server/cadAgent";
-import { buildAuthorizedRuntimeCAEConfiguration } from "../../server/caeAgent";
-import { admitCadAgentRuntimeJob, buildCadAgentRuntimeManifest, calculateCadRevisionHash } from "../../shared/authoritativeCadAgentRuntime";
+import { composeEngineeringJobRequest } from "../../server/engineeringJob";
 
 const inputRoot = join(process.cwd(), "artifacts", "generic-job", "input");
 
 async function main() {
-  const result = await createMountingBlockConfiguration({
+  const composition = await composeEngineeringJobRequest({
     name: "Authoritative CAD Agent Runtime Mounting Block",
-    input: { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true },
+    mountingBlock: { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true },
     sourceText: "Create a 100 mm × 50 mm × 20 mm mounting block. Add four 10 mm holes near the corners using a 10 mm edge offset. Add a 3 mm fillet.",
   });
-  if (result.error || result.configuration.modelStatus !== "VALIDATED" || !result.configuration.artifact) {
-    throw new Error(`CAD_AGENT_GENERATION_NOT_VALIDATED:${result.error ?? result.configuration.modelStatus}`);
-  }
-  const stepExport = getValidatedStepExport(result.configuration.id);
-  const stepBytes = Buffer.from(stepExport.stepBase64, "base64");
-  const cadRevisionHash = calculateCadRevisionHash(result.configuration);
-  const cadArtifactHash = createHash("sha256").update(stepBytes).digest("hex");
-  const caeConfiguration = buildAuthorizedRuntimeCAEConfiguration({ cadRevision: result.configuration.id, cadRevisionHash, cadArtifactHash, width: result.configuration.input.width, depth: result.configuration.input.depth, height: result.configuration.input.height });
-  const manifest = buildCadAgentRuntimeManifest({ configuration: result.configuration, stepExport, stepBytes, caeConfiguration });
-  admitCadAgentRuntimeJob(manifest, {
-    jobId: manifest.jobId,
-    cadRevision: result.configuration.id,
-    cadRevisionHash,
-    cadArtifactHash: manifest.cadArtifactHash,
-  });
   await mkdir(inputRoot, { recursive: true });
-  await writeFile(join(inputRoot, "cad-artifact.step"), stepBytes);
-  await writeFile(join(inputRoot, "generic-user-job-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  await writeFile(join(inputRoot, "cad-artifact.step"), composition.stepBytes);
+  await writeFile(join(inputRoot, "generic-user-job-manifest.json"), `${JSON.stringify(composition.manifest, null, 2)}\n`, "utf8");
   await writeFile(join(inputRoot, "cad-agent-provenance.json"), `${JSON.stringify({
     sourceKind: "CAD_AGENT",
-    configurationId: result.configuration.id,
-    revision: result.configuration.revision,
-    cadRevisionHash: manifest.cadRevisionHash,
-    cadArtifactHash: manifest.cadArtifactHash,
-    caeConfigurationHash: caeConfiguration.caeConfigurationHash,
-    manifestHash: manifest.manifestHash,
-    validationStatus: result.configuration.artifact.validationStatus,
+    requirementSetId: composition.requirementSet.id,
+    configurationId: composition.configuration.id,
+    revision: composition.configuration.revision,
+    cadRevisionHash: composition.manifest.cadRevisionHash,
+    cadArtifactHash: composition.manifest.cadArtifactHash,
+    caeConfigurationHash: composition.caeConfiguration.caeConfigurationHash,
+    manifestHash: composition.manifest.manifestHash,
+    validationStatus: composition.configuration.artifact?.validationStatus,
   }, null, 2)}\n`, "utf8");
 }
 
