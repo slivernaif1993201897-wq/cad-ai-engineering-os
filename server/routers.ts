@@ -42,6 +42,7 @@ import { createBOMRevision, createDrawingPackage, createManufacturingPlan, creat
 import { assessOptimizationStudy, createOptimizationCandidate, createOptimizationStudy, listOptimizationCandidates, listOptimizationStudies } from "./optimizationFoundation";
 import { assessRuntimeAssurance, buildRuntimeAssuranceReviewPackage, listRuntimeAssuranceAssessments, listRuntimeAssuranceEnvironments, listRuntimeAssuranceFailures, listRuntimeAssuranceObservedTests, listRuntimeAssuranceRepairAttempts, recordRuntimeAssuranceEnvironment, recordRuntimeAssuranceFailure, recordRuntimeAssuranceObservedTest, recordRuntimeAssuranceRepairAttempt } from "./runtimeAssurance";
 import { evaluateRuntimeAdmission, listRuntimeAdmissionDecisions } from "./runtimeAdmission";
+import { readAuthoritativeRuntimeEvidence } from "./runtimeEvidenceApi";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -110,6 +111,9 @@ const optimizationCandidateInput = z.object({ optimizationStudyId: boundedRefere
 
 export const appRouter = router({
   system: systemRouter,
+  runtimeEvidence: router({
+    authoritative: publicProcedure.query(() => readAuthoritativeRuntimeEvidence()),
+  }),
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

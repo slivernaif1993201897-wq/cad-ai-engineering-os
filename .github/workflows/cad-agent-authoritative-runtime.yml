@@ -11,10 +11,15 @@ on:
       - "scripts/ci/validate-cad-agent-runtime-failures.ts"
       - "scripts/ci/run-docker-generic-user-job.sh"
       - "scripts/ci/validate_docker_generic_job.py"
+      - "scripts/ci/generate-signed-runtime-evidence.ts"
+      - "scripts/ci/verify-signed-runtime-evidence.ts"
       - "server/cadAgent.ts"
       - "server/cadKernel.ts"
+      - "server/signedRuntimeEvidence.ts"
+      - "server/runtimeEvidenceApi.ts"
       - "shared/authoritativeCadAgentRuntime.ts"
       - "shared/controlledUserJob.ts"
+      - "tests/signed-runtime-evidence.test.ts"
       - "package.json"
       - "pnpm-lock.yaml"
 
@@ -47,6 +52,16 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/ci/run-docker-generic-user-job.sh
+      - name: Generate and verify signed runtime evidence
+        shell: bash
+        env:
+          RUNTIME_EVIDENCE_HMAC_KEY: ${{ secrets.RUNTIME_EVIDENCE_HMAC_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${RUNTIME_EVIDENCE_HMAC_KEY:-}" || { echo "RUNTIME_EVIDENCE_KEY_UNAVAILABLE"; exit 1; }
+          pnpm exec tsx scripts/ci/generate-signed-runtime-evidence.ts artifacts/generic-job
+          pnpm exec tsx scripts/ci/verify-signed-runtime-evidence.ts artifacts/generic-job/provenance/signed-runtime-evidence.json
+          pnpm exec vitest run tests/signed-runtime-evidence.test.ts
       - name: Capture authoritative runtime summary
         if: always()
         shell: bash
