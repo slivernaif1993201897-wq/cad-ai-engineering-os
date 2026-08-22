@@ -247,7 +247,7 @@ def execute_job() -> int:
     if FAILURE_EXERCISE == "INVALID_MESH": mesh_path.write_text("INVALID_MESH\n", encoding="utf-8")
     try:
         mesh = meshio.read(mesh_path)
-    except Exception as error:
+    except BaseException as error:
         raise RuntimeError("INVALID_MESH_REJECTED") from error
     tetra_blocks = [block.data for block in mesh.cells if block.type == "tetra"]
     if not tetra_blocks: raise RuntimeError("MESH_HAS_NO_TETRA")
