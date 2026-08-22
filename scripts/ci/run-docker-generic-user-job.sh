@@ -38,6 +38,12 @@ run_container() {
   docker start -a "$container" > "$destination/container.log" 2>&1
   local status=$?
   set -e
+  docker inspect "$container" > "$destination/docker-inspect-after.json"
+  if [ "$status" -ne 0 ]; then
+    docker inspect --format '{{json .State}}' "$container" > "$destination/container-start-state.json"
+    docker rm "$container" >/dev/null
+    return "$status"
+  fi
   docker cp "$container:/output/." "$destination/"
   docker rm "$container" >/dev/null
   return "$status"
