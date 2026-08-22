@@ -27,9 +27,9 @@ run_container() {
   container=$(docker create --name "$name" \
     --read-only --network none --user 65534:65534 --cap-drop ALL --security-opt no-new-privileges \
     --cpus=1 --memory=512m --pids-limit=256 --ulimit fsize=67108864:67108864 \
-    --tmpfs /tmp:rw,nosuid,nodev,noexec,size=16m \
-    --tmpfs /work:rw,nosuid,nodev,noexec,size=32m \
-    --tmpfs /output:rw,nosuid,nodev,noexec,size=64m \
+    --tmpfs /tmp:rw,nosuid,nodev,noexec,mode=1777,size=16m \
+    --tmpfs /work:rw,nosuid,nodev,noexec,mode=1777,size=32m \
+    --tmpfs /output:rw,nosuid,nodev,noexec,mode=1777,size=64m \
     --mount "type=bind,src=$(pwd)/$INPUT,dst=/input,readonly" \
     --env "CAD_AI_ENVIRONMENT_ID=$ENVIRONMENT_ID" \
     "$IMAGE" "$mode")

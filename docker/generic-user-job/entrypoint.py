@@ -84,11 +84,16 @@ def run_probe() -> int:
     def record(test_id: str, expected: str, observed: object, passed: bool) -> None:
         probes.append({"testId": test_id, "expected": expected, "observed": observed, "status": "PASS" if passed else "FAIL", "environmentId": os.environ.get("CAD_AI_ENVIRONMENT_ID", "UNKNOWN")})
 
-    record("ROOT_FILESYSTEM_READ_ONLY", "write to root must fail", not try_write(Path("/rootfs-write-probe")), not try_write(Path("/rootfs-write-probe")))
-    record("INPUT_READ_ONLY", "write to /input must fail", not try_write(INPUT / "input-write-probe"), not try_write(INPUT / "input-write-probe"))
-    record("WORKSPACE_WRITABLE", "write to /work must succeed", try_write(WORK / "work-write-probe"), try_write(WORK / "work-write-probe"))
-    record("TEMPORARY_STORAGE_WRITABLE", "write to /tmp must succeed", try_write(Path("/tmp") / "tmp-write-probe"), try_write(Path("/tmp") / "tmp-write-probe"))
-    record("OUTPUT_WORKSPACE_WRITABLE", "write to /output must succeed", try_write(OUTPUT / "output-write-probe"), try_write(OUTPUT / "output-write-probe"))
+    root_writable = try_write(Path("/rootfs-write-probe"))
+    input_writable = try_write(INPUT / "input-write-probe")
+    work_writable = try_write(WORK / "work-write-probe")
+    temporary_writable = try_write(Path("/tmp") / "tmp-write-probe")
+    output_writable = try_write(OUTPUT / "output-write-probe")
+    record("ROOT_FILESYSTEM_READ_ONLY", "write to root must fail", root_writable, not root_writable)
+    record("INPUT_READ_ONLY", "write to /input must fail", input_writable, not input_writable)
+    record("WORKSPACE_WRITABLE", "write to /work must succeed", work_writable, work_writable)
+    record("TEMPORARY_STORAGE_WRITABLE", "write to /tmp must succeed", temporary_writable, temporary_writable)
+    record("OUTPUT_WORKSPACE_WRITABLE", "write to /output must succeed", output_writable, output_writable)
     record("NON_ROOT_IDENTITY", "uid and gid must be 65534", {"uid": os.getuid(), "gid": os.getgid()}, os.getuid() == 65534 and os.getgid() == 65534)
     capeff = next((line.split("\t", 1)[1].strip() for line in Path("/proc/self/status").read_text(encoding="utf-8").splitlines() if line.startswith("CapEff:")), "UNKNOWN")
     record("CAPABILITIES_DROPPED", "effective capabilities must be zero", capeff, capeff == "0000000000000000")
@@ -234,8 +239,12 @@ def main() -> int:
     try:
         return run_probe() if sys.argv[1] == "probe" else execute_job()
     except Exception as error:
-        append_log(f"FAILURE {error}")
-        write_json("execution-failure.json", {"state": "FAILED", "executionStarted": sys.argv[1] == "run", "genericSolverExecutionStarted": sys.argv[1] == "run", "error": str(error), "createdAt": datetime.now(timezone.utc).isoformat()})
+        print(f"ENTRYPOINT_FAILURE: {error}", file=sys.stderr)
+        try:
+            append_log(f"FAILURE {error}")
+            write_json("execution-failure.json", {"state": "FAILED", "executionStarted": sys.argv[1] == "run", "genericSolverExecutionStarted": sys.argv[1] == "run", "error": str(error), "createdAt": datetime.now(timezone.utc).isoformat()})
+        except Exception as artifact_error:
+            print(f"FAILURE_ARTIFACT_WRITE_FAILED: {artifact_error}", file=sys.stderr)
         return 1
 
 
