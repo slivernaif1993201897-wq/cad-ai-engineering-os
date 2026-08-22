@@ -35,4 +35,18 @@ describe("controlled user-job manifest", () => {
     unsupported.manifestHash = calculateControlledUserJobManifestHash(unsupported);
     expect(admitControlledUserJob(unsupported)).toMatchObject({ state: "REJECTED", reasonCodes: ["UNKNOWN_SOLVER_CONFIGURATION"] });
   });
+
+  it("allows only an internal-test admission state for a hash-valid Docker fixture", () => {
+    const internalFixture = {
+      ...fixture,
+      environment: { ...fixture.environment, executionClass: "INTERNAL_DOCKER_TEST" as const },
+    };
+    internalFixture.manifestHash = calculateControlledUserJobManifestHash(internalFixture);
+    expect(admitControlledUserJob(internalFixture)).toMatchObject({
+      state: "INTERNAL_TEST_ADMITTED",
+      executionStarted: false,
+      genericSolverExecutionStarted: false,
+      reasonCodes: ["INTERNAL_DOCKER_PREFLIGHT_REQUIRED"],
+    });
+  });
 });

@@ -360,4 +360,7 @@
 - [x] Freeze fixed-benchmark evidence and implement a fail-closed immutable user-job manifest, admission contract, integrity checks, and bounded GitHub workflow path while recording GitHub-hosted sandbox insufficiency.
 - [x] Implement immutable controlled user-job manifest validation with unknown-field, hash, authorization, solver, and path/command rejection tests.
 - [x] Add a no-input GitHub workflow that validates only a checked-in manifest fixture and emits a blocked hosted-runner receipt without running a generic user solver job.
+- [ ] Design and implement a Docker-isolated generic CAE user-job workflow with no network, read-only inputs, bounded resources, unprivileged execution, and audit artifacts.
+- [ ] Execute and validate one distinct generic user job with Gmsh, independent mesh verification, CalculiX, numerical validation, cryptographic result/job binding, failure recovery probes, and repeatability evidence.
+- [ ] Assemble internal security and engineering review evidence, distinguish observed Docker controls from unobserved platform controls, and publish a final readiness matrix without external-review claims.
 - [ ] Latest shared-evidence retrieval: classify the newly supplied Manus file against the canonical repository without treating inaccessible content as verified evidence.

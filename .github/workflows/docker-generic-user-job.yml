@@ -1,0 +1,75 @@
+name: Docker-Isolated Generic CAE User Job
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/docker-generic-user-job.yml"
+      - "docker/generic-user-job/**"
+      - "scripts/ci/generate-cad-generic-cantilever.ts"
+      - "scripts/ci/generate-generic-user-job-manifest.ts"
+      - "scripts/ci/run-docker-generic-user-job.sh"
+      - "scripts/ci/validate_docker_generic_job.py"
+      - "shared/controlledUserJob.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-generic-user-job-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  internal-generic-user-job:
+    name: Docker-isolated authorized generic user job
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Checkout immutable repository revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install locked JavaScript dependencies
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Execute static Docker-isolated generic job fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/ci/run-docker-generic-user-job.sh
+
+      - name: Capture generic job summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/generic-job/provenance
+          cat > artifacts/generic-job/provenance/execution-summary.json <<EOF
+          {
+            "workflowRunId": "${GITHUB_RUN_ID}",
+            "commitSha": "${GITHUB_SHA}",
+            "runner": {"os": "${RUNNER_OS}", "arch": "${RUNNER_ARCH}", "environment": "${RUNNER_ENVIRONMENT:-unknown}"},
+            "workflowScope": "AUTHORIZED_INTERNAL_DOCKER_GENERIC_USER_JOB_FIXTURE",
+            "genericUserInputAccepted": false,
+            "arbitraryCommandAccepted": false,
+            "networkPolicy": "DOCKER_NETWORK_NONE",
+            "productionReadiness": "BLOCKED_PENDING_APPROVED_ENVIRONMENT_AND_INTERNAL_REVIEW"
+          }
+          EOF
+          find artifacts/generic-job -type f -print0 | sort -z | xargs -0 sha256sum > artifacts/generic-job/provenance/all-artifacts.sha256
+
+      - name: Upload generic job evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: docker-generic-user-job-evidence-${{ github.run_id }}
+          path: artifacts/generic-job/
+          if-no-files-found: error
+          retention-days: 14

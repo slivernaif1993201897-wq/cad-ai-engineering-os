@@ -18,7 +18,7 @@ const environment = z.object({
   environmentId: boundedId,
   environmentHash: sha256,
   approvalEvidenceHash: sha256,
-  executionClass: z.enum(["GITHUB_HOSTED_CI", "APPROVED_SEGREGATED_ENVIRONMENT"]),
+  executionClass: z.enum(["GITHUB_HOSTED_CI", "INTERNAL_DOCKER_TEST", "APPROVED_SEGREGATED_ENVIRONMENT"]),
 }).strict();
 
 const resourcePolicy = z.object({
@@ -69,7 +69,7 @@ export const controlledUserJobManifestSchema = z.object({
 }).strict();
 
 export type ControlledUserJobManifest = z.infer<typeof controlledUserJobManifestSchema>;
-export type ControlledUserJobAdmissionState = "REJECTED" | "BLOCKED";
+export type ControlledUserJobAdmissionState = "REJECTED" | "BLOCKED" | "INTERNAL_TEST_ADMITTED";
 export type ControlledUserJobAdmissionReason =
   | "MANIFEST_SCHEMA_INVALID"
   | "MANIFEST_HASH_MISMATCH"
@@ -77,6 +77,7 @@ export type ControlledUserJobAdmissionReason =
   | "UNKNOWN_SOLVER_CONFIGURATION"
   | "GITHUB_HOSTED_SANDBOX_INSUFFICIENT"
   | "APPROVED_EXECUTION_ENVIRONMENT_REQUIRED"
+  | "INTERNAL_DOCKER_PREFLIGHT_REQUIRED"
   | "EXECUTION_ENGINE_NOT_IMPLEMENTED";
 
 export interface ControlledUserJobAdmissionReceipt {
@@ -86,8 +87,8 @@ export interface ControlledUserJobAdmissionReceipt {
   manifestHash?: string;
   state: ControlledUserJobAdmissionState;
   reasonCodes: ControlledUserJobAdmissionReason[];
-  executionStarted: false;
-  genericSolverExecutionStarted: false;
+  executionStarted: boolean;
+  genericSolverExecutionStarted: boolean;
   createdAt: string;
 }
 
@@ -130,6 +131,9 @@ export function admitControlledUserJob(candidate: unknown, observedAt = new Date
     const common = { receiptVersion: "1.0.0" as const, jobId: manifest.jobId, projectId: manifest.projectId, manifestHash: manifest.manifestHash, executionStarted: false as const, genericSolverExecutionStarted: false as const, createdAt };
     if (manifest.environment.executionClass === "GITHUB_HOSTED_CI") {
       return { ...common, state: "BLOCKED", reasonCodes: ["GITHUB_HOSTED_SANDBOX_INSUFFICIENT", "APPROVED_EXECUTION_ENVIRONMENT_REQUIRED", "EXECUTION_ENGINE_NOT_IMPLEMENTED"] };
+    }
+    if (manifest.environment.executionClass === "INTERNAL_DOCKER_TEST") {
+      return { ...common, state: "INTERNAL_TEST_ADMITTED", reasonCodes: ["INTERNAL_DOCKER_PREFLIGHT_REQUIRED"] };
     }
     return { ...common, state: "BLOCKED", reasonCodes: ["EXECUTION_ENGINE_NOT_IMPLEMENTED"] };
   } catch (error) {
