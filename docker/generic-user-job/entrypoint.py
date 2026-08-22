@@ -208,7 +208,9 @@ def execute_job() -> int:
             pass
     if FAILURE_EXERCISE == "MEMORY_LIMIT":
         # The configured Docker cgroup, not a simulated result, must reject this allocation.
-        _ = bytearray(2 * 1024 * 1024 * 1024)
+        allocation = bytearray(2 * 1024 * 1024 * 1024)
+        for offset in range(0, len(allocation), 4096):
+            allocation[offset] = 1
         raise RuntimeError("MEMORY_LIMIT_NOT_ENFORCED")
     manifest = parse_manifest()
     if sha256_file(STEP) != manifest["cadHash"]:
