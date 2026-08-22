@@ -71,6 +71,8 @@ def assert_rejected(manifest: dict, root: Path, mutation: str, expected_code: st
         target = sandbox / "result-binding.json"; value = json.loads(target.read_text()); value["jobId"] = "STALE-JOB"; target.write_text(json.dumps(value))
     elif mutation == "stale-cad":
         target = sandbox / "result-binding.json"; value = json.loads(target.read_text()); value["cadRevisionHash"] = "0" * 64; target.write_text(json.dumps(value))
+    elif mutation == "cae-configuration-mismatch":
+        target = sandbox / "result-binding.json"; value = json.loads(target.read_text()); value["caeConfigurationHash"] = "0" * 64; target.write_text(json.dumps(value))
     elif mutation == "mesh-mismatch":
         target = sandbox / "mesh-verification.json"; value = json.loads(target.read_text()); value["meshSha256"] = "0" * 64; target.write_text(json.dumps(value))
     elif mutation == "solver-mismatch":
@@ -102,12 +104,13 @@ def main() -> None:
         root = Path(sys.argv[3])
         verify_result(manifest, root)
         return
-    if mode in {"stale-job", "stale-cad", "mesh-mismatch", "solver-mismatch", "configuration-mismatch", "input-tamper", "output-tamper"}:
+    if mode in {"stale-job", "stale-cad", "cae-configuration-mismatch", "mesh-mismatch", "solver-mismatch", "configuration-mismatch", "input-tamper", "output-tamper"}:
         manifest = json.loads(Path(sys.argv[2]).read_text())
         root = Path(sys.argv[3])
         codes = {
             "stale-job": "RESULT_JOB_BINDING_INVALID",
             "stale-cad": "RESULT_CAD_BINDING_INVALID",
+            "cae-configuration-mismatch": "RESULT_CAE_CONFIGURATION_BINDING_INVALID",
             "mesh-mismatch": "RESULT_MESH_BINDING_INVALID",
             "solver-mismatch": "RESULT_SOLVER_BINDING_INVALID",
             "configuration-mismatch": "RESULT_CONFIGURATION_BINDING_INVALID",

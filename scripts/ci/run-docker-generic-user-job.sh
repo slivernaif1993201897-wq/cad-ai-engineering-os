@@ -78,7 +78,7 @@ EOF
 
 run_container "cad-ai-generic-run-${GITHUB_RUN_ID:-local}" run "$RESULT"
 python3 scripts/ci/validate_docker_generic_job.py result "$INPUT/generic-user-job-manifest.json" "$RESULT/runtime-output"
-for mode in stale-job stale-cad mesh-mismatch solver-mismatch configuration-mismatch input-tamper output-tamper; do
+for mode in stale-job stale-cad cae-configuration-mismatch mesh-mismatch solver-mismatch configuration-mismatch input-tamper output-tamper; do
   python3 scripts/ci/validate_docker_generic_job.py "$mode" "$INPUT/generic-user-job-manifest.json" "$RESULT/runtime-output"
 done
 
