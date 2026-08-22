@@ -90,7 +90,7 @@ export function verifyRuntimeEvidence(
   const { payload, signature: receivedSignature } = envelope;
   if (payload.version !== SIGNED_RUNTIME_EVIDENCE_VERSION) return { status: "BLOCKED", rejectionCode: "UNKNOWN_EVIDENCE_VERSION" };
   if (!isHash(receivedSignature) || !isHash(payload.evidenceHash) || !payload.evidenceId || !payload.commit || !payload.workflowRun || !payload.environmentIdentity) return { status: "BLOCKED", rejectionCode: "INVALID_EVIDENCE_SCHEMA" };
-  if (Object.values(payload.artifactHashes).some((value) => !isHash(value))) return { status: "BLOCKED", rejectionCode: "INVALID_ARTIFACT_HASH" };
+  if (Object.entries(payload.artifactHashes).some(([field, value]) => field === "jobId" ? typeof value !== "string" || value.length === 0 : !isHash(value))) return { status: "BLOCKED", rejectionCode: "INVALID_ARTIFACT_HASH" };
   const expectedSignature = signature(payload, key);
   if (!timingSafeEqual(Buffer.from(receivedSignature, "hex"), Buffer.from(expectedSignature, "hex"))) return { status: "BLOCKED", rejectionCode: "HMAC_MISMATCH" };
   const { evidenceHash, ...unsignedPayload } = payload;
