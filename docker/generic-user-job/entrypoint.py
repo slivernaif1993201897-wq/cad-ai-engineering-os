@@ -234,7 +234,7 @@ def execute_job() -> int:
     mesh_size = str(analysis["meshSizeMm"])
     gmsh_command = ["gmsh", "-3", str(STEP), "-format", "msh41", "-clmin", mesh_size, "-clmax", mesh_size, "-o", str(mesh_path)]
     if FAILURE_EXERCISE == "GMSH_FAILURE":
-        gmsh_command = ["gmsh", "-3", str(STEP), "-format", "msh41", "-o", str(WORK)]
+        os.chmod(WORK, 0o555)
     gmsh = subprocess.run(gmsh_command, cwd=WORK, capture_output=True, text=True, timeout=90)
     append_log(f"GMSH_EXIT={gmsh.returncode}\n{gmsh.stdout}\n{gmsh.stderr}")
     if gmsh.returncode != 0 or (FAILURE_EXERCISE == "GMSH_FAILURE" and not mesh_path.exists()):
