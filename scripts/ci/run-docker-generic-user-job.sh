@@ -50,6 +50,7 @@ run_container() {
     --mount "type=bind,src=$(pwd)/$input_root,dst=/input,readonly" \
     --mount "type=bind,src=$(pwd)/$runtime_output,dst=/output" \
     --env "CAD_AI_ENVIRONMENT_ID=$ENVIRONMENT_ID" \
+    --env "CAD_AI_FAILURE_EXERCISE=${CAD_AI_FAILURE_EXERCISE:-}" \
     "$IMAGE" "$mode")
   docker inspect "$container" > "$destination/docker-inspect.json"
   set +e
