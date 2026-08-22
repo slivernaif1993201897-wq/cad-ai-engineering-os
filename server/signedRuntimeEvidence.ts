@@ -40,7 +40,7 @@ function isHash(value: unknown): value is string {
 }
 
 function configuredKey(): string | null {
-  const key = process.env.RUNTIME_EVIDENCE_HMAC_KEY?.trim();
+  const key = process.env.RUNTIME_EVIDENCE_HMAC_KEY?.trim().replace(/^0x/i, "");
   return key && /^[a-f0-9]{64,}$/i.test(key) ? key : null;
 }
 
