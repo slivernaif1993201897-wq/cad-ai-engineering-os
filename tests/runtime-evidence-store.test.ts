@@ -62,6 +62,7 @@ describe("canonical runtime evidence store", () => {
   it("stores and exposes only a complete verified envelope through the server-side API", async () => {
     const envelope = signRuntimeEvidence(basePayload, key);
     await expect(storeCanonicalRuntimeEvidence(envelope, trust, storeDirectory, now)).resolves.toMatchObject({ status: "VERIFIED" });
+    await expect(storeCanonicalRuntimeEvidence(envelope, trust, storeDirectory, now)).resolves.toMatchObject({ status: "BLOCKED", rejectionCode: "REPLAYED_EVIDENCE" });
     await expect(readCanonicalRuntimeEvidence(storeDirectory, trust)).resolves.toMatchObject({ status: "VERIFIED", evidence: { resultHash: binding.resultHash } });
     await expect(readAuthoritativeRuntimeEvidence()).resolves.toMatchObject({ status: "VERIFIED", evidence: { workflowRun: trust.workflowRun } });
     expect(readFileSync(join(storeDirectory, "active.json"), "utf8")).not.toContain(key);

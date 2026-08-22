@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
@@ -59,9 +59,13 @@ export async function storeCanonicalRuntimeEvidence(
   const immutablePath = join(storeDirectory, `${envelope.payload.evidenceHash}.json`);
   const activePath = join(storeDirectory, "active.json");
   const temporaryPath = join(storeDirectory, `.active-${process.pid}-${Date.now()}.tmp`);
-  await writeFile(immutablePath, content, { encoding: "utf8", mode: 0o600, flag: "wx" }).catch(async (error: NodeJS.ErrnoException) => {
-    if (error.code !== "EEXIST") throw error;
-  });
+  try {
+    await access(immutablePath);
+    return { status: "BLOCKED", rejectionCode: "REPLAYED_EVIDENCE" };
+  } catch {
+    // The content-addressed record has not been seen by this canonical store.
+  }
+  await writeFile(immutablePath, content, { encoding: "utf8", mode: 0o600, flag: "wx" });
   await writeFile(temporaryPath, content, { encoding: "utf8", mode: 0o600 });
   await rename(temporaryPath, activePath);
   return verification;

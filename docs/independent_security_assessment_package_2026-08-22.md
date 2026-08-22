@@ -18,6 +18,7 @@ The target path is:
 | Runtime implementation | `docker/generic-user-job/Dockerfile`, `docker/generic-user-job/entrypoint.py`, `scripts/ci/run-docker-generic-user-job.sh` | Review the static command surface, Docker controls, and artifact boundary. |
 | Provenance and admission | `shared/controlledUserJob.ts`, `shared/authoritativeCadAgentRuntime.ts` | Review immutable-manifest schema, semantic revision hash, stale/tamper rejection, and fail-closed admission. |
 | Host artifact validation | `scripts/ci/validate_docker_generic_job.py` | Review binding and mutation rejection rules. |
+| Signed canonical evidence | `server/signedRuntimeEvidence.ts`, `server/runtimeEvidenceStore.ts`, `server/runtimeEvidenceApi.ts` | Review opaque HMAC verification, complete binding requirements, replay rejection, atomic store behavior, and read-only server access. |
 | Closure record | `docs/controlled_user_job_closure_report_2026-08-22.md` | Review observed evidence, unresolved gates, and scope limits. |
 
 ## Observed Internal Evidence Inventory
@@ -25,6 +26,8 @@ The target path is:
 The final workflow retained the execution receipt, manifest, CAD provenance, Docker inspect records, sandbox probes, 241-package `dpkg-query` inventory, mesh verification, solver input, canonical CalculiX FRD, raw CalculiX FRD, raw-solver evidence record, numerical validation, result binding, logs, artifact hash manifest, and controlled failure evidence. The sandbox campaign recorded 34 static, bounded in-container observations with zero failures.
 
 The internal campaign also exercised stale job, stale CAD, mesh mismatch, solver mismatch, configuration mismatch, input tampering, output tampering, Gmsh failure, CalculiX failure, timeout, CPU limit, memory limit, storage limit, invalid admission input, invalid mesh, corrupted artifact, and partial output. These are internal execution observations, not external penetration-test findings.
+
+The canonical evidence store requires a verified signed envelope and the complete binding set of `JOB_ID`, CAD revision and artifact hashes, CAE configuration hash, manifest hash, environment hash, Gmsh hash, mesh hash, CalculiX hash, input hash, output hash, result hash, and execution-log hash. It stores content-addressed records and rejects an already stored evidence hash as a replay. Its deterministic regression covers complete binding, incomplete binding, tampered storage, stale evidence, foreign evidence, replay, and missing source behavior. The repository-secret workflow execution remains fail closed until the user-managed HMAC secret passes its no-value format gate.
 
 ## Requested Independent Review Questions
 
