@@ -59,6 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${RUNTIME_EVIDENCE_HMAC_KEY:-}" || { echo "RUNTIME_EVIDENCE_KEY_UNAVAILABLE"; exit 1; }
+          [[ "${RUNTIME_EVIDENCE_HMAC_KEY}" =~ ^(0x)?[A-Fa-f0-9]{64,}$ ]] || { echo "RUNTIME_EVIDENCE_KEY_FORMAT_INVALID"; exit 1; }
           pnpm exec tsx scripts/ci/generate-signed-runtime-evidence.ts artifacts/generic-job
           pnpm exec tsx scripts/ci/verify-signed-runtime-evidence.ts artifacts/generic-job/provenance/signed-runtime-evidence.json
           pnpm exec vitest run tests/signed-runtime-evidence.test.ts
