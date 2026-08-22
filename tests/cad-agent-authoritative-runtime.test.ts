@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 
 import { createMountingBlockConfiguration, getValidatedStepExport } from "../server/cadAgent";
+import { buildAuthorizedRuntimeCAEConfiguration } from "../server/caeAgent";
 import {
   admitCadAgentRuntimeJob,
   buildCadAgentRuntimeManifest,
@@ -20,7 +22,10 @@ beforeAll(async () => {
   });
   if (result.error || !result.configuration.artifact) throw new Error(result.error ?? "CAD_AGENT_ARTIFACT_MISSING");
   const stepExport = getValidatedStepExport(result.configuration.id);
-  source = { configuration: result.configuration, stepExport, stepBytes: Buffer.from(stepExport.stepBase64, "base64") };
+  const stepBytes = Buffer.from(stepExport.stepBase64, "base64");
+  const cadRevisionHash = calculateCadRevisionHash(result.configuration);
+  const cadArtifactHash = createHash("sha256").update(stepBytes).digest("hex");
+  source = { configuration: result.configuration, stepExport, stepBytes, caeConfiguration: buildAuthorizedRuntimeCAEConfiguration({ cadRevision: result.configuration.id, cadRevisionHash, cadArtifactHash, width: result.configuration.input.width, depth: result.configuration.input.depth, height: result.configuration.input.height }) };
   manifest = buildCadAgentRuntimeManifest(source);
 }, 30_000);
 
@@ -56,6 +61,13 @@ describe("authoritative CAD Agent Docker runtime contract", () => {
       cadRevisionHash: "0".repeat(64),
       cadArtifactHash: manifest.cadArtifactHash,
     })).toThrow("STALE_CAD_REJECTED");
+  });
+
+  it("rejects a CAE configuration whose CAD artifact binding is stale before immutable manifest construction", () => {
+    expect(() => buildCadAgentRuntimeManifest({
+      ...source,
+      caeConfiguration: { ...source.caeConfiguration, cadArtifactHash: "0".repeat(64) },
+    })).toThrow("CAE_AGENT_CAD_BINDING_INVALID");
   });
 
   it("rejects a non-agent provenance source even when the manifest remains otherwise valid", () => {

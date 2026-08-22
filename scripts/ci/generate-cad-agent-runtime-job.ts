@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { createMountingBlockConfiguration, getValidatedStepExport } from "../../server/cadAgent";
+import { buildAuthorizedRuntimeCAEConfiguration } from "../../server/caeAgent";
 import { admitCadAgentRuntimeJob, buildCadAgentRuntimeManifest, calculateCadRevisionHash } from "../../shared/authoritativeCadAgentRuntime";
 
 const inputRoot = join(process.cwd(), "artifacts", "generic-job", "input");
@@ -17,11 +19,14 @@ async function main() {
   }
   const stepExport = getValidatedStepExport(result.configuration.id);
   const stepBytes = Buffer.from(stepExport.stepBase64, "base64");
-  const manifest = buildCadAgentRuntimeManifest({ configuration: result.configuration, stepExport, stepBytes });
+  const cadRevisionHash = calculateCadRevisionHash(result.configuration);
+  const cadArtifactHash = createHash("sha256").update(stepBytes).digest("hex");
+  const caeConfiguration = buildAuthorizedRuntimeCAEConfiguration({ cadRevision: result.configuration.id, cadRevisionHash, cadArtifactHash, width: result.configuration.input.width, depth: result.configuration.input.depth, height: result.configuration.input.height });
+  const manifest = buildCadAgentRuntimeManifest({ configuration: result.configuration, stepExport, stepBytes, caeConfiguration });
   admitCadAgentRuntimeJob(manifest, {
     jobId: manifest.jobId,
     cadRevision: result.configuration.id,
-    cadRevisionHash: calculateCadRevisionHash(result.configuration),
+    cadRevisionHash,
     cadArtifactHash: manifest.cadArtifactHash,
   });
   await mkdir(inputRoot, { recursive: true });
@@ -33,6 +38,7 @@ async function main() {
     revision: result.configuration.revision,
     cadRevisionHash: manifest.cadRevisionHash,
     cadArtifactHash: manifest.cadArtifactHash,
+    caeConfigurationHash: caeConfiguration.caeConfigurationHash,
     manifestHash: manifest.manifestHash,
     validationStatus: result.configuration.artifact.validationStatus,
   }, null, 2)}\n`, "utf8");

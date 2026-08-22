@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { CADConfiguration, CADExport } from "./cadAgent";
+import { buildAuthorizedRuntimeCAEConfiguration, type AuthorizedRuntimeCAEConfiguration } from "../server/caeAgent";
 import {
   calculateControlledUserJobManifestHash,
   validateControlledUserJobManifest,
@@ -27,6 +28,7 @@ export interface CadAgentRuntimeSource {
   configuration: CADConfiguration;
   stepExport: CADExport;
   stepBytes: Buffer;
+  caeConfiguration: AuthorizedRuntimeCAEConfiguration;
 }
 
 export interface CadAgentRuntimeAdmissionContext {
@@ -61,30 +63,9 @@ export function buildCadAgentRuntimeManifest(source: CadAgentRuntimeSource): Con
   }
   const cadArtifactHash = hash(stepBytes);
   const cadRevisionHash = calculateCadRevisionHash(configuration);
-  const analysisPlan = {
-    profileId: "CAD_AGENT_MOUNTING_BLOCK_AXIAL_X_V1" as const,
-    axis: "X" as const,
-    expectedBoundsMm: { min: [0, 0, 0] as [number, number, number], max: [configuration.input.width, configuration.input.depth, configuration.input.height] as [number, number, number] },
-    meshSizeMm: 4,
-    elasticModulusMpa: 210000,
-    poissonRatio: 0.3,
-    totalAxialForceN: 800,
-    referenceCrossSectionAreaMm2: configuration.input.depth * configuration.input.height,
-    numericalTolerance: 0.30,
-  };
-  const caePlan = {
-    analysisType: "LINEAR_STATIC",
-    source: "CAD_AGENT_VALIDATED_OPEN_CASCADE_REVISION",
-    profile: analysisPlan.profileId,
-    axis: analysisPlan.axis,
-    unitSystem: "mm-N-MPa",
-    meshSizeMm: analysisPlan.meshSizeMm,
-  };
-  const material = { materialId: "STEEL_LINEAR_ELASTIC_V1", elasticModulusMpa: analysisPlan.elasticModulusMpa, poissonRatio: analysisPlan.poissonRatio };
-  const load = { loadId: "CAD_AGENT_X_MAX_AXIAL_LOAD_V1", totalForceN: analysisPlan.totalAxialForceN, direction: "GLOBAL_X" };
-  const boundary = { boundaryId: "CAD_AGENT_X_MIN_FULL_FIXITY_V1", fixedDofs: [1, 2, 3] };
-  const meshConfiguration = { configurationId: "GMSH-TETRA-4MM-V1", configurationHash: recordHash({ solver: "GMSH", version: "4.12.1", element: "TETRA4", sizeMm: analysisPlan.meshSizeMm }), solverId: "GMSH" as const, solverVersion: "4.12.1" };
-  const solverConfiguration = { configurationId: "CALCULIX-LINEAR-STATIC-V1", configurationHash: recordHash({ solver: "CALCULIX", version: "2.21", element: "C3D4", nonlinearGeometry: false }), solverId: "CALCULIX" as const, solverVersion: "2.21" };
+  const caeConfiguration = source.caeConfiguration;
+  if (caeConfiguration.cadRevision !== configuration.id || caeConfiguration.cadRevisionHash !== cadRevisionHash || caeConfiguration.cadArtifactHash !== cadArtifactHash) throw new Error("CAE_AGENT_CAD_BINDING_INVALID");
+  const { analysisPlan, caePlan, material, load, boundary, meshConfiguration, solverConfiguration } = caeConfiguration;
   const resourcePolicy = { policyId: "DOCKER-INTERNAL-CAE-512M-V1", policyHash: recordHash({ cpuMilliCores: 1000, memoryMiB: 512, storageMiB: 64, processCount: 256, runtimeSeconds: 120, inputBytes: 5242880, outputBytes: 67108864, artifactBytes: 67108864 }), limits: { cpuMilliCores: 1000, memoryMiB: 512, storageMiB: 64, processCount: 256, runtimeSeconds: 120, inputBytes: 5242880, outputBytes: 67108864, artifactBytes: 67108864 } };
   const manifest: ControlledUserJobManifest = {
     manifestVersion: "1.0.0",
@@ -96,7 +77,7 @@ export function buildCadAgentRuntimeManifest(source: CadAgentRuntimeSource): Con
     cadArtifactHash,
     cadProvenance: { sourceKind: "CAD_AGENT", configurationId: configuration.id, configurationHash: cadRevisionHash, artifactId: `ARTIFACT-${cadArtifactHash.slice(0, 16).toUpperCase()}` },
     caePlanRevision: `CAE-${configuration.id}`,
-    caePlanHash: recordHash(caePlan),
+    caePlanHash: caeConfiguration.caeConfigurationHash,
     materialRevision: "MATERIAL-STEEL-1",
     materialHash: recordHash(material),
     loadRevision: "LOAD-X-AXIAL-800N-1",

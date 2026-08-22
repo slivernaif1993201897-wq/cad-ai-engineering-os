@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { appendPersistentMemory, openPersistentProject, projectMemorySnapshot } from "./persistentMemory";
 import type { CAEAnalysisType, CAEAssumption, CAEBoundaryCondition, CAEContact, CAEEvidenceRequirement, CAEGeometryScope, CAEKnowledgeGap, CAELoad, CAEMaterialDefinition, CAEMaterialProperty, CAEMeshStrategy, CAEPlanInput, CAEPlanStatus, CAEResultEnvelope, CAESimulationPlan, CAETraceabilityLink, ICAESolverAdapter, MaterialKnowledgeGap } from "../shared/cae";
 
@@ -6,6 +8,43 @@ const plans = new Map<string, CAESimulationPlan[]>();
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const key = (projectId: string, simulationId: string) => `${projectId}:${simulationId}`;
 const noSolver = { adapterId: "NO_EXECUTABLE_SOLVER" as const, name: "No executable solver configured" as const, capabilities: [] as CAEAnalysisType[], status: "UNAVAILABLE" as const, reason: "Phase 5.0 implements CAE planning and validation only. No numerical solver, mesher, results reader, or convergence evidence is configured." };
+
+export interface AuthorizedRuntimeCAEConfiguration {
+  configurationId: "CAE-AGENT-MOUNTING-BLOCK-AXIAL-X-V1";
+  cadRevision: string;
+  cadRevisionHash: string;
+  cadArtifactHash: string;
+  caeConfigurationHash: string;
+  analysisPlan: { profileId: "CAD_AGENT_MOUNTING_BLOCK_AXIAL_X_V1"; axis: "X"; expectedBoundsMm: { min: [number, number, number]; max: [number, number, number] }; meshSizeMm: number; elasticModulusMpa: number; poissonRatio: number; totalAxialForceN: number; referenceCrossSectionAreaMm2: number; numericalTolerance: number };
+  caePlan: { analysisType: "LINEAR_STATIC"; source: "CAD_AGENT_VALIDATED_OPEN_CASCADE_REVISION"; profile: "CAD_AGENT_MOUNTING_BLOCK_AXIAL_X_V1"; axis: "X"; unitSystem: "mm-N-MPa"; meshSizeMm: number };
+  material: { materialId: "STEEL_LINEAR_ELASTIC_V1"; elasticModulusMpa: number; poissonRatio: number };
+  load: { loadId: "CAD_AGENT_X_MAX_AXIAL_LOAD_V1"; totalForceN: number; direction: "GLOBAL_X" };
+  boundary: { boundaryId: "CAD_AGENT_X_MIN_FULL_FIXITY_V1"; fixedDofs: [1, 2, 3] };
+  meshConfiguration: { configurationId: "GMSH-TETRA-4MM-V1"; configurationHash: string; solverId: "GMSH"; solverVersion: "4.12.1" };
+  solverConfiguration: { configurationId: "CALCULIX-LINEAR-STATIC-V1"; configurationHash: string; solverId: "CALCULIX"; solverVersion: "2.21" };
+}
+
+const canonicalHash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+
+/**
+ * Builds a bounded CAE configuration from a validated CAD Agent revision. This
+ * function creates no solver process; the only executable path remains the
+ * immutable manifest and existing Docker admission boundary.
+ */
+export function buildAuthorizedRuntimeCAEConfiguration(args: { cadRevision: string; cadRevisionHash: string; cadArtifactHash: string; width: number; depth: number; height: number }): AuthorizedRuntimeCAEConfiguration {
+  if (!args.cadRevision.trim() || !/^[a-f0-9]{64}$/.test(args.cadRevisionHash) || !/^[a-f0-9]{64}$/.test(args.cadArtifactHash) || ![args.width, args.depth, args.height].every((value) => Number.isFinite(value) && value > 0)) {
+    throw new Error("CAE_AGENT_RUNTIME_INPUT_INVALID");
+  }
+  const analysisPlan = { profileId: "CAD_AGENT_MOUNTING_BLOCK_AXIAL_X_V1" as const, axis: "X" as const, expectedBoundsMm: { min: [0, 0, 0] as [number, number, number], max: [args.width, args.depth, args.height] as [number, number, number] }, meshSizeMm: 4, elasticModulusMpa: 210000, poissonRatio: 0.3, totalAxialForceN: 800, referenceCrossSectionAreaMm2: args.depth * args.height, numericalTolerance: 0.30 };
+  const caePlan = { analysisType: "LINEAR_STATIC" as const, source: "CAD_AGENT_VALIDATED_OPEN_CASCADE_REVISION" as const, profile: analysisPlan.profileId, axis: analysisPlan.axis, unitSystem: "mm-N-MPa" as const, meshSizeMm: analysisPlan.meshSizeMm };
+  const material = { materialId: "STEEL_LINEAR_ELASTIC_V1" as const, elasticModulusMpa: analysisPlan.elasticModulusMpa, poissonRatio: analysisPlan.poissonRatio };
+  const load = { loadId: "CAD_AGENT_X_MAX_AXIAL_LOAD_V1" as const, totalForceN: analysisPlan.totalAxialForceN, direction: "GLOBAL_X" as const };
+  const boundary = { boundaryId: "CAD_AGENT_X_MIN_FULL_FIXITY_V1" as const, fixedDofs: [1, 2, 3] as [1, 2, 3] };
+  const meshConfiguration = { configurationId: "GMSH-TETRA-4MM-V1" as const, configurationHash: canonicalHash({ solver: "GMSH", version: "4.12.1", element: "TETRA4", sizeMm: analysisPlan.meshSizeMm }), solverId: "GMSH" as const, solverVersion: "4.12.1" as const };
+  const solverConfiguration = { configurationId: "CALCULIX-LINEAR-STATIC-V1" as const, configurationHash: canonicalHash({ solver: "CALCULIX", version: "2.21", element: "C3D4", nonlinearGeometry: false }), solverId: "CALCULIX" as const, solverVersion: "2.21" as const };
+  const bound = { configurationId: "CAE-AGENT-MOUNTING-BLOCK-AXIAL-X-V1" as const, cadRevision: args.cadRevision, cadRevisionHash: args.cadRevisionHash, cadArtifactHash: args.cadArtifactHash, analysisPlan, caePlan, material, load, boundary, meshConfiguration, solverConfiguration };
+  return { ...bound, caeConfigurationHash: canonicalHash(bound) };
+}
 
 export const unavailableSolverAdapter: ICAESolverAdapter = {
   id: "NO_EXECUTABLE_SOLVER",
