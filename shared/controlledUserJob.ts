@@ -44,12 +44,37 @@ const authorization = z.object({
   status: z.literal("AUTHORIZED"),
 }).strict();
 
+const axis = z.enum(["X", "Y", "Z"]);
+const coordinateTriple = z.tuple([z.number().finite(), z.number().finite(), z.number().finite()]);
+const analysisPlan = z.object({
+  profileId: z.enum(["GENERIC_CANTILEVER_AXIAL_Z_V1", "CAD_AGENT_MOUNTING_BLOCK_AXIAL_X_V1"]),
+  profileHash: sha256,
+  axis,
+  expectedBoundsMm: z.object({ min: coordinateTriple, max: coordinateTriple }).strict(),
+  meshSizeMm: z.number().finite().positive().max(100),
+  elasticModulusMpa: z.number().finite().positive().max(10_000_000),
+  poissonRatio: z.number().finite().min(-0.99).max(0.499999),
+  totalAxialForceN: z.number().finite().refine((value) => value !== 0, "Expected a nonzero axial force.").max(1_000_000_000),
+  referenceCrossSectionAreaMm2: z.number().finite().positive().max(1_000_000_000),
+  numericalTolerance: z.number().finite().positive().max(1),
+}).strict();
+
+const cadProvenance = z.object({
+  sourceKind: z.enum(["FIXTURE_BASELINE", "CAD_AGENT"]),
+  configurationId: boundedId,
+  configurationHash: sha256,
+  artifactId: boundedId,
+}).strict();
+
 export const controlledUserJobManifestSchema = z.object({
   manifestVersion: z.literal(CONTROLLED_USER_JOB_MANIFEST_VERSION),
   jobId: boundedId,
   projectId: boundedId,
   cadRevision: boundedId,
   cadHash: sha256,
+  cadRevisionHash: sha256,
+  cadArtifactHash: sha256,
+  cadProvenance,
   caePlanRevision: boundedId,
   caePlanHash: sha256,
   materialRevision: boundedId,
@@ -62,6 +87,7 @@ export const controlledUserJobManifestSchema = z.object({
   solverConfiguration: solverConfiguration.extend({ solverId: z.literal("CALCULIX") }),
   environment,
   resourcePolicy,
+  analysisPlan,
   expectedArtifacts: z.array(z.enum(["ADMISSION_RECEIPT", "EXECUTION_LOG", "PROVENANCE_BUNDLE", "MESH", "MESH_VERIFICATION", "SOLVER_RESULT", "NUMERICAL_VALIDATION"])).min(3).max(7),
   validationPolicy: z.object({ policyId: boundedId, policyHash: sha256 }).strict(),
   authorization,
@@ -74,6 +100,8 @@ export type ControlledUserJobAdmissionReason =
   | "MANIFEST_SCHEMA_INVALID"
   | "MANIFEST_HASH_MISMATCH"
   | "MANIFEST_AUTHORIZATION_INVALID"
+  | "CAD_ARTIFACT_HASH_MISMATCH"
+  | "UNSUPPORTED_ANALYSIS_PROFILE"
   | "UNKNOWN_SOLVER_CONFIGURATION"
   | "GITHUB_HOSTED_SANDBOX_INSUFFICIENT"
   | "APPROVED_EXECUTION_ENVIRONMENT_REQUIRED"
@@ -111,6 +139,10 @@ export function validateControlledUserJobManifest(candidate: unknown, observedAt
   if (manifest.meshConfiguration.solverVersion !== "4.12.1" || manifest.solverConfiguration.solverVersion !== "2.21") {
     throw new Error("UNKNOWN_SOLVER_CONFIGURATION");
   }
+  if (manifest.cadHash !== manifest.cadArtifactHash) throw new Error("CAD_ARTIFACT_HASH_MISMATCH");
+  if ((manifest.analysisPlan.profileId === "GENERIC_CANTILEVER_AXIAL_Z_V1" && manifest.analysisPlan.axis !== "Z") || (manifest.analysisPlan.profileId === "CAD_AGENT_MOUNTING_BLOCK_AXIAL_X_V1" && manifest.analysisPlan.axis !== "X")) {
+    throw new Error("UNSUPPORTED_ANALYSIS_PROFILE");
+  }
   if (new Set(manifest.expectedArtifacts).size !== manifest.expectedArtifacts.length) {
     throw new Error("MANIFEST_SCHEMA_INVALID: expected artifacts must be unique.");
   }
@@ -139,7 +171,7 @@ export function admitControlledUserJob(candidate: unknown, observedAt = new Date
   } catch (error) {
     const message = error instanceof Error ? error.message : "MANIFEST_SCHEMA_INVALID";
     const reason = (message.split(":")[0] as ControlledUserJobAdmissionReason);
-    const known = new Set<ControlledUserJobAdmissionReason>(["MANIFEST_SCHEMA_INVALID", "MANIFEST_HASH_MISMATCH", "MANIFEST_AUTHORIZATION_INVALID", "UNKNOWN_SOLVER_CONFIGURATION"]);
+    const known = new Set<ControlledUserJobAdmissionReason>(["MANIFEST_SCHEMA_INVALID", "MANIFEST_HASH_MISMATCH", "MANIFEST_AUTHORIZATION_INVALID", "CAD_ARTIFACT_HASH_MISMATCH", "UNSUPPORTED_ANALYSIS_PROFILE", "UNKNOWN_SOLVER_CONFIGURATION"]);
     return { receiptVersion: "1.0.0", state: "REJECTED", reasonCodes: [known.has(reason) ? reason : "MANIFEST_SCHEMA_INVALID"], executionStarted: false, genericSolverExecutionStarted: false, createdAt };
   }
 }

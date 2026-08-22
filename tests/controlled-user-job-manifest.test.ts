@@ -7,9 +7,14 @@ const fixture = JSON.parse(readFileSync(resolve(process.cwd(), "fixtures/control
 
 describe("controlled user-job manifest", () => {
   it("preserves a hash-bound manifest and blocks GitHub-hosted generic execution", () => {
-    expect(fixture.manifestHash).toBe(calculateControlledUserJobManifestHash(fixture));
-    expect(validateControlledUserJobManifest(fixture).jobId).toBe("USER-JOB-ADMISSION-FIXTURE-001");
-    expect(admitControlledUserJob(fixture)).toMatchObject({
+    const githubFixture = {
+      ...fixture,
+      environment: { ...fixture.environment, executionClass: "GITHUB_HOSTED_CI" as const },
+    };
+    githubFixture.manifestHash = calculateControlledUserJobManifestHash(githubFixture);
+    expect(githubFixture.manifestHash).toBe(calculateControlledUserJobManifestHash(githubFixture));
+    expect(validateControlledUserJobManifest(githubFixture).jobId).toBe("GENERIC-CANTILEVER-USER-JOB-001");
+    expect(admitControlledUserJob(githubFixture)).toMatchObject({
       state: "BLOCKED",
       reasonCodes: expect.arrayContaining(["GITHUB_HOSTED_SANDBOX_INSUFFICIENT", "APPROVED_EXECUTION_ENVIRONMENT_REQUIRED"]),
       executionStarted: false,

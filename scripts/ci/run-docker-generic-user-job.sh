@@ -8,11 +8,24 @@ RESULT="$ROOT/result"
 IMAGE="cad-ai-generic-user-job:${GITHUB_SHA:-local}"
 ENVIRONMENT_ID="GITHUB-DOCKER-INTERNAL-TEST-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
 MAX_INPUT_BYTES=5242880
+JOB_SOURCE="${CAD_AI_JOB_SOURCE:-FIXTURE_BASELINE}"
 
 rm -rf "$ROOT"
 mkdir -p "$INPUT" "$PROBE" "$RESULT"
-pnpm exec tsx scripts/ci/generate-cad-generic-cantilever.ts
-pnpm exec tsx scripts/ci/generate-generic-user-job-manifest.ts
+case "$JOB_SOURCE" in
+  FIXTURE_BASELINE)
+    pnpm exec tsx scripts/ci/generate-cad-generic-cantilever.ts
+    pnpm exec tsx scripts/ci/generate-generic-user-job-manifest.ts
+    mv "$INPUT/generic-cantilever.step" "$INPUT/cad-artifact.step"
+    ;;
+  CAD_AGENT)
+    pnpm exec tsx scripts/ci/generate-cad-agent-runtime-job.ts
+    ;;
+  *)
+    echo "Unsupported static job source: $JOB_SOURCE" >&2
+    exit 64
+    ;;
+esac
 
 input_bytes=$(du -sb "$INPUT" | awk '{print $1}')
 test "$input_bytes" -le "$MAX_INPUT_BYTES"
@@ -55,11 +68,13 @@ run_container() {
 run_container "cad-ai-generic-probe-${GITHUB_RUN_ID:-local}" probe "$PROBE"
 python3 scripts/ci/validate_docker_generic_job.py preflight "$PROBE/runtime-output/sandbox-probes.json"
 cat > "$INPUT/runtime-preflight.json" <<EOF
-{"environmentId":"$ENVIRONMENT_ID","imageId":"$image_id","inputBytes":$input_bytes,"probeHash":"$(sha256sum "$PROBE/sandbox-probes.json" | awk '{print $1}')","dockerInspectHash":"$(sha256sum "$PROBE/docker-inspect.json" | awk '{print $1}')"}
+{"environmentId":"$ENVIRONMENT_ID","imageId":"$image_id","inputBytes":$input_bytes,"probeHash":"$(sha256sum "$PROBE/runtime-output/sandbox-probes.json" | awk '{print $1}')","dockerInspectHash":"$(sha256sum "$PROBE/docker-inspect.json" | awk '{print $1}')"}
 EOF
 
 run_container "cad-ai-generic-run-${GITHUB_RUN_ID:-local}" run "$RESULT"
 python3 scripts/ci/validate_docker_generic_job.py result "$INPUT/generic-user-job-manifest.json" "$RESULT/runtime-output"
-python3 scripts/ci/validate_docker_generic_job.py tamper "$RESULT/runtime-output/result-binding.json"
+for mode in stale-job stale-cad mesh-mismatch solver-mismatch configuration-mismatch input-tamper output-tamper; do
+  python3 scripts/ci/validate_docker_generic_job.py "$mode" "$INPUT/generic-user-job-manifest.json" "$RESULT/runtime-output"
+done
 
 find "$ROOT" -type f -print0 | sort -z | xargs -0 sha256sum > "$ROOT/all-artifacts.sha256"

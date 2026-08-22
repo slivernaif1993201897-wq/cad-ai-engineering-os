@@ -25,7 +25,7 @@ INPUT = Path("/input")
 OUTPUT = Path("/output")
 WORK = Path("/work")
 MANIFEST = INPUT / "generic-user-job-manifest.json"
-STEP = INPUT / "generic-cantilever.step"
+STEP = INPUT / "cad-artifact.step"
 
 
 def sha256_file(path: Path) -> str:
@@ -152,6 +152,14 @@ def parse_manifest() -> dict[str, object]:
         raise RuntimeError("UNKNOWN_MESH_CONFIGURATION")
     if manifest.get("solverConfiguration", {}).get("solverId") != "CALCULIX" or manifest.get("solverConfiguration", {}).get("solverVersion") != "2.21":
         raise RuntimeError("UNKNOWN_SOLVER_CONFIGURATION")
+    if manifest.get("cadHash") != manifest.get("cadArtifactHash"):
+        raise RuntimeError("CAD_ARTIFACT_HASH_MISMATCH")
+    analysis = manifest.get("analysisPlan", {})
+    if analysis.get("profileId") not in {"GENERIC_CANTILEVER_AXIAL_Z_V1", "CAD_AGENT_MOUNTING_BLOCK_AXIAL_X_V1"}:
+        raise RuntimeError("UNKNOWN_ANALYSIS_PROFILE")
+    expected_axis = "Z" if analysis.get("profileId") == "GENERIC_CANTILEVER_AXIAL_Z_V1" else "X"
+    if analysis.get("axis") != expected_axis:
+        raise RuntimeError("ANALYSIS_AXIS_MISMATCH")
     manifest["manifestHash"] = received_hash
     return manifest
 
@@ -196,7 +204,9 @@ def execute_job() -> int:
     WORK.mkdir(parents=True, exist_ok=True)
     append_log("GENERIC_USER_JOB_STARTED")
     mesh_path = WORK / "generic-cantilever.msh"
-    gmsh = subprocess.run(["gmsh", "-3", str(STEP), "-format", "msh41", "-clmin", "4", "-clmax", "4", "-o", str(mesh_path)], cwd=WORK, capture_output=True, text=True, timeout=90)
+    analysis = manifest["analysisPlan"]
+    mesh_size = str(analysis["meshSizeMm"])
+    gmsh = subprocess.run(["gmsh", "-3", str(STEP), "-format", "msh41", "-clmin", mesh_size, "-clmax", mesh_size, "-o", str(mesh_path)], cwd=WORK, capture_output=True, text=True, timeout=90)
     append_log(f"GMSH_EXIT={gmsh.returncode}\n{gmsh.stdout}\n{gmsh.stderr}")
     if gmsh.returncode != 0: raise RuntimeError(f"GMSH_FAILED_{gmsh.returncode}")
     mesh = meshio.read(mesh_path)
@@ -208,26 +218,28 @@ def execute_job() -> int:
     signed = np.einsum("ij,ij->i", tetra[:, 1] - tetra[:, 0], np.cross(tetra[:, 2] - tetra[:, 0], tetra[:, 3] - tetra[:, 0])) / 6.0
     absolute = np.abs(signed)
     bounds_min, bounds_max = points[:, :3].min(axis=0), points[:, :3].max(axis=0)
-    expected_min, expected_max = np.array([0.0, 0.0, 0.0]), np.array([20.0, 10.0, 80.0])
+    expected_min, expected_max = np.array(analysis["expectedBoundsMm"]["min"], dtype=float), np.array(analysis["expectedBoundsMm"]["max"], dtype=float)
     mesh_ok = bool(np.allclose(bounds_min, expected_min, atol=1e-6) and np.allclose(bounds_max, expected_max, atol=1e-6) and np.count_nonzero(absolute <= 1e-12) == 0 and np.count_nonzero(signed < -1e-12) == 0)
     verification = {"verificationStatus": "PASS" if mesh_ok else "FAIL", "method": "Independent meshio connectivity, signed-volume, degeneracy, orientation, and bounds checks", "meshSha256": sha256_file(mesh_path), "cadHash": manifest["cadHash"], "nodeCount": int(len(points)), "tetraElementCount": int(len(elements)), "negativeOrientationCount": int(np.count_nonzero(signed < -1e-12)), "degenerateElementCount": int(np.count_nonzero(absolute <= 1e-12)), "boundsMm": {"min": bounds_min.tolist(), "max": bounds_max.tolist()}}
     verify_path = write_json("mesh-verification.json", verification)
     if not mesh_ok: raise RuntimeError("MESH_VERIFICATION_FAILED")
-    z = points[:, 2]
-    fixed = (np.where(z <= bounds_min[2] + 1e-6)[0] + 1).tolist()
-    loaded = (np.where(z >= bounds_max[2] - 1e-6)[0] + 1).tolist()
+    axis_index = {"X": 0, "Y": 1, "Z": 2}[analysis["axis"]]
+    axial = points[:, axis_index]
+    fixed = (np.where(axial <= bounds_min[axis_index] + 1e-6)[0] + 1).tolist()
+    loaded = (np.where(axial >= bounds_max[axis_index] - 1e-6)[0] + 1).tolist()
     if not fixed or not loaded: raise RuntimeError("BOUNDARY_NODE_DISCOVERY_FAILED")
-    e_mpa, poisson, total_load = 210000.0, 0.3, 800.0
+    e_mpa, poisson, total_load = float(analysis["elasticModulusMpa"]), float(analysis["poissonRatio"]), float(analysis["totalAxialForceN"])
     inp = WORK / "generic-cantilever.inp"
     lines = ["*HEADING", "CAD-AI internal generic user-job: OpenCascade STEP -> Docker-isolated Gmsh -> CalculiX", "*NODE"]
     lines.extend(f"{node}, {x:.12g}, {y:.12g}, {zv:.12g}" for node, (x, y, zv) in enumerate(points[:, :3], start=1))
     lines.append("*ELEMENT,TYPE=C3D4,ELSET=EALL")
     lines.extend(f"{identifier}, {', '.join(str(int(node)) for node in nodes)}" for identifier, nodes in enumerate(elements[:, :4] + 1, start=1))
+    dof = axis_index + 1
     lines.extend(card_nodes("FIXED", fixed) + card_nodes("LOADED", loaded) + ["*MATERIAL,NAME=STEEL", "*ELASTIC", f"{e_mpa}, {poisson}", "*SOLID SECTION,ELSET=EALL,MATERIAL=STEEL", ",", "*STEP,NLGEOM=NO", "*STATIC", "1., 1.", "*BOUNDARY", "FIXED, 1, 3, 0.", "*CLOAD"])
-    lines.extend(f"{node}, 3, {total_load / len(loaded):.12g}" for node in loaded)
+    lines.extend(f"{node}, {dof}, {total_load / len(loaded):.12g}" for node in loaded)
     lines.extend(["*NODE FILE", "U", "*EL FILE", "S", "*NODE PRINT,NSET=LOADED", "U", "*END STEP"])
     inp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    input_metadata = {"inputKind": "AUTHORIZED_INTERNAL_GENERIC_USER_JOB", "jobId": manifest["jobId"], "manifestHash": manifest["manifestHash"], "cadHash": manifest["cadHash"], "caePlanHash": manifest["caePlanHash"], "meshHash": verification["meshSha256"], "calculixInputSha256": sha256_file(inp), "material": {"elasticModulusMpa": e_mpa, "poissonRatio": poisson}, "load": {"totalAxialForceN": total_load}, "referenceGeometry": {"crossSectionAreaMm2": 200.0, "lengthMm": 80.0}}
+    input_metadata = {"inputKind": "AUTHORIZED_INTERNAL_GENERIC_USER_JOB", "jobId": manifest["jobId"], "manifestHash": manifest["manifestHash"], "cadRevisionHash": manifest["cadRevisionHash"], "cadArtifactHash": manifest["cadArtifactHash"], "caePlanHash": manifest["caePlanHash"], "meshHash": verification["meshSha256"], "calculixInputSha256": sha256_file(inp), "material": {"elasticModulusMpa": e_mpa, "poissonRatio": poisson}, "load": {"totalAxialForceN": total_load, "axis": analysis["axis"]}, "referenceGeometry": {"crossSectionAreaMm2": analysis["referenceCrossSectionAreaMm2"], "lengthMm": float(bounds_max[axis_index] - bounds_min[axis_index])}}
     input_meta_path = write_json("solver-input.json", input_metadata)
     ccx = subprocess.run(["ccx", "generic-cantilever"], cwd=WORK, capture_output=True, text=True, timeout=90)
     append_log(f"CALCULIX_EXIT={ccx.returncode}\n{ccx.stdout}\n{ccx.stderr}")
@@ -236,18 +248,19 @@ def execute_job() -> int:
     solver_result = OUTPUT / "calculix-results.frd"
     solver_result.write_bytes(frd.read_bytes())
     displacements = latest_displacements(frd)
-    observed = [displacements[node][2] for node in loaded if node in displacements]
+    observed = [displacements[node][axis_index] for node in loaded if node in displacements]
     if not observed: raise RuntimeError("NO_LOADED_DISPLACEMENTS")
-    reference = total_load * 80.0 / (e_mpa * 200.0)
+    reference = total_load * input_metadata["referenceGeometry"]["lengthMm"] / (e_mpa * float(analysis["referenceCrossSectionAreaMm2"]))
     solver_value = sum(observed) / len(observed)
     relative_error = abs(solver_value - reference) / abs(reference)
-    numerical = {"validationStatus": "PASS" if relative_error <= 0.30 else "FAIL", "method": "Mean loaded-face z displacement versus F*L/(E*A)", "referenceDisplacementMm": reference, "solverDisplacementMm": solver_value, "relativeError": relative_error, "tolerance": 0.30, "toleranceScope": "INTERNAL_GENERIC_CANTILEVER_BENCHMARK_ONLY", "frdSha256": sha256_file(frd), "inputSha256": input_metadata["calculixInputSha256"]}
+    numerical = {"validationStatus": "PASS" if relative_error <= float(analysis["numericalTolerance"]) else "FAIL", "method": f"Mean loaded-face {analysis['axis']} displacement versus F*L/(E*A)", "referenceDisplacementMm": reference, "solverDisplacementMm": solver_value, "relativeError": relative_error, "tolerance": analysis["numericalTolerance"], "toleranceScope": "INTERNAL_AUTHORIZED_JOB_NUMERICAL_CHECK_ONLY", "frdSha256": sha256_file(frd), "inputSha256": input_metadata["calculixInputSha256"]}
     numerical_path = write_json("numerical-validation.json", numerical)
     if numerical["validationStatus"] != "PASS": raise RuntimeError("NUMERICAL_VALIDATION_FAILED")
     environment = INPUT / "runtime-preflight.json"
-    binding = {"bindingStatus": "PASS", "jobId": manifest["jobId"], "manifestHash": manifest["manifestHash"], "cadHash": manifest["cadHash"], "caeHash": manifest["caePlanHash"], "materialHash": manifest["materialHash"], "loadHash": manifest["loadHash"], "boundaryConditionHash": manifest["boundaryConditionHash"], "meshHash": verification["meshSha256"], "gmshHash": sha256_file(Path("/usr/bin/gmsh")), "calculixHash": sha256_file(Path("/usr/bin/ccx")), "configHash": hashlib.sha256(canonical({"mesh": manifest["meshConfiguration"], "solver": manifest["solverConfiguration"]}).encode()).hexdigest(), "environmentHash": sha256_file(environment), "inputHash": input_metadata["calculixInputSha256"], "outputHash": sha256_file(frd), "executionLogHash": sha256_file(OUTPUT / "execution.log"), "meshVerificationHash": sha256_file(verify_path), "numericalValidationHash": sha256_file(numerical_path), "solverInputHash": sha256_file(input_meta_path)}
+    binding = {"bindingStatus": "PASS", "jobId": manifest["jobId"], "manifestHash": manifest["manifestHash"], "cadRevisionHash": manifest["cadRevisionHash"], "cadArtifactHash": manifest["cadArtifactHash"], "cadHash": manifest["cadHash"], "caeConfigurationHash": manifest["caePlanHash"], "caeHash": manifest["caePlanHash"], "materialHash": manifest["materialHash"], "loadHash": manifest["loadHash"], "boundaryConditionHash": manifest["boundaryConditionHash"], "meshHash": verification["meshSha256"], "gmshHash": sha256_file(Path("/usr/bin/gmsh")), "calculixHash": sha256_file(Path("/usr/bin/ccx")), "configHash": hashlib.sha256(canonical({"mesh": manifest["meshConfiguration"], "solver": manifest["solverConfiguration"], "analysis": manifest["analysisPlan"]}).encode()).hexdigest(), "environmentHash": sha256_file(environment), "inputHash": input_metadata["calculixInputSha256"], "outputHash": sha256_file(frd), "executionLogHash": sha256_file(OUTPUT / "execution.log"), "meshVerificationHash": sha256_file(verify_path), "numericalValidationHash": sha256_file(numerical_path), "solverInputHash": sha256_file(input_meta_path)}
+    binding["resultHash"] = hashlib.sha256(canonical({"jobId": binding["jobId"], "manifestHash": binding["manifestHash"], "outputHash": binding["outputHash"], "numericalValidationHash": binding["numericalValidationHash"], "meshHash": binding["meshHash"]}).encode()).hexdigest()
     binding_path = write_json("result-binding.json", binding)
-    receipt = {"receiptVersion": "1.0.0", "jobId": manifest["jobId"], "manifestHash": manifest["manifestHash"], "state": "INTERNAL_TEST_COMPLETED", "executionStarted": True, "genericSolverExecutionStarted": True, "exitCode": 0, "resourceUsage": {"maxRssKiB": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss, "elapsedSeconds": (datetime.now(timezone.utc) - started).total_seconds()}, "resultBindingHash": sha256_file(binding_path), "createdAt": datetime.now(timezone.utc).isoformat()}
+    receipt = {"receiptVersion": "1.0.0", "jobId": manifest["jobId"], "manifestHash": manifest["manifestHash"], "state": "INTERNAL_TEST_COMPLETED", "executionStarted": True, "genericSolverExecutionStarted": True, "exitCode": 0, "resourceUsage": {"maxRssKiB": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss, "elapsedSeconds": (datetime.now(timezone.utc) - started).total_seconds()}, "resultBindingHash": sha256_file(binding_path), "resultHash": binding["resultHash"], "createdAt": datetime.now(timezone.utc).isoformat()}
     write_json("execution-receipt.json", receipt)
     return 0
 

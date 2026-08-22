@@ -1,60 +1,99 @@
 {
   "manifestVersion": "1.0.0",
-  "jobId": "USER-JOB-ADMISSION-FIXTURE-001",
+  "jobId": "GENERIC-CANTILEVER-USER-JOB-001",
   "projectId": "CAD-AI-PROJECT-FIXTURE",
-  "cadRevision": "CAD-REV-001",
-  "cadHash": "e0d9e6cdaf191597282cf0562099cb06c590e2837b5b15cd85120f488eeb0d4f",
-  "caePlanRevision": "CAE-PLAN-REV-001",
-  "caePlanHash": "1111111111111111111111111111111111111111111111111111111111111111",
-  "materialRevision": "MATERIAL-REV-001",
-  "materialHash": "2222222222222222222222222222222222222222222222222222222222222222",
-  "loadRevision": "LOAD-REV-001",
-  "loadHash": "3333333333333333333333333333333333333333333333333333333333333333",
-  "boundaryConditionRevision": "BOUNDARY-REV-001",
-  "boundaryConditionHash": "4444444444444444444444444444444444444444444444444444444444444444",
+  "cadRevision": "CAD-REVISION-GENERIC-CANTILEVER-1",
+  "cadHash": "d80e0900736a0b25ccf7c4fce1786db3fe2561d4ab5a8bb41642d5c8ebc868a8",
+  "cadRevisionHash": "6b260fac8771c8eaa185eeb1657195b2ad4e9a2f191805bafe4c27bbdc180930",
+  "cadArtifactHash": "d80e0900736a0b25ccf7c4fce1786db3fe2561d4ab5a8bb41642d5c8ebc868a8",
+  "cadProvenance": {
+    "sourceKind": "FIXTURE_BASELINE",
+    "configurationId": "GENERIC-CANTILEVER-FIXTURE",
+    "configurationHash": "6b260fac8771c8eaa185eeb1657195b2ad4e9a2f191805bafe4c27bbdc180930",
+    "artifactId": "ARTIFACT-GENERIC-CANTILEVER-1"
+  },
+  "caePlanRevision": "CAE-PLAN-GENERIC-CANTILEVER-1",
+  "caePlanHash": "d403cf8466d01721c8c5c0f49bb5c58ce7ea40a0a158d63d1d1e7e5008e5a78d",
+  "materialRevision": "MATERIAL-STEEL-1",
+  "materialHash": "ee52222a5902c601406d3f5357c5349f551a4995750e5ff5f8ea7147d5396ef1",
+  "loadRevision": "LOAD-AXIAL-800N-1",
+  "loadHash": "518c755884a132bc77c47615af68309c89d3d8dbc2ebab63a0e00db55da9c8a5",
+  "boundaryConditionRevision": "BOUNDARY-Z-MIN-1",
+  "boundaryConditionHash": "46dc342858b969277fc7828758ce3800c534bf1569004da2c46fe247f5fc96e1",
   "meshConfiguration": {
-    "configurationId": "GMSH-FIXED-4.12.1",
-    "configurationHash": "5555555555555555555555555555555555555555555555555555555555555555",
+    "configurationId": "GMSH-TETRA-4MM-V1",
+    "configurationHash": "a77ebd6fc4cd522c5ba30cf6c7a3eb627847b43cf3d05afe7437f2b8041f1889",
     "solverId": "GMSH",
     "solverVersion": "4.12.1"
   },
   "solverConfiguration": {
-    "configurationId": "CALCULIX-FIXED-2.21",
-    "configurationHash": "6666666666666666666666666666666666666666666666666666666666666666",
+    "configurationId": "CALCULIX-LINEAR-STATIC-V1",
+    "configurationHash": "61e11742f6894e1f46180d0b750b85045a6ce7bb188c5a57fd44f79433cf6da3",
     "solverId": "CALCULIX",
     "solverVersion": "2.21"
   },
   "environment": {
-    "environmentId": "GITHUB-HOSTED-CI",
-    "environmentHash": "7777777777777777777777777777777777777777777777777777777777777777",
-    "approvalEvidenceHash": "8888888888888888888888888888888888888888888888888888888888888888",
-    "executionClass": "GITHUB_HOSTED_CI"
+    "environmentId": "GITHUB-DOCKER-INTERNAL-TEST-V1",
+    "environmentHash": "54fa7c06598e436e19913e6876b6ee8686e97058defc3f3735f43599aac4b775",
+    "approvalEvidenceHash": "dd1fb5d4d2192e673aca47207e129f04c7bf796df4920d893633c0701505f5a1",
+    "executionClass": "INTERNAL_DOCKER_TEST"
   },
   "resourcePolicy": {
-    "policyId": "GITHUB-CI-BOUNDED-POLICY-V1",
-    "policyHash": "9999999999999999999999999999999999999999999999999999999999999999",
+    "policyId": "DOCKER-INTERNAL-CAE-512M-V1",
+    "policyHash": "9d9bd1e64dd3af338c7153d46bb6143fc85706912f8a3c821e8438d72bff6f6d",
     "limits": {
-      "cpuMilliCores": 2000,
-      "memoryMiB": 8192,
-      "storageMiB": 71680,
+      "cpuMilliCores": 1000,
+      "memoryMiB": 512,
+      "storageMiB": 64,
       "processCount": 256,
-      "runtimeSeconds": 900,
-      "inputBytes": 10485760,
-      "outputBytes": 104857600,
-      "artifactBytes": 104857600
+      "runtimeSeconds": 120,
+      "inputBytes": 5242880,
+      "outputBytes": 67108864,
+      "artifactBytes": 67108864
     }
   },
-  "expectedArtifacts": ["ADMISSION_RECEIPT", "EXECUTION_LOG", "PROVENANCE_BUNDLE"],
+  "analysisPlan": {
+    "profileId": "GENERIC_CANTILEVER_AXIAL_Z_V1",
+    "profileHash": "493aa3c1d86fc7c3524ec4270eaff99c9921d2e41113c78ba086f6ca1db206dc",
+    "axis": "Z",
+    "expectedBoundsMm": {
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        20,
+        10,
+        80
+      ]
+    },
+    "meshSizeMm": 4,
+    "elasticModulusMpa": 210000,
+    "poissonRatio": 0.3,
+    "totalAxialForceN": 800,
+    "referenceCrossSectionAreaMm2": 200,
+    "numericalTolerance": 0.3
+  },
+  "expectedArtifacts": [
+    "ADMISSION_RECEIPT",
+    "EXECUTION_LOG",
+    "PROVENANCE_BUNDLE",
+    "MESH",
+    "MESH_VERIFICATION",
+    "SOLVER_RESULT",
+    "NUMERICAL_VALIDATION"
+  ],
   "validationPolicy": {
-    "policyId": "STATIC-STRUCTURAL-VALIDATION-V1",
-    "policyHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "policyId": "AXIAL_CANTILEVER-NUMERICAL-CHECK-V1",
+    "policyHash": "82fbe3ef380a01a2eb8eba96ef32017dba5f4867958a21bcbf2fb692f50d22a8"
   },
   "authorization": {
-    "authorizationId": "PROJECT-AUTHORIZATION-FIXTURE-001",
-    "authorizationEvidenceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "authorizationId": "INTERNAL-GENERIC-JOB-AUTH-1",
+    "authorizationEvidenceHash": "3e5faece74d8c6905acb5671539b7c25db02b87112319dffa24571c27ac66f24",
     "validFrom": "2026-01-01T00:00:00.000Z",
-    "validUntil": "2027-01-01T00:00:00.000Z",
+    "validUntil": "2027-12-31T23:59:59.000Z",
     "status": "AUTHORIZED"
   },
-  "manifestHash": "21f20968b67a97b5754cb8139b17e92cb827d3a5223ecf6b8decc829fa56d545"
+  "manifestHash": "40798a2b8375448bbf30dede1fd9eb1a8edc5c76404f5f65a0ffe4eaf37bd546"
 }

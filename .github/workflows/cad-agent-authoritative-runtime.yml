@@ -1,18 +1,18 @@
-name: Docker-Isolated Generic CAE User Job
+name: Authoritative CAD Agent Docker Runtime
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/docker-generic-user-job.yml"
+      - ".github/workflows/cad-agent-authoritative-runtime.yml"
       - "docker/generic-user-job/**"
-      - "scripts/ci/generate-cad-generic-cantilever.ts"
       - "scripts/ci/generate-cad-agent-runtime-job.ts"
-      - "scripts/ci/generate-generic-user-job-manifest.ts"
-      - "shared/authoritativeCadAgentRuntime.ts"
       - "scripts/ci/run-docker-generic-user-job.sh"
       - "scripts/ci/validate_docker_generic_job.py"
+      - "server/cadAgent.ts"
+      - "server/cadKernel.ts"
+      - "shared/authoritativeCadAgentRuntime.ts"
       - "shared/controlledUserJob.ts"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -21,33 +21,31 @@ permissions:
   contents: read
 
 concurrency:
-  group: docker-generic-user-job-${{ github.ref }}
+  group: cad-agent-authoritative-runtime-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  internal-generic-user-job:
-    name: Docker-isolated authorized generic user job
+  cad-agent-runtime:
+    name: Real CAD Agent revision through Docker CAE runtime
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       DEBIAN_FRONTEND: noninteractive
+      CAD_AI_JOB_SOURCE: CAD_AGENT
     steps:
       - name: Checkout immutable repository revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
       - name: Install locked JavaScript dependencies
         shell: bash
         run: |
           corepack enable
           pnpm install --frozen-lockfile
-
-      - name: Execute static Docker-isolated generic job fixture
+      - name: Execute authoritative CAD Agent Docker job
         shell: bash
         run: |
           set -euo pipefail
           bash scripts/ci/run-docker-generic-user-job.sh
-
-      - name: Capture generic job summary
+      - name: Capture authoritative runtime summary
         if: always()
         shell: bash
         run: |
@@ -58,7 +56,8 @@ jobs:
             "workflowRunId": "${GITHUB_RUN_ID}",
             "commitSha": "${GITHUB_SHA}",
             "runner": {"os": "${RUNNER_OS}", "arch": "${RUNNER_ARCH}", "environment": "${RUNNER_ENVIRONMENT:-unknown}"},
-            "workflowScope": "AUTHORIZED_INTERNAL_DOCKER_GENERIC_USER_JOB_FIXTURE",
+            "workflowScope": "AUTHORITATIVE_CAD_AGENT_INTERNAL_DOCKER_RUNTIME",
+            "cadSource": "CAD_AGENT_VALIDATED_OPEN_CASCADE_REVISION",
             "genericUserInputAccepted": false,
             "arbitraryCommandAccepted": false,
             "networkPolicy": "DOCKER_NETWORK_NONE",
@@ -66,12 +65,11 @@ jobs:
           }
           EOF
           find artifacts/generic-job -type f -print0 | sort -z | xargs -0 sha256sum > artifacts/generic-job/provenance/all-artifacts.sha256
-
-      - name: Upload generic job evidence
+      - name: Upload authoritative CAD Agent runtime evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: docker-generic-user-job-evidence-${{ github.run_id }}
+          name: cad-agent-authoritative-runtime-evidence-${{ github.run_id }}
           path: artifacts/generic-job/
           if-no-files-found: error
           retention-days: 14
