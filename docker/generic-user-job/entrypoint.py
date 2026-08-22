@@ -167,14 +167,15 @@ def latest_displacements(path: Path) -> dict[int, tuple[float, float, float]]:
     latest: dict[int, tuple[float, float, float]] = {}
     active: dict[int, tuple[float, float, float]] | None = None
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if line.startswith(" -4") and "DISP" in line:
+        record = line.lstrip()
+        if record.startswith("-4") and "DISP" in record:
             active = {}
-        elif active is not None and line.startswith(" -1"):
-            fields = line.split()
+        elif active is not None and record.startswith("-1"):
+            fields = record.split()
             if len(fields) >= 5:
                 try: active[int(fields[1])] = (float(fields[2]), float(fields[3]), float(fields[4]))
                 except ValueError: pass
-        elif active is not None and line.startswith(" -3"):
+        elif active is not None and record.startswith("-3"):
             if active: latest = active
             active = None
     return latest
@@ -225,6 +226,8 @@ def execute_job() -> int:
     append_log(f"CALCULIX_EXIT={ccx.returncode}\n{ccx.stdout}\n{ccx.stderr}")
     if ccx.returncode != 0: raise RuntimeError(f"CALCULIX_FAILED_{ccx.returncode}")
     frd = WORK / "generic-cantilever.frd"
+    solver_result = OUTPUT / "calculix-results.frd"
+    solver_result.write_bytes(frd.read_bytes())
     displacements = latest_displacements(frd)
     observed = [displacements[node][2] for node in loaded if node in displacements]
     if not observed: raise RuntimeError("NO_LOADED_DISPLACEMENTS")
