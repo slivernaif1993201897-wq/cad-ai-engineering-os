@@ -197,6 +197,11 @@ def run_probe() -> int:
     except OSError:
         missing_dependency = True
     record("FIXED_EXECUTABLE_ALLOWLIST", "non-allowlisted executable path must not launch", missing_dependency, missing_dependency, "static missing executable launch attempt")
+    package_query = subprocess.run(["dpkg-query", "-W", "-f=${Package}\t${Version}\n"], capture_output=True, text=True, check=False, timeout=10)
+    packages = [line.split("\t", 1) for line in package_query.stdout.splitlines() if "\t" in line]
+    sbom = {"sbomVersion": "1.0.0", "format": "INTERNAL_DPKG_PACKAGE_INVENTORY", "environmentId": os.environ.get("CAD_AI_ENVIRONMENT_ID", "UNKNOWN"), "packages": [{"name": name, "version": version} for name, version in packages], "generatedAt": datetime.now(timezone.utc).isoformat()}
+    sbom_path = write_json("sbom.json", sbom)
+    record("SBOM_GENERATED", "package inventory must be generated from the executing image", {"exitCode": package_query.returncode, "packageCount": len(packages), "sbomSha256": sha256_file(sbom_path)}, package_query.returncode == 0 and len(packages) > 0, "dpkg-query package inventory")
     report = {"probeVersion": "1.0.0", "environmentId": os.environ.get("CAD_AI_ENVIRONMENT_ID", "UNKNOWN"), "probes": probes, "generatedAt": datetime.now(timezone.utc).isoformat()}
     report_path = write_json("sandbox-probes.json", report)
     report["evidenceHash"] = sha256_file(report_path)
