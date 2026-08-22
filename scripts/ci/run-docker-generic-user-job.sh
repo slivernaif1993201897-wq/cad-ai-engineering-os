@@ -40,6 +40,7 @@ run_container() {
   set -e
   docker inspect "$container" > "$destination/docker-inspect-after.json"
   if [ "$status" -ne 0 ]; then
+    docker logs "$container" > "$destination/docker-engine.log" 2>&1 || true
     docker inspect --format '{{json .State}}' "$container" > "$destination/container-start-state.json"
     docker rm "$container" >/dev/null
     return "$status"
