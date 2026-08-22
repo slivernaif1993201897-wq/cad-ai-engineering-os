@@ -130,7 +130,7 @@ def run_probe() -> int:
         storage_failed = True
     finally:
         storage_probe.unlink(missing_ok=True)
-    record("OUTPUT_STORAGE_ENFORCEMENT", "64 MiB output tmpfs rejects 80 MiB write", storage_failed, storage_failed)
+    record("OUTPUT_STORAGE_ENFORCEMENT", "64 MiB configured output file-size policy rejects 80 MiB write", storage_failed, storage_failed)
     report = {"probeVersion": "1.0.0", "environmentId": os.environ.get("CAD_AI_ENVIRONMENT_ID", "UNKNOWN"), "probes": probes, "generatedAt": datetime.now(timezone.utc).isoformat()}
     report_path = write_json("sandbox-probes.json", report)
     report["evidenceHash"] = sha256_file(report_path)
