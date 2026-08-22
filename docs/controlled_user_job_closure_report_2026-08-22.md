@@ -134,3 +134,17 @@ The reproducibility investigation identified two volatile metadata sources. Open
 6. **Independent security assessment outcome** and documented user-and-assistant internal evidence review decision.
 
 > **FINAL_READINESS = BLOCKED_EXTERNAL_EVIDENCE.** All internally actionable runtime and reproducibility work recorded here is complete at the stated commit. The remaining gates require evidence from an approved environment or independent reviewers and therefore remain blocked rather than inferred.
+
+## CAD-to-CAE Execution Bridge Activation Evidence
+
+| Field | Final observed evidence |
+|---|---|
+| **Bridge implementation commit** | `e9915cb7b5b8928aa8211bc31bc8728739a8e634` adds `buildAuthorizedRuntimeCAEConfiguration` in the existing CAE Agent source and requires its CAD revision, CAD revision hash, and STEP artifact hash before immutable manifest construction. |
+| **Security completion commit** | `e919c476e3c25dec3d39c842f39f9c13a951e535` adds explicit `cae-configuration-mismatch` rejection to the existing retained-artifact validator; no second runtime or solver path was created. |
+| **Authoritative real bridge run** | [`32549971601`](https://github.com/slivernaif1993201897-wq/cad-ai-engineering-os/actions/runs/32549971601), successful at `e919c476e3c25dec3d39c842f39f9c13a951e535`. |
+| **CAD-to-CAE binding** | CAD revision `6d8933523230cfa85e56ac39a4075fbe51b8e2d3b4211fc5feb0139e01a7eb53`, real STEP artifact `3447fa11d7c33810352e6430d9adeeceb541e72c3fc4e8f7fe7c04a99e55eea4`, CAE configuration `514fe287b1c9ceba0951d81ceae0bef5ac2abd368b14730c74d54f3f8136b0b5`, and manifest `6bcdf7e3c1a72ab346db6203681126385fc035e4b0269ef7be9ba03289cffe80` were retained together. |
+| **Execution result** | `INTERNAL_TEST_COMPLETED`; `executionStarted: true`; `genericSolverExecutionStarted: true`; exit code `0`; result `24c6e283acedb1639fa9da713cf0ee41c3308cdae9990af6f232ac13228092bb`. |
+| **Bridge-specific rejection** | A stale CAE Agent configuration whose CAD artifact hash was changed was rejected before immutable manifest construction as `CAE_AGENT_CAD_BINDING_INVALID`. The workflow also retained `validation-cae-configuration-mismatch`, which rejects a bound result whose CAE configuration hash is altered. |
+| **Full regression** | `pnpm test`, `pnpm check`, and `pnpm lint` completed after the successful real bridge workflow. Lint completed with 0 errors and the same 5 unrelated pre-existing warnings. |
+
+The real execution continues to use the existing admitted Docker path. The CAE Agent configuration builder produces bounded mesh, solver, material, load, boundary, and numerical-validation declarations, cryptographically tied to the validated CAD artifact; it has no direct process-launch capability. Real Gmsh, independent mesh verification, real CalculiX, numerical validation, result binding, the existing controlled-failure suite, and the expanded CAE-configuration tamper rejection all execute only after immutable admission.
