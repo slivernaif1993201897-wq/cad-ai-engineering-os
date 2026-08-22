@@ -26,6 +26,7 @@ def result_paths(root: Path) -> dict[str, Path]:
         "log": root / "execution.log",
         "frd": root / "calculix-results.frd",
         "raw_frd": root / "calculix-results.raw.frd",
+        "raw_evidence": root / "raw-solver-evidence.json",
     }
 
 def verify_result(manifest: dict, root: Path) -> None:
@@ -45,6 +46,7 @@ def verify_result(manifest: dict, root: Path) -> None:
     require(binding.get("inputHash") == solver_input["calculixInputSha256"] and binding.get("solverInputHash") == sha(paths["input"]), "RESULT_INPUT_BINDING_INVALID")
     require(binding.get("outputHash") == sha(paths["frd"]), "RESULT_OUTPUT_BINDING_INVALID")
     require(binding.get("rawOutputHash") == sha(paths["raw_frd"]), "RESULT_RAW_OUTPUT_BINDING_INVALID")
+    require(binding.get("rawSolverEvidenceHash") == sha(paths["raw_evidence"]), "RESULT_RAW_SOLVER_EVIDENCE_BINDING_INVALID")
     require(binding.get("executionLogHash") == sha(paths["log"]), "RESULT_LOG_BINDING_INVALID")
     require(binding.get("meshVerificationHash") == sha(paths["mesh"]), "RESULT_MESH_VERIFICATION_HASH_INVALID")
     require(binding.get("numericalValidationHash") == sha(paths["numerical"]), "RESULT_NUMERICAL_VALIDATION_HASH_INVALID")
