@@ -277,12 +277,10 @@ def execute_job() -> int:
     lines.extend(f"{node}, {dof}, {total_load / len(loaded):.12g}" for node in loaded)
     lines.extend(["*NODE FILE", "U", "*EL FILE", "S", "*NODE PRINT,NSET=LOADED", "U", "*END STEP"])
     inp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    if FAILURE_EXERCISE == "CALCULIX_FAILURE":
-        with inp.open("a", encoding="utf-8") as handle:
-            handle.write("*UNSUPPORTED_CALCULIX_KEYWORD\n")
     input_metadata = {"inputKind": "AUTHORIZED_INTERNAL_GENERIC_USER_JOB", "jobId": manifest["jobId"], "manifestHash": manifest["manifestHash"], "cadRevisionHash": manifest["cadRevisionHash"], "cadArtifactHash": manifest["cadArtifactHash"], "caePlanHash": manifest["caePlanHash"], "meshHash": verification["meshSha256"], "calculixInputSha256": sha256_file(inp), "material": {"elasticModulusMpa": e_mpa, "poissonRatio": poisson}, "load": {"totalAxialForceN": total_load, "axis": analysis["axis"]}, "referenceGeometry": {"crossSectionAreaMm2": analysis["referenceCrossSectionAreaMm2"], "lengthMm": float(bounds_max[axis_index] - bounds_min[axis_index])}}
     input_meta_path = write_json("solver-input.json", input_metadata)
-    ccx = subprocess.run(["ccx", "generic-cantilever"], cwd=WORK, capture_output=True, text=True, timeout=90)
+    calculix_job = "missing-authorized-calculix-input" if FAILURE_EXERCISE == "CALCULIX_FAILURE" else "generic-cantilever"
+    ccx = subprocess.run(["ccx", calculix_job], cwd=WORK, capture_output=True, text=True, timeout=90)
     append_log(f"CALCULIX_EXIT={ccx.returncode}\n{ccx.stdout}\n{ccx.stderr}")
     if ccx.returncode != 0: raise RuntimeError(f"CALCULIX_FAILED_{ccx.returncode}")
     frd = WORK / "generic-cantilever.frd"
