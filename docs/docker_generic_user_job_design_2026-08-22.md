@@ -15,11 +15,11 @@ The design does **not** create an application endpoint that accepts arbitrary co
 | Container image | Built from a checked-in Dockerfile; no project input is present during image build. |
 | Command surface | A static image entrypoint only; the workflow never interpolates user command text. |
 | Input surface | Read-only bind mount of generated CAD and immutable manifest into `/input`. |
-| Output surface | Size-limited `tmpfs` at `/output`; extracted only after container completion. |
+| Output surface | One explicit per-run output workspace is the sole writable bind mount at `/output`; it is used only for retained evidence and remains distinct from read-only input. |
 | Filesystem | Root filesystem read-only; explicit tmpfs mounts at `/tmp`, `/work`, and `/output`. |
 | User and privilege | UID/GID `65534`, `--cap-drop ALL`, and `no-new-privileges`. |
 | Network | `--network none`; job cannot receive a network destination field. |
-| Resource policy | Docker memory, CPUs, pids, file-size, and time limits, plus capped input and output artifact sizes. |
+| Resource policy | Docker memory, CPUs, pids, file-size, and time limits, plus capped input and output artifact sizes. The output file cap is enforced with the container file-size limit rather than by relying on a tmpfs export path. |
 | Result binding | Receipt and result-binding record hash the immutable manifest, CAD, CAE, mesh, solver input, configuration, image, environment report, result, and logs. |
 
 ## Internal Admission States
