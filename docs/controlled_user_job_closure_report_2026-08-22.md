@@ -148,3 +148,14 @@ The reproducibility investigation identified two volatile metadata sources. Open
 | **Full regression** | `pnpm test`, `pnpm check`, and `pnpm lint` completed after the successful real bridge workflow. Lint completed with 0 errors and the same 5 unrelated pre-existing warnings. |
 
 The real execution continues to use the existing admitted Docker path. The CAE Agent configuration builder produces bounded mesh, solver, material, load, boundary, and numerical-validation declarations, cryptographically tied to the validated CAD artifact; it has no direct process-launch capability. Real Gmsh, independent mesh verification, real CalculiX, numerical validation, result binding, the existing controlled-failure suite, and the expanded CAE-configuration tamper rejection all execute only after immutable admission.
+
+## User-Managed HMAC Secret Boundary
+
+| Field | Status | Exact evidence or dependency |
+|---|---|---|
+| **SECRET_MANAGEMENT_BY_MANUS** | **UNAVAILABLE — USER-MANAGED BOUNDARY** | The available repository automation identity can read repository content but GitHub rejects Actions-secret metadata administration with `HTTP 403 Resource not accessible by integration`. Manus does not retrieve, modify, or expose the secret. |
+| **RUNTIME_EVIDENCE_HMAC_KEY injection** | **PRESENT, FORMAT INVALID** | Authoritative workflow [`32596381992`](https://github.com/slivernaif1993201897-wq/cad-ai-engineering-os/actions/runs/32596381992) reported only: `SECRET_PRESENT=true`, `SECRET_LENGTH=64`, `HEX_FORMAT_VALID=false`, `CANONICAL_FORMAT_VALID=false`, `SECRET_SOURCE=GITHUB_ACTIONS_ENV`, and validator version `hmac-sha256/v1`. No key value, fingerprint, or derived secret value was emitted. |
+| **HMAC evidence acceptance** | **BLOCKED — FAIL CLOSED** | The verifier requires a raw repository-secret value containing at least 64 hexadecimal characters and rejects the observed malformed injected value before signing or accepting runtime evidence. |
+| **CAD-to-CAE internal capability** | **PASS — SEPARATE FROM SECRET MANAGEMENT** | The latest signed-evidence failure occurred after the actual Docker CAD Agent → CAE Agent → Gmsh → mesh verification → CalculiX → numerical validation runtime step had completed. Existing successful retained evidence remains authoritative for internal capability; it does not turn HMAC validation into a pass. |
+
+The limitation is narrowly scoped: **USER_MANAGED_SECRET = EXTERNAL_TO_MANUS**. It does not invalidate or block the completed internal CAD-to-CAE engineering evidence. The next authorized action after the repository owner corrects the opaque CI credential is to rerun the existing workflow and require `SECRET_PRESENT=true`, `HEX_FORMAT_VALID=true`, `CANONICAL_FORMAT_VALID=true`, and verified HMAC evidence before treating the evidence API as verified.
