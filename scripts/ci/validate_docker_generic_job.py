@@ -41,7 +41,7 @@ def verify_result(manifest: dict, root: Path) -> None:
     require(binding.get("cadRevisionHash") == manifest["cadRevisionHash"] and binding.get("cadArtifactHash") == manifest["cadArtifactHash"], "RESULT_CAD_BINDING_INVALID")
     require(binding.get("caeConfigurationHash") == manifest["caePlanHash"], "RESULT_CAE_CONFIGURATION_BINDING_INVALID")
     require(binding.get("meshHash") == mesh["meshSha256"], "RESULT_MESH_BINDING_INVALID")
-    require(binding.get("inputHash") == solver_input["calculixInputSha256"] and binding.get("inputHash") == sha(paths["input"]), "RESULT_INPUT_BINDING_INVALID")
+    require(binding.get("inputHash") == solver_input["calculixInputSha256"] and binding.get("solverInputHash") == sha(paths["input"]), "RESULT_INPUT_BINDING_INVALID")
     require(binding.get("outputHash") == sha(paths["frd"]), "RESULT_OUTPUT_BINDING_INVALID")
     require(binding.get("executionLogHash") == sha(paths["log"]), "RESULT_LOG_BINDING_INVALID")
     require(binding.get("meshVerificationHash") == sha(paths["mesh"]), "RESULT_MESH_VERIFICATION_HASH_INVALID")
