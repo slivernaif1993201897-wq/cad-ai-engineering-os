@@ -42,6 +42,7 @@ run_container() {
   if [ "$status" -ne 0 ]; then
     docker logs "$container" > "$destination/docker-engine.log" 2>&1 || true
     docker inspect --format '{{json .State}}' "$container" > "$destination/container-start-state.json"
+    docker cp "$container:/output/." "$destination/" 2>/dev/null || true
     docker rm "$container" >/dev/null
     return "$status"
   fi
