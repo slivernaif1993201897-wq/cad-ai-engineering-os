@@ -171,10 +171,17 @@ def latest_displacements(path: Path) -> dict[int, tuple[float, float, float]]:
         if record.startswith("-4") and "DISP" in record:
             active = {}
         elif active is not None and record.startswith("-1"):
-            fields = record.split()
-            if len(fields) >= 5:
-                try: active[int(fields[1])] = (float(fields[2]), float(fields[3]), float(fields[4]))
-                except ValueError: pass
+            try:
+                # CalculiX FRD node records are fixed-width. A negative x or y
+                # displacement may be immediately adjacent to the prior field,
+                # so whitespace tokenization is not evidence-preserving.
+                active[int(line[3:13])] = (
+                    float(line[13:25]),
+                    float(line[25:37]),
+                    float(line[37:49]),
+                )
+            except ValueError:
+                pass
         elif active is not None and record.startswith("-3"):
             if active: latest = active
             active = None
