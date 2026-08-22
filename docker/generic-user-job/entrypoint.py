@@ -78,6 +78,13 @@ def cgroup_value(name: str) -> str:
     return "UNKNOWN"
 
 
+def path_exists_without_traversal(path: Path) -> bool:
+    try:
+        return path.exists()
+    except OSError:
+        return False
+
+
 def run_probe() -> int:
     probes: list[dict[str, object]] = []
     print("SANDBOX_PROBE_STARTED", flush=True)
@@ -102,7 +109,7 @@ def run_probe() -> int:
     record("NETWORK_NAMESPACE_NO_DEFAULT_ROUTE", "container has no default route", routes, not any(line.split()[1] == "00000000" for line in routes if len(line.split()) > 1))
     sensitive = [name for name in os.environ if any(token in name.upper() for token in ("GITHUB_TOKEN", "ACTIONS_ID_TOKEN", "SECRET", "PASSWORD", "AWS_"))]
     record("ENVIRONMENT_SECRET_FILTER", "no common CI secret variable visible", sensitive, not sensitive)
-    credential_paths = [str(path) for path in (Path("/root/.git-credentials"), Path("/github/home"), Path("/run/secrets")) if path.exists()]
+    credential_paths = [str(path) for path in (Path("/root/.git-credentials"), Path("/github/home"), Path("/run/secrets")) if path_exists_without_traversal(path)]
     record("CREDENTIAL_PATH_FILTER", "common credential paths absent", credential_paths, not credential_paths)
     record("PID_NAMESPACE_OBSERVED", "PID namespace recorded", namespace("pid"), namespace("pid") != "UNKNOWN")
     record("MOUNT_NAMESPACE_OBSERVED", "mount namespace recorded", namespace("mnt"), namespace("mnt") != "UNKNOWN")
