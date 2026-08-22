@@ -80,6 +80,7 @@ def cgroup_value(name: str) -> str:
 
 def run_probe() -> int:
     probes: list[dict[str, object]] = []
+    print("SANDBOX_PROBE_STARTED", flush=True)
 
     def record(test_id: str, expected: str, observed: object, passed: bool) -> None:
         probes.append({"testId": test_id, "expected": expected, "observed": observed, "status": "PASS" if passed else "FAIL", "environmentId": os.environ.get("CAD_AI_ENVIRONMENT_ID", "UNKNOWN")})
@@ -127,7 +128,9 @@ def run_probe() -> int:
     report_path = write_json("sandbox-probes.json", report)
     report["evidenceHash"] = sha256_file(report_path)
     write_json("sandbox-probes.json", report)
-    return 0 if all(probe["status"] == "PASS" for probe in probes) else 1
+    failed = [str(probe["testId"]) for probe in probes if probe["status"] != "PASS"]
+    print(f"SANDBOX_PROBE_COMPLETE failed={','.join(failed) if failed else 'none'}", flush=True)
+    return 0 if not failed else 1
 
 
 def parse_manifest() -> dict[str, object]:

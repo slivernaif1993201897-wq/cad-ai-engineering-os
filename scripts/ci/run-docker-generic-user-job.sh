@@ -42,11 +42,11 @@ run_container() {
   if [ "$status" -ne 0 ]; then
     docker logs "$container" > "$destination/docker-engine.log" 2>&1 || true
     docker inspect --format '{{json .State}}' "$container" > "$destination/container-start-state.json"
-    docker cp "$container:/output" "$destination/output" 2>/dev/null || true
+    docker cp "$container:/output" "$destination/output" > "$destination/docker-cp.log" 2>&1 || true
     docker rm "$container" >/dev/null
     return "$status"
   fi
-  docker cp "$container:/output" "$destination/output"
+  docker cp "$container:/output" "$destination/output" > "$destination/docker-cp.log" 2>&1
   docker rm "$container" >/dev/null
   return "$status"
 }
