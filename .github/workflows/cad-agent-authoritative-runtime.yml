@@ -8,6 +8,7 @@ on:
       - ".github/workflows/cad-agent-authoritative-runtime.yml"
       - "docker/generic-user-job/**"
       - "scripts/ci/generate-cad-agent-runtime-job.ts"
+      - "scripts/ci/validate-cad-agent-runtime-failures.ts"
       - "scripts/ci/run-docker-generic-user-job.sh"
       - "scripts/ci/validate_docker_generic_job.py"
       - "server/cadAgent.ts"
@@ -32,6 +33,7 @@ jobs:
     env:
       DEBIAN_FRONTEND: noninteractive
       CAD_AI_JOB_SOURCE: CAD_AGENT
+      CAD_AI_RUN_CONTROLLED_FAILURES: "1"
     steps:
       - name: Checkout immutable repository revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

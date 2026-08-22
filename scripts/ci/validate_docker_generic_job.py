@@ -112,6 +112,22 @@ def main() -> None:
         }
         assert_rejected(manifest, root, mode, codes[mode])
         return
+    if mode == "controlled-failure":
+        root = Path(sys.argv[2])
+        expected = sys.argv[3]
+        state = json.loads((root / "docker-inspect-after.json").read_text())
+        require(state[0]["State"]["ExitCode"] != 0, "CONTROLLED_FAILURE_EXIT_NOT_ENFORCED")
+        failure_path = root / "runtime-output" / "execution-failure.json"
+        if expected == "MEMORY_LIMIT_OOM":
+            require(state[0]["State"].get("OOMKilled") is True, "MEMORY_LIMIT_OOM_NOT_OBSERVED")
+            return
+        if expected in {"CPU_LIMIT_SIGNAL", "STORAGE_LIMIT_SIGNAL"}:
+            require(not failure_path.exists(), "RESOURCE_LIMIT_FAILURE_ARTIFACT_UNEXPECTED")
+            return
+        require(failure_path.exists(), "CONTROLLED_FAILURE_RECEIPT_MISSING")
+        failure = json.loads(failure_path.read_text())
+        require(failure.get("state") == "FAILED" and expected in failure.get("error", ""), "CONTROLLED_FAILURE_REASON_INVALID")
+        return
     raise RuntimeError("UNSUPPORTED_VALIDATION_MODE")
 
 if __name__ == "__main__":

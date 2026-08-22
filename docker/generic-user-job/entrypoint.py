@@ -26,6 +26,8 @@ OUTPUT = Path("/output")
 WORK = Path("/work")
 MANIFEST = INPUT / "generic-user-job-manifest.json"
 STEP = INPUT / "cad-artifact.step"
+FAILURE_EXERCISE = os.environ.get("CAD_AI_FAILURE_EXERCISE", "").strip()
+ALLOWED_FAILURE_EXERCISES = {"", "GMSH_FAILURE", "CALCULIX_FAILURE", "TIMEOUT", "CPU_LIMIT", "MEMORY_LIMIT", "STORAGE_LIMIT", "INVALID_MESH", "PARTIAL_OUTPUT"}
 
 
 def sha256_file(path: Path) -> str:
@@ -198,18 +200,50 @@ def latest_displacements(path: Path) -> dict[int, tuple[float, float, float]]:
 
 def execute_job() -> int:
     started = datetime.now(timezone.utc)
+    if FAILURE_EXERCISE not in ALLOWED_FAILURE_EXERCISES:
+        raise RuntimeError("UNAUTHORIZED_FAILURE_EXERCISE")
+    if FAILURE_EXERCISE == "CPU_LIMIT":
+        resource.setrlimit(resource.RLIMIT_CPU, (1, 1))
+        while True:
+            pass
+    if FAILURE_EXERCISE == "MEMORY_LIMIT":
+        # The configured Docker cgroup, not a simulated result, must reject this allocation.
+        _ = bytearray(1024 * 1024 * 1024)
+        raise RuntimeError("MEMORY_LIMIT_NOT_ENFORCED")
     manifest = parse_manifest()
     if sha256_file(STEP) != manifest["cadHash"]:
         raise RuntimeError("CAD_HASH_MISMATCH")
     WORK.mkdir(parents=True, exist_ok=True)
     append_log("GENERIC_USER_JOB_STARTED")
+    if FAILURE_EXERCISE == "TIMEOUT":
+        if subprocess.run(["timeout", "1", "sleep", "2"], check=False).returncode != 124:
+            raise RuntimeError("TIMEOUT_LIMIT_NOT_ENFORCED")
+        raise RuntimeError("TIMEOUT_ENFORCED")
+    if FAILURE_EXERCISE == "STORAGE_LIMIT":
+        try:
+            with (OUTPUT / "storage-limit-exercise").open("wb") as handle:
+                chunk = b"0" * (1024 * 1024)
+                for _ in range(80):
+                    handle.write(chunk)
+                    handle.flush()
+        except OSError:
+            raise RuntimeError("STORAGE_LIMIT_ENFORCED")
+        raise RuntimeError("STORAGE_LIMIT_NOT_ENFORCED")
     mesh_path = WORK / "generic-cantilever.msh"
     analysis = manifest["analysisPlan"]
     mesh_size = str(analysis["meshSizeMm"])
-    gmsh = subprocess.run(["gmsh", "-3", str(STEP), "-format", "msh41", "-clmin", mesh_size, "-clmax", mesh_size, "-o", str(mesh_path)], cwd=WORK, capture_output=True, text=True, timeout=90)
+    gmsh_step = STEP
+    if FAILURE_EXERCISE == "GMSH_FAILURE":
+        gmsh_step = WORK / "invalid-gmsh-input.step"
+        gmsh_step.write_text("NOT_A_STEP_FILE\n", encoding="utf-8")
+    gmsh = subprocess.run(["gmsh", "-3", str(gmsh_step), "-format", "msh41", "-clmin", mesh_size, "-clmax", mesh_size, "-o", str(mesh_path)], cwd=WORK, capture_output=True, text=True, timeout=90)
     append_log(f"GMSH_EXIT={gmsh.returncode}\n{gmsh.stdout}\n{gmsh.stderr}")
     if gmsh.returncode != 0: raise RuntimeError(f"GMSH_FAILED_{gmsh.returncode}")
-    mesh = meshio.read(mesh_path)
+    if FAILURE_EXERCISE == "INVALID_MESH": mesh_path.write_text("INVALID_MESH\n", encoding="utf-8")
+    try:
+        mesh = meshio.read(mesh_path)
+    except Exception as error:
+        raise RuntimeError("INVALID_MESH_REJECTED") from error
     tetra_blocks = [block.data for block in mesh.cells if block.type == "tetra"]
     if not tetra_blocks: raise RuntimeError("MESH_HAS_NO_TETRA")
     elements = np.vstack(tetra_blocks).astype(int)
@@ -223,6 +257,7 @@ def execute_job() -> int:
     verification = {"verificationStatus": "PASS" if mesh_ok else "FAIL", "method": "Independent meshio connectivity, signed-volume, degeneracy, orientation, and bounds checks", "meshSha256": sha256_file(mesh_path), "cadHash": manifest["cadHash"], "nodeCount": int(len(points)), "tetraElementCount": int(len(elements)), "negativeOrientationCount": int(np.count_nonzero(signed < -1e-12)), "degenerateElementCount": int(np.count_nonzero(absolute <= 1e-12)), "boundsMm": {"min": bounds_min.tolist(), "max": bounds_max.tolist()}}
     verify_path = write_json("mesh-verification.json", verification)
     if not mesh_ok: raise RuntimeError("MESH_VERIFICATION_FAILED")
+    if FAILURE_EXERCISE == "PARTIAL_OUTPUT": raise RuntimeError("PARTIAL_OUTPUT_REJECTED")
     axis_index = {"X": 0, "Y": 1, "Z": 2}[analysis["axis"]]
     axial = points[:, axis_index]
     fixed = (np.where(axial <= bounds_min[axis_index] + 1e-6)[0] + 1).tolist()
@@ -239,6 +274,9 @@ def execute_job() -> int:
     lines.extend(f"{node}, {dof}, {total_load / len(loaded):.12g}" for node in loaded)
     lines.extend(["*NODE FILE", "U", "*EL FILE", "S", "*NODE PRINT,NSET=LOADED", "U", "*END STEP"])
     inp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    if FAILURE_EXERCISE == "CALCULIX_FAILURE":
+        with inp.open("a", encoding="utf-8") as handle:
+            handle.write("*UNSUPPORTED_CALCULIX_KEYWORD\n")
     input_metadata = {"inputKind": "AUTHORIZED_INTERNAL_GENERIC_USER_JOB", "jobId": manifest["jobId"], "manifestHash": manifest["manifestHash"], "cadRevisionHash": manifest["cadRevisionHash"], "cadArtifactHash": manifest["cadArtifactHash"], "caePlanHash": manifest["caePlanHash"], "meshHash": verification["meshSha256"], "calculixInputSha256": sha256_file(inp), "material": {"elasticModulusMpa": e_mpa, "poissonRatio": poisson}, "load": {"totalAxialForceN": total_load, "axis": analysis["axis"]}, "referenceGeometry": {"crossSectionAreaMm2": analysis["referenceCrossSectionAreaMm2"], "lengthMm": float(bounds_max[axis_index] - bounds_min[axis_index])}}
     input_meta_path = write_json("solver-input.json", input_metadata)
     ccx = subprocess.run(["ccx", "generic-cantilever"], cwd=WORK, capture_output=True, text=True, timeout=90)
