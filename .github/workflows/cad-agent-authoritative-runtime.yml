@@ -13,6 +13,7 @@ on:
       - "scripts/ci/validate_docker_generic_job.py"
       - "scripts/ci/generate-signed-runtime-evidence.ts"
       - "scripts/ci/verify-signed-runtime-evidence.ts"
+      - "scripts/ci/diagnose-runtime-evidence-key.ts"
       - "server/cadAgent.ts"
       - "server/cadKernel.ts"
       - "server/signedRuntimeEvidence.ts"
@@ -58,6 +59,7 @@ jobs:
           RUNTIME_EVIDENCE_HMAC_KEY: ${{ secrets.RUNTIME_EVIDENCE_HMAC_KEY }}
         run: |
           set -euo pipefail
+          pnpm exec tsx scripts/ci/diagnose-runtime-evidence-key.ts
           test -n "${RUNTIME_EVIDENCE_HMAC_KEY:-}" || { echo "RUNTIME_EVIDENCE_KEY_UNAVAILABLE"; exit 1; }
           [[ "${RUNTIME_EVIDENCE_HMAC_KEY}" =~ ^(0x)?[A-Fa-f0-9]{64,}$ ]] || { echo "RUNTIME_EVIDENCE_KEY_FORMAT_INVALID"; exit 1; }
           pnpm exec tsx scripts/ci/generate-signed-runtime-evidence.ts artifacts/generic-job

@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 export const SIGNED_RUNTIME_EVIDENCE_VERSION = "runtime-evidence/v1";
 export const SIGNED_RUNTIME_EVIDENCE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+export const RUNTIME_EVIDENCE_VALIDATOR_VERSION = "hmac-sha256/v1";
 
 export type RuntimeEvidencePayload = {
   version: typeof SIGNED_RUNTIME_EVIDENCE_VERSION;
@@ -42,6 +43,26 @@ function isHash(value: unknown): value is string {
 function configuredKey(): string | null {
   const key = process.env.RUNTIME_EVIDENCE_HMAC_KEY?.trim().replace(/^0x/i, "");
   return key && /^[a-f0-9]{64,}$/i.test(key) ? key : null;
+}
+
+/** Returns non-secret metadata only; never return or derive a key fingerprint. */
+export function runtimeEvidenceKeyDiagnostics(): {
+  SECRET_PRESENT: boolean;
+  SECRET_LENGTH: number;
+  HEX_FORMAT_VALID: boolean;
+  CANONICAL_FORMAT_VALID: boolean;
+  SECRET_SOURCE: "GITHUB_ACTIONS_ENV" | "PROCESS_ENV";
+  VALIDATOR_VERSION: typeof RUNTIME_EVIDENCE_VALIDATOR_VERSION;
+} {
+  const raw = process.env.RUNTIME_EVIDENCE_HMAC_KEY ?? "";
+  return {
+    SECRET_PRESENT: raw.length > 0,
+    SECRET_LENGTH: raw.length,
+    HEX_FORMAT_VALID: /^[a-f0-9]+$/i.test(raw),
+    CANONICAL_FORMAT_VALID: /^[a-f0-9]{64,}$/i.test(raw),
+    SECRET_SOURCE: process.env.GITHUB_ACTIONS === "true" ? "GITHUB_ACTIONS_ENV" : "PROCESS_ENV",
+    VALIDATOR_VERSION: RUNTIME_EVIDENCE_VALIDATOR_VERSION,
+  };
 }
 
 function expectedEvidenceHash(payload: Omit<RuntimeEvidencePayload, "evidenceHash">): string {
