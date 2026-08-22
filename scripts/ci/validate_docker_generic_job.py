@@ -121,8 +121,13 @@ def main() -> None:
         if expected == "MEMORY_LIMIT_OOM":
             require(state[0]["State"].get("OOMKilled") is True, "MEMORY_LIMIT_OOM_NOT_OBSERVED")
             return
-        if expected in {"CPU_LIMIT_SIGNAL", "STORAGE_LIMIT_SIGNAL"}:
+        if expected == "CPU_LIMIT_SIGNAL":
             require(not failure_path.exists(), "RESOURCE_LIMIT_FAILURE_ARTIFACT_UNEXPECTED")
+            return
+        if expected == "STORAGE_LIMIT_SIGNAL":
+            require(failure_path.exists(), "STORAGE_LIMIT_FAILURE_RECEIPT_MISSING")
+            failure = json.loads(failure_path.read_text())
+            require(failure.get("state") == "FAILED" and failure.get("error") == "STORAGE_LIMIT_ENFORCED", "STORAGE_LIMIT_FAILURE_REASON_INVALID")
             return
         require(failure_path.exists(), "CONTROLLED_FAILURE_RECEIPT_MISSING")
         failure = json.loads(failure_path.read_text())
