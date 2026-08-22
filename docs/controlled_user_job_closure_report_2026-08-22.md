@@ -98,3 +98,39 @@ Run `32545661036` generated the `CONFIG-AUTHORITATIVE-CAD-AGENT-RUNTIME-MOUNTING
 | **Binding rejection** | Stale job, stale CAD, mesh mismatch, solver mismatch, configuration mismatch, input tamper, and output tamper were all rejected by the retained host-side validator. |
 | **Controlled failures** | Gmsh parser failure, CalculiX input failure, timeout, CPU signal limit, memory cgroup OOM, output-storage limit, invalid input, invalid mesh, corrupted CAD artifact, and partial output were all observed and required to fail. |
 | **Baseline preservation** | Run `32542564434` and its fixed internal generic fixture remain unchanged as the permanent source-level regression baseline; the CAD Agent workflow uses the same Docker image and orchestration rather than a duplicate runtime. |
+
+## Final Internal Evidence Refresh
+
+| Field | Final observed evidence |
+|---|---|
+| **Validated implementation commit** | `c140b765f4860865cbf4cc59c19ae9bc8c13da1d` |
+| **Primary retained final run** | [`32548950838`](https://github.com/slivernaif1993201897-wq/cad-ai-engineering-os/actions/runs/32548950838), successful unchanged authoritative CAD Agent execution. |
+| **Repeatability comparison run** | [`32548873775`](https://github.com/slivernaif1993201897-wq/cad-ai-engineering-os/actions/runs/32548873775), successful execution at the same commit. |
+| **Execution receipt** | `INTERNAL_TEST_COMPLETED`; `executionStarted: true`; `genericSolverExecutionStarted: true`; exit code `0`. |
+| **Sandbox campaign** | 34 bounded in-container observations; 0 failures. The evidence covers static filesystem traversal, absolute-path, symlink, temporary-directory, unauthorized read/write, process-namespace, privilege, no-new-privileges, DNS, outbound, loopback, private-address, interface, runner-metadata, and fixed-executable checks. |
+| **Dependency inventory** | 241 packages recorded by `dpkg-query` from the executing Docker image; SBOM hash is retained in the uploaded workflow evidence. |
+| **Canonical result** | Result hash `5b1960c0834e1fbe3448e87a40b66cee97380a6d7c6d952b331b7c5e61326769` in run `32548950838`. |
+
+The two unchanged final runs matched their **job ID, manifest, CAD revision, CAD artifact, Gmsh, mesh, CalculiX, configuration, canonical output, and canonical result hashes**. Their environment hash, execution-log hash, raw CalculiX FRD hash, and raw-solver-evidence hash differ by design because they contain run-scoped identifiers, logs, and the solver’s wall-clock output time. The runtime now retains the raw FRD as separately bound audit evidence and derives the canonical numerical result from a timestamp-normalized copy. This is a provenance-preserving repair: raw execution bytes remain available for review and are not silently discarded.
+
+The reproducibility investigation identified two volatile metadata sources. OpenCascade STEP `FILE_NAME` wall-clock metadata caused otherwise identical CAD artifacts to hash differently, and CalculiX FRD `1UTIME` metadata caused otherwise identical numerical outputs to hash differently. The implementation normalizes only those non-engineering header fields for canonical comparison, retains raw outputs separately, and excludes generated timestamps and identifiers from the semantic CAD revision hash. No geometry, mesh, solver input, solver binary, numerical value, validation threshold, or admission control was changed.
+
+## Internal Readiness Classification
+
+| Classification | Status | Basis |
+|---|---|---|
+| **INTERNAL_RUNTIME_VERIFIED** | **PASS** | A genuine CAD Agent revision completed the immutable manifest, Docker sandbox, real Gmsh, independent mesh verification, real CalculiX, numerical validation, canonical hash binding, artifact-tamper rejection, controlled-failure suite, escape campaign, and repeatability campaign. |
+| **READY_FOR_INDEPENDENT_SECURITY_ASSESSMENT** | **PASS** | Architecture, fixed command surface, manifest schema, container controls, package inventory, observed probe results, failure receipts, and retained artifact hashes are available for review. This is readiness to assess, not an assessment result. |
+| **READY_FOR_EXTERNAL_REVIEW** | **PASS** | The internal evidence record is complete enough to submit for external engineering/security review. No external reviewer outcome is attached. |
+| **PRODUCTION_READY** | **BLOCKED_EXTERNAL_EVIDENCE** | Internal GitHub-hosted Docker evidence cannot independently approve the production environment or substitute for external security and engineering decisions. |
+
+## Exact Remaining External-Only Blockers
+
+1. **Approved production environment evidence** for the exact execution platform, current approval window, identity, and provenance.
+2. **Independent sandbox and escape-resistance assessment** against the approved production environment, including host/kernel and multi-tenant isolation claims.
+3. **Approved production solver and dependency provenance**, including policy approval for the final image and package inventory.
+4. **Production numerical acceptance criteria** with justified tolerances, domain ownership, and applicable engineering approval.
+5. **Approved-environment recovery, rollback, and repeatability evidence** rather than GitHub-hosted internal evidence alone.
+6. **Independent security assessment outcome** and documented user-and-assistant internal evidence review decision.
+
+> **FINAL_READINESS = BLOCKED_EXTERNAL_EVIDENCE.** All internally actionable runtime and reproducibility work recorded here is complete at the stated commit. The remaining gates require evidence from an approved environment or independent reviewers and therefore remain blocked rather than inferred.
