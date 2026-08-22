@@ -249,7 +249,11 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
   const writer = new oc.STEPControl_Writer_1();
   writer.Transfer(current, (oc.STEPControl_StepModelType as any).STEPControl_AsIs, true, progress);
   writer.Write(stepPath);
-  const stepBytes = Buffer.from((oc as any).FS.readFile(stepPath));
+  const rawStepBytes = Buffer.from((oc as any).FS.readFile(stepPath));
+  // OpenCascade writes the wall-clock export time in FILE_NAME. The timestamp is
+  // not geometric or engineering provenance and makes identical validated BReps
+  // hash differently, so normalize only that volatile STEP header field.
+  const stepBytes = Buffer.from(rawStepBytes.toString("utf8").replace(/(FILE_NAME\('[^']*',)'[^']*'/, "$1'1970-01-01T00:00:00'"), "utf8");
   (oc as any).FS.unlink(stepPath);
   const viewerMesh = extractViewerMesh(oc, current, input, "FEATURE-005");
 

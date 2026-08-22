@@ -9,6 +9,17 @@ import {
 
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const recordHash = (value: unknown) => hash(JSON.stringify(value));
+const volatileProvenanceKeys = new Set(["id", "artifactId", "createdAt", "updatedAt", "timestamp", "requirementSetId", "planId", "revisionId", "configurationId", "artifact_id", "created_at", "updated_at", "requirement_set_id", "plan_id", "revision_id", "configuration_id", "featureId", "feature_id"]);
+
+function semanticProvenance(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(semanticProvenance);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !volatileProvenanceKeys.has(key))
+      .map(([key, nested]) => [key, semanticProvenance(nested)]));
+  }
+  return value;
+}
 
 export type CadAgentRuntimeAdmissionReason = "STALE_JOB_REJECTED" | "STALE_CAD_REJECTED" | "CAD_SOURCE_NOT_AGENT";
 
@@ -27,18 +38,19 @@ export interface CadAgentRuntimeAdmissionContext {
 
 export function calculateCadRevisionHash(configuration: CADConfiguration): string {
   return recordHash({
-    configurationId: configuration.id,
+    cadRevision: configuration.id,
     revision: configuration.revision,
+    semantic: semanticProvenance({
     sourceText: configuration.sourceText,
     input: configuration.input,
     requirementSet: configuration.requirementSet,
     plan: configuration.plan,
     artifact: {
-      id: configuration.artifact?.id,
       validationStatus: configuration.artifact?.validationStatus,
       featureTree: configuration.artifact?.featureTree,
       parameters: configuration.artifact?.parameters,
     },
+    }),
   });
 }
 
@@ -82,7 +94,7 @@ export function buildCadAgentRuntimeManifest(source: CadAgentRuntimeSource): Con
     cadHash: cadArtifactHash,
     cadRevisionHash,
     cadArtifactHash,
-    cadProvenance: { sourceKind: "CAD_AGENT", configurationId: configuration.id, configurationHash: cadRevisionHash, artifactId: configuration.artifact.id },
+    cadProvenance: { sourceKind: "CAD_AGENT", configurationId: configuration.id, configurationHash: cadRevisionHash, artifactId: `ARTIFACT-${cadArtifactHash.slice(0, 16).toUpperCase()}` },
     caePlanRevision: `CAE-${configuration.id}`,
     caePlanHash: recordHash(caePlan),
     materialRevision: "MATERIAL-STEEL-1",
