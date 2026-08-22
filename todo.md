@@ -363,4 +363,5 @@
 - [ ] Design and implement a Docker-isolated generic CAE user-job workflow with no network, read-only inputs, bounded resources, unprivileged execution, and audit artifacts.
 - [ ] Execute and validate one distinct generic user job with Gmsh, independent mesh verification, CalculiX, numerical validation, cryptographic result/job binding, failure recovery probes, and repeatability evidence.
 - [ ] Assemble internal security and engineering review evidence, distinguish observed Docker controls from unobserved platform controls, and publish a final readiness matrix without external-review claims.
+- [ ] Repair the Docker generic-job image build failure caused by re-declaring the already reserved UID 65534, then rerun the internal workflow and preserve the failure record.
 - [ ] Latest shared-evidence retrieval: classify the newly supplied Manus file against the canonical repository without treating inaccessible content as verified evidence.
