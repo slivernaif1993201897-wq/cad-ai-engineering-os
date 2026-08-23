@@ -4,7 +4,7 @@ import { admitReferenceBenchmark, SEAT_REFERENCE_DATASET, verifySeatReferenceDat
 
 describe("Seat Reference Dataset", () => {
   it("hash-binds source-traceable records from every extracted study", () => {
-    expect(SEAT_REFERENCE_DATASET.studies).toHaveLength(7);
+    expect(SEAT_REFERENCE_DATASET.studies).toHaveLength(8);
     expect(verifySeatReferenceDataset(SEAT_REFERENCE_DATASET)).toBe(true);
   });
 
@@ -20,6 +20,10 @@ describe("Seat Reference Dataset", () => {
   it("rejects dynamic and non-CAE documents from the static CalculiX path", () => {
     expect(admitReferenceBenchmark(SEAT_REFERENCE_DATASET, "INTEGRATED-BELT-2010").status).toBe("NOT_APPLICABLE");
     expect(admitReferenceBenchmark(SEAT_REFERENCE_DATASET, "UNECE-IWVTA-AMENDMENT").status).toBe("NOT_APPLICABLE");
+    const ssrnAdas = admitReferenceBenchmark(SEAT_REFERENCE_DATASET, "SSRN-5624455-ADAS-SAFETY-REVIEW");
+    expect(ssrnAdas.status).toBe("NOT_APPLICABLE");
+    expect(ssrnAdas.benchmarkLevel).toBe("LEVEL_0_DOCUMENT_ONLY");
+    expect(ssrnAdas.requiredInputs).toEqual(["STRUCTURAL_ENGINEERING_DATA_NOT_PRESENT"]);
   });
 
   it("rejects a tampered source dataset", () => {

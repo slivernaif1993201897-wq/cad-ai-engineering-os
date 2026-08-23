@@ -132,7 +132,17 @@ export const SEAT_REFERENCE_DATASET: SeatReferenceDataset = (() => {
 
   const nonCae = createStudy({ id: "DRIVER-BEHAVIOR-REVIEW", title: "Driver behavior recognition studies", analysisType: "NON_CAE", originalSolver: undefined, status: "NOT_REPRODUCIBLE", calculixCompatibility: "NOT_APPLICABLE", benchmarkLevel: "LEVEL_0_DOCUMENT_ONLY", items: [], requiredInputs: ["STRUCTURAL_ENGINEERING_DATA_NOT_PRESENT"] });
   const unece = createStudy({ id: "UNECE-IWVTA-AMENDMENT", title: "UNECE Regulation Amendment", analysisType: "NON_CAE", originalSolver: undefined, status: "NOT_REPRODUCIBLE", calculixCompatibility: "NOT_APPLICABLE", benchmarkLevel: "LEVEL_0_DOCUMENT_ONLY", items: [item("UNECERegulationNo.pdf", 2, "Annex 4 Part A", "UNECE-REG-17-001", "TEST_CONDITIONS", "UN Regulation 17 Series 10", "N/A", "Regulation reference only", "EXPLICIT")], requiredInputs: ["TECHNICAL_TEST_PROCEDURE_NOT_PRESENT"] });
-  const studies = [dot, backrest, modal, sustainability, dynamic, nonCae, unece];
+  const ssrnAdas = createStudy({
+    id: "SSRN-5624455-ADAS-SAFETY-REVIEW", title: "Safety Risks in Advanced Driver Assistance Systems (ADAS): A Systematic Review of Causation and Analysis Methodologies", analysisType: "NON_CAE", originalSolver: undefined,
+    status: "NOT_REPRODUCIBLE", calculixCompatibility: "NOT_APPLICABLE", benchmarkLevel: "LEVEL_0_DOCUMENT_ONLY",
+    items: [
+      item("ssrn-5624455.pdf", 2, "Abstract", "SSRN-ADAS-SCOPE-001", "TEST_CONDITIONS", "Systematic review of ADAS accident scenarios, risk factors, and analysis methodologies", "N/A", "ADAS safety-governance reference; not a seat structural study", "EXPLICIT"),
+      item("ssrn-5624455.pdf", 2, "1. Introduction", "SSRN-ADAS-SENSOR-001", "FE_MODEL_INFORMATION", "Radar; lidar; cameras", "N/A", "ADAS sensing context only; not Seat CAE input", "EXPLICIT"),
+      item("ssrn-5624455.pdf", 3, "1. Introduction", "SSRN-ADAS-HUMAN-001", "TEST_CONDITIONS", "L2 driver remains vigilant and prepared to take control", "N/A", "Human-factors context only; not a structural boundary condition", "EXPLICIT"),
+    ],
+    requiredInputs: ["STRUCTURAL_ENGINEERING_DATA_NOT_PRESENT"],
+  });
+  const studies = [dot, backrest, modal, sustainability, dynamic, nonCae, unece, ssrnAdas];
   const sourceHash = hash(studies.map((study) => study.sourceHash));
   return { datasetVersion: "1.0", studies, sourceHash, datasetHash: hash({ sourceHash, studies: studies.map(({ sourceHash: _sourceHash, ...study }) => study) }) };
 })();

@@ -87,3 +87,15 @@ The integrated-belt paper is classified `EXPERIMENTAL_REFERENCE` and `FE_MODEL_R
 | UNECE amendment | Regulatory reference | N/A | NOT_REPRODUCIBLE | Not applicable | LEVEL_0_DOCUMENT_ONLY |
 
 No uploaded document supplies a complete single-study combination of dimensioned geometry, material behavior, fixture coordinates, load application coordinates, connection/contact model, and documented acceptance tolerance. The dataset therefore does not admit a CalculiX reference benchmark and no cross-study combination is permitted.
+
+## Additional Study: SSRN 5624455 — ADAS Safety Risks
+
+| Requirement ID | Source document | Section or page | Value | Unit | Applicability |
+|---|---|---:|---|---|---|
+| `SSRN-ADAS-SCOPE-001` | `ssrn-5624455.pdf` | PDF p. 1–2, title and abstract | Systematic review of ADAS accident causation and analysis methods. | N/A | ADAS safety-governance reference; not a seat structural reference. |
+| `SSRN-ADAS-SENSOR-001` | `ssrn-5624455.pdf` | PDF p. 2–3, Introduction | Radar, lidar, and cameras are described as ADAS sensing technologies. | N/A | Driver-assistance system context only. |
+| `SSRN-ADAS-HUMAN-001` | `ssrn-5624455.pdf` | PDF p. 3, Introduction | L2 systems require a driver to remain vigilant and prepared to take control. | N/A | Human-factors/operational context only. |
+
+### Applicability Decision
+
+`ssrn-5624455.pdf` is classified `NON_CAE_REFERENCE`. It contains no seat CAD geometry, material property, FE mesh, fixture, structural load, boundary condition, published structural result, or tolerance that can enter the Seat CAE dataset. It therefore cannot raise a benchmark level or authorize CAD/FE reconstruction.
