@@ -73,3 +73,17 @@ The integrated-belt paper is classified `EXPERIMENTAL_REFERENCE` and `FE_MODEL_R
 |---|---|---|
 | `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf` | `EXPERIMENTAL_REFERENCE`, `FE_MODEL_REFERENCE`, `NUMERICAL_VALIDATION_REFERENCE` | Candidate published backrest reference only. Its detailed source geometry, fixture coordinates, material/yield data, and measurement-point mapping are absent for the current Seat CAD revision. |
 | `Evaluationoffiniteelementmodelsofseatstructureswithintegratedsafety.pdf` | `EXPERIMENTAL_REFERENCE`, `FE_MODEL_REFERENCE`, `NOT_APPLICABLE` | Dynamic integrated-belt crash-sled/dummy study. The current static solver configuration does not represent the documented dynamic test system. |
+
+## Complete Uploaded Corpus Classification
+
+| Study | Analysis | Original solver | Reproducibility | Current CalculiX status | Maximum supported benchmark level |
+|---|---|---|---|---|---|
+| DOT / FMVSS 207 | Static prescription | Not documented | PARTIALLY_REPRODUCIBLE | Requires engineering review | LEVEL_1_DATASET_RECONSTRUCTED |
+| Backrest static strength study | Static backrest | Nastran | NOT_REPRODUCIBLE | Requires engineering review | LEVEL_1_DATASET_RECONSTRUCTED |
+| SAE 2011-26-0047 | Modal | Nastran | PARTIALLY_REPRODUCIBLE | Requires engineering review | LEVEL_1_DATASET_RECONSTRUCTED |
+| Designing for Sustainability | Quasi-static pull | RADIOSS | PARTIALLY_REPRODUCIBLE | Requires engineering review | LEVEL_1_DATASET_RECONSTRUCTED |
+| Integrated safety belt full-scale study | Dynamic crash sled | LS-DYNA | NOT_REPRODUCIBLE | Not applicable to static solver | LEVEL_0_DOCUMENT_ONLY |
+| Driver behavior recognition studies | Non-CAE behavior research | N/A | NOT_REPRODUCIBLE | Not applicable | LEVEL_0_DOCUMENT_ONLY |
+| UNECE amendment | Regulatory reference | N/A | NOT_REPRODUCIBLE | Not applicable | LEVEL_0_DOCUMENT_ONLY |
+
+No uploaded document supplies a complete single-study combination of dimensioned geometry, material behavior, fixture coordinates, load application coordinates, connection/contact model, and documented acceptance tolerance. The dataset therefore does not admit a CalculiX reference benchmark and no cross-study combination is permitted.
