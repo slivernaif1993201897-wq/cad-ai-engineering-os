@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import { getEngineeringJob, listEngineeringJobs, submitEngineeringJob } from "./engineeringJob";
 import { openPersistentProject } from "./persistentMemory";
 import { createSeatDesign, createSeatDesignVerification, createSeatEngineeringReport, createSeatRevision, getSeatDesign, getSeatDesignVerification, listSeatDesigns, releaseSeatRevision } from "./seatEngineering";
+import { approveSeatInputPackage, attachSeatInputEvidence, createSeatInputPackage, getSeatInputPackage, listSeatInputPackages, releaseSeatInputPackage, updateSeatInputPackage, validateSeatInputPackage } from "./seatInputPackage";
 
 type ProjectAccess = { projectId: string; accessKey: string };
 
@@ -139,6 +140,59 @@ export function registerEngineeringJobHttp(app: Express) {
       const message = error instanceof Error ? error.message : "SEAT_VERIFICATION_READ_FAILED";
       return res.status(isAccessFailure(message) ? 403 : message.includes("NOT_FOUND") ? 404 : 503).json({ error: message });
     }
+  });
+
+  app.post("/api/projects/:projectId/seat-input-packages", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try {
+      const seat = await getSeatDesign({ projectId: req.params.projectId, accessKey, seatDesignId: req.body?.seatDesignId });
+      if (!seat.revisions.some((revision) => revision.id === req.body?.seatRevisionId)) throw new Error("SEAT_REVISION_NOT_FOUND");
+      return res.status(201).json(await createSeatInputPackage({ projectId: req.params.projectId, accessKey, input: req.body }));
+    }
+    catch (error) { const message = error instanceof Error ? error.message : "SEAT_INPUT_PACKAGE_REJECTED"; return res.status(isAccessFailure(message) ? 403 : 422).json({ error: message }); }
+  });
+  app.get("/api/projects/:projectId/seat-designs/:seatDesignId/input-packages", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try { return res.json(await listSeatInputPackages({ projectId: req.params.projectId, accessKey, seatDesignId: req.params.seatDesignId, seatRevisionId: typeof req.query.revisionId === "string" ? req.query.revisionId : undefined })); }
+    catch (error) { const message = error instanceof Error ? error.message : "SEAT_INPUT_PACKAGE_READ_FAILED"; return res.status(isAccessFailure(message) ? 403 : 503).json({ error: message }); }
+  });
+  app.get("/api/projects/:projectId/seat-input-packages/:packageId", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try { return res.json(await getSeatInputPackage({ projectId: req.params.projectId, accessKey, packageId: req.params.packageId })); }
+    catch (error) { const message = error instanceof Error ? error.message : "SEAT_INPUT_PACKAGE_READ_FAILED"; return res.status(isAccessFailure(message) ? 403 : message.includes("NOT_FOUND") ? 404 : 503).json({ error: message }); }
+  });
+  app.put("/api/projects/:projectId/seat-input-packages/:packageId", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try { return res.json(await updateSeatInputPackage({ projectId: req.params.projectId, accessKey, packageId: req.params.packageId, fields: req.body?.fields })); }
+    catch (error) { const message = error instanceof Error ? error.message : "SEAT_INPUT_PACKAGE_UPDATE_REJECTED"; return res.status(isAccessFailure(message) ? 403 : 422).json({ error: message }); }
+  });
+  app.post("/api/projects/:projectId/seat-input-packages/:packageId/evidence", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try { return res.status(201).json(await attachSeatInputEvidence({ projectId: req.params.projectId, accessKey, packageId: req.params.packageId, fileName: req.body?.fileName, mimeType: req.body?.mimeType, base64: req.body?.base64 })); }
+    catch (error) { const message = error instanceof Error ? error.message : "SEAT_INPUT_EVIDENCE_REJECTED"; return res.status(isAccessFailure(message) ? 403 : 422).json({ error: message }); }
+  });
+  app.post("/api/projects/:projectId/seat-input-packages/:packageId/validate", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try { return res.json(await validateSeatInputPackage({ projectId: req.params.projectId, accessKey, packageId: req.params.packageId })); }
+    catch (error) { const message = error instanceof Error ? error.message : "SEAT_INPUT_PACKAGE_VALIDATE_REJECTED"; return res.status(isAccessFailure(message) ? 403 : 422).json({ error: message }); }
+  });
+  app.post("/api/projects/:projectId/seat-input-packages/:packageId/approve", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try { return res.json(await approveSeatInputPackage({ projectId: req.params.projectId, accessKey, packageId: req.params.packageId })); }
+    catch (error) { const message = error instanceof Error ? error.message : "SEAT_INPUT_PACKAGE_APPROVE_REJECTED"; return res.status(isAccessFailure(message) ? 403 : 422).json({ error: message }); }
+  });
+  app.post("/api/projects/:projectId/seat-input-packages/:packageId/release", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try { return res.json(await releaseSeatInputPackage({ projectId: req.params.projectId, accessKey, packageId: req.params.packageId })); }
+    catch (error) { const message = error instanceof Error ? error.message : "SEAT_INPUT_PACKAGE_RELEASE_REJECTED"; return res.status(isAccessFailure(message) ? 403 : 422).json({ error: message }); }
   });
 
   app.get("/api/projects/:projectId/seat-designs/:seatDesignId/report", async (req, res) => {

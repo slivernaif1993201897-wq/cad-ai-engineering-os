@@ -6,6 +6,7 @@ import { getEngineeringJob } from "./engineeringJob";
 import { getDb } from "./db";
 import { appendPersistentMemory, openPersistentProject, projectMemorySnapshot } from "./persistentMemory";
 import { buildSeatDesignVerificationCase, type SeatDesignVerificationCase, type SeatDesignVerificationRequest } from "./seatDesignVerification";
+import { listSeatInputPackages } from "./seatInputPackage";
 
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -211,6 +212,7 @@ export async function createSeatEngineeringReport(args: Access & { seatDesignId:
   if (args.jobId && !job) throw new Error("ENGINEERING_JOB_NOT_FOUND");
   const latestRevision = seat.revisions[0];
   const verification = latestRevision ? await getSeatDesignVerification({ ...args, revisionId: latestRevision.id }) : undefined;
+  const inputPackage = latestRevision ? (await listSeatInputPackages({ ...args, seatDesignId: args.seatDesignId, seatRevisionId: latestRevision.id }))[0] : undefined;
   return {
     reportId: id("SEAT_REPORT"),
     generatedAt: new Date().toISOString(),
@@ -226,6 +228,7 @@ export async function createSeatEngineeringReport(args: Access & { seatDesignId:
       resultAvailability: job.runtimeEvidence ? "VERIFIED_RESULT_AVAILABLE" : "VERIFIED_RESULT_UNAVAILABLE",
     } : null,
     seatVerification: verification ?? null,
+    engineeringInputPackage: inputPackage ?? null,
     disclaimer: job?.runtimeEvidence
       ? "Runtime evidence is verified by the persisted canonical evidence source."
       : verification?.state === "REQUIRED_INPUT"
