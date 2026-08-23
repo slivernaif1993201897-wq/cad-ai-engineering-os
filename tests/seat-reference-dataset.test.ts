@@ -11,7 +11,14 @@ describe("Seat Reference Dataset", () => {
   it("does not mix incomplete studies into a runnable static benchmark", () => {
     const staticBackrest = admitReferenceBenchmark(SEAT_REFERENCE_DATASET, "BACKREST-STATIC-2009");
     expect(staticBackrest.status).toBe("REQUIRES_ENGINEERING_REVIEW");
-    expect(staticBackrest.requiredInputs).toContain("SOURCE_GEOMETRY_DIMENSIONS");
+    expect(staticBackrest.requiredInputs).toEqual([
+      "SOURCE_GEOMETRY_DIMENSIONS",
+      "MATERIAL_GRADE_AND_CURVE",
+      "FIXTURE_COORDINATES",
+      "CONNECTION_PROPERTIES",
+      "MEASUREMENT_POINT_COORDINATES",
+      "PUBLISHED_ACCEPTANCE_TOLERANCE",
+    ]);
     const sustainability = admitReferenceBenchmark(SEAT_REFERENCE_DATASET, "DESIGNING-SUSTAINABILITY");
     expect(sustainability.status).toBe("REQUIRES_ENGINEERING_REVIEW");
     expect(sustainability.requiredInputs).toContain("DETAILED_GEOMETRY");

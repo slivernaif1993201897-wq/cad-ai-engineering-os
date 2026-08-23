@@ -99,3 +99,32 @@ No uploaded document supplies a complete single-study combination of dimensioned
 ### Applicability Decision
 
 `ssrn-5624455.pdf` is classified `NON_CAE_REFERENCE`. It contains no seat CAD geometry, material property, FE mesh, fixture, structural load, boundary condition, published structural result, or tolerance that can enter the Seat CAE dataset. It therefore cannot raise a benchmark level or authorize CAD/FE reconstruction.
+
+## Engineering Execution Gate — Strongest Single-Study Decision
+
+### Selected Reference
+
+The strongest single static Seat structural/FE source in the uploaded corpus is `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf`, *Car Seat Backrest Static Strength Experiment and Simulation*. It is the only directly applicable static backrest paper that supplies a documented FE idealization, a static load conversion, stress/displacement output, and paired experimental/FE stress results in one source. It is nevertheless **not a reconstructable reference model** because the publication does not disclose the source geometry, material card, coordinate-based fixtures, or measurement-point locations needed to reproduce the stated model.
+
+| Engineering input | Explicit evidence retained | Source location | Execution status |
+|---|---|---|---|
+| Geometry | Seat-frame FE idealization is described as shell and beam elements; steel plate and pipe are named qualitatively. No dimensions, profile sections, drawing, point coordinates, or CAD/FE artifact is supplied. | PDF p. 2, *Seats Static Strength Analysis Model* | `REQUIRED_INPUT: SOURCE_GEOMETRY_DIMENSIONS` |
+| Material | The paper requires material properties when building the model, but supplies no grade, modulus, Poisson ratio, density, yield value, or stress-strain curve for the analyzed frame. | PDF p. 2, *Seats Static Strength Analysis Model* | `REQUIRED_INPUT: MATERIAL_GRADE_AND_CURVE` |
+| Fixtures / boundaries | Constraints are stated to be exerted with reference to the real vehicle. The experiment evaluates connections to the floor, but gives neither fixture coordinates nor constrained degrees of freedom. | PDF p. 2, *Seats Static Strength Analysis Model*; PDF p. 3, *Seat Backrest Static Strength Experiment* | `REQUIRED_INPUT: FIXTURE_COORDINATES`; `REQUIRED_INPUT: BOUNDARY_DOF_REPRESENTATION` |
+| Load | 530 N·m torque based on the R-point in the horizontal rearward direction; converted by the paper to 1,058 N at the midpoint of the backrest-frame beam. R-point and beam-midpoint coordinates are not supplied. | PDF p. 3, *Experiment and Simulation Analysis*, Figure 3 | `REQUIRED_INPUT: R_POINT_COORDINATE`; `REQUIRED_INPUT: LOAD_APPLICATION_COORDINATE` |
+| Mesh | Shell and beam element families are explicit; the paper does not disclose element size, element/node count, mesh-quality metrics, or a mesh/solver-input file. | PDF p. 2, *Seats Static Strength Analysis Model* | `REQUIRED_INPUT: MESH_SPECIFICATION` |
+| Measurements | Figure 2 shows a measurement-point distribution and Table 1 gives stress values for points 1–16. Point locations, sensor orientation, and mapping to FE entities are absent. | PDF p. 3, Figure 2; PDF p. 4, Table 1 | `REQUIRED_INPUT: MEASUREMENT_POINT_COORDINATES`; `REQUIRED_INPUT: MEASUREMENT_MAPPING` |
+| Reference results | Maximum simulated stress: 254.9 MPa; maximum displacement: 17.68 mm; Table 1 reports 16 experimental/FE stress pairs; maximum observed error: 14.94%; average observed error: 8.83%. | PDF p. 4, *Experiment and Simulation Analysis*, Figure 4, Table 1 | Published comparison data only; no reconstructed model may be compared yet. |
+| Tolerance | The 14.94% and 8.83% values are reported observed errors, not a stated acceptance tolerance. | PDF p. 4, Table 1 and accompanying text | `REQUIRED_INPUT: PUBLISHED_ACCEPTANCE_TOLERANCE` |
+
+### Archive and Supplementary-Artifact Check
+
+`cad-ai-requirements-agent.zip` was inspected as an archive. It contains a prior mobile-project source tree and JSON/configuration files only; it contains **no** `.step`, `.stp`, `.iges`, `.igs`, `.stl`, `.obj`, `.msh`, `.inp`, `.k`, `.key`, `.bdf`, `.nas`, `.fem`, `.dat`, `.op2`, `.unv`, or other CAD/FE reconstruction artifact. `pasted_content.txt` is an instruction document, not engineering source data. No uploaded archive or PDF includes a separately importable CAD model, FE mesh, solver deck, material card, or supplemental geometry drawing.
+
+### Binary Outcome
+
+`REFERENCE_MODEL_EXECUTION = BLOCKED_BY_SOURCE_EVIDENCE`.
+
+The attempted reconstruction path therefore stops before CAD/FE construction. `GMSH`, independent mesh verification, `CalculiX`, result extraction, and reference comparison are **not executed**. Execution would require all of the following from this same static-backrest study or a cryptographically validated reference package for that study: `SOURCE_GEOMETRY_DIMENSIONS`, `MATERIAL_GRADE_AND_CURVE`, `FIXTURE_COORDINATES`, `BOUNDARY_DOF_REPRESENTATION`, `R_POINT_COORDINATE`, `LOAD_APPLICATION_COORDINATE`, `MESH_SPECIFICATION`, `MEASUREMENT_POINT_COORDINATES`, `MEASUREMENT_MAPPING`, and `PUBLISHED_ACCEPTANCE_TOLERANCE`.
+
+No values from DOT/FMVS 207, the modal Nastran study, the RADIOSS sustainability study, the dynamic integrated-belt study, regulations, ADAS research, or driver-behavior studies are combined with this reference. That would create a cross-study synthetic model rather than a defensible reference reconstruction.
