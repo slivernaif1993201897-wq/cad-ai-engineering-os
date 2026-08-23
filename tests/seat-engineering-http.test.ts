@@ -52,9 +52,29 @@ describe("seat engineering product API", () => {
     expect(seat.materials).toHaveLength(1);
     expect(seat.traceLinks.length).toBeGreaterThanOrEqual(4);
 
+    const revisionResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}/revisions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        description: "Successor revision updates the recliner load-path requirement.",
+        requirements: [{ requirementId: "SEAT-REQ-002", description: "The recliner bracket shall remain below the declared stress limit.", constraint: { stress: { value: 260, unit: "MPa" } }, verificationMethod: "CAE structural analysis" }],
+        materials: [{ name: "HSLA steel", specification: "EN 10268", properties: { yieldStrength: { value: 420, unit: "MPa" } }, validationStatus: "UNKNOWN" }],
+        components: [{ name: "Recliner bracket", componentType: "STRUCTURE", materialName: "HSLA steel", quantity: 1 }],
+      }),
+    });
+    expect(revisionResponse.status).toBe(201);
+    const revisedSeat = await revisionResponse.json() as { status: string; revisions: Array<{ id: string; revisionNumber: number }> };
+    expect(revisedSeat.status).toBe("REVIEW");
+    expect(revisedSeat.revisions).toHaveLength(2);
+    expect(revisedSeat.revisions[0].revisionNumber).toBe(2);
+
+    const blockedRelease = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}/revisions/${revisedSeat.revisions[0].id}/release`, { method: "POST", headers });
+    expect(blockedRelease.status).toBe(422);
+    await expect(blockedRelease.json()).resolves.toMatchObject({ error: "SEAT_RELEASE_REQUIRES_APPROVED_MATERIALS" });
+
     const listResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs`, { headers });
     expect(listResponse.status).toBe(200);
-    await expect(listResponse.json()).resolves.toMatchObject([{ id: seat.id, name: "Front seat assembly", status: "CONCEPT" }]);
+    await expect(listResponse.json()).resolves.toMatchObject([{ id: seat.id, name: "Front seat assembly", status: "REVIEW" }]);
 
     const reportResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}/report`, { headers });
     expect(reportResponse.status).toBe(200);

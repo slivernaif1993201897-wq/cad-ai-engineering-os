@@ -76,6 +76,61 @@ export async function createSeatDesign(args: Access & { input: SeatDesignInput }
   return getSeatDesign({ ...args, seatDesignId: designId });
 }
 
+export async function createSeatRevision(args: Access & { seatDesignId: string; input: Omit<SeatDesignInput, "name"> }) {
+  await authorize(args);
+  const db = await database();
+  const design = (await db.select().from(seatDesigns).where(and(eq(seatDesigns.projectId, args.projectId), eq(seatDesigns.id, args.seatDesignId))).limit(1))[0];
+  if (!design) throw new Error("SEAT_DESIGN_NOT_FOUND");
+  if (design.status === "RELEASED" || design.status === "ARCHIVED") throw new Error("SEAT_DESIGN_IMMUTABLE");
+  if (!args.input.description.trim() || !args.input.requirements.length || args.input.components.some((component) => !component.name.trim() || component.quantity < 1 || !Number.isInteger(component.quantity))) throw new Error("INVALID_SEAT_REVISION_INPUT");
+  const prior = await db.select().from(seatRevisions).where(and(eq(seatRevisions.projectId, args.projectId), eq(seatRevisions.seatDesignId, args.seatDesignId))).orderBy(desc(seatRevisions.revisionNumber));
+  const revisionId = id("SEAT_REVISION");
+  const createdAt = new Date();
+  const designSnapshotHash = hash({ seatDesignId: design.id, description: args.input.description, requirements: args.input.requirements, materials: args.input.materials, components: args.input.components });
+  await db.transaction(async (tx) => {
+    await tx.insert(seatRevisions).values({ id: revisionId, projectId: args.projectId, seatDesignId: design.id, revisionNumber: (prior[0]?.revisionNumber ?? 0) + 1, status: "DRAFT", description: args.input.description.trim(), designSnapshotHash, createdAt });
+    const materialIds = new Map<string, string>();
+    for (const material of args.input.materials) {
+      const materialId = id("SEAT_MATERIAL");
+      materialIds.set(material.name.trim().toLowerCase(), materialId);
+      await tx.insert(seatMaterials).values({ id: materialId, projectId: args.projectId, name: material.name.trim(), specification: material.specification.trim(), propertiesJson: JSON.stringify(material.properties), validationStatus: material.validationStatus, createdAt });
+      await tx.insert(seatTraceLinks).values({ id: id("SEAT_TRACE"), projectId: args.projectId, sourceType: "SEAT_REVISION", sourceId: revisionId, targetType: "MATERIAL", targetId: materialId, relationship: "SPECIFIES_MATERIAL", reason: "Successor revision material selection", evidenceJson: JSON.stringify({ designSnapshotHash }), createdAt });
+    }
+    for (const requirement of args.input.requirements) {
+      const requirementId = id("SEAT_REQUIREMENT");
+      await tx.insert(seatRequirements).values({ id: requirementId, projectId: args.projectId, seatDesignId: design.id, requirementId: requirement.requirementId.trim(), description: requirement.description.trim(), constraintJson: JSON.stringify(requirement.constraint), verificationMethod: requirement.verificationMethod.trim(), status: "OPEN", createdAt });
+      await tx.insert(seatTraceLinks).values({ id: id("SEAT_TRACE"), projectId: args.projectId, sourceType: "REQUIREMENT", sourceId: requirementId, targetType: "SEAT_REVISION", targetId: revisionId, relationship: "DRIVES_DESIGN", reason: "Declared requirement drives successor revision", evidenceJson: JSON.stringify({ requirementId: requirement.requirementId }), createdAt });
+    }
+    for (const component of args.input.components) {
+      const componentId = id("SEAT_COMPONENT");
+      const materialId = component.materialName ? materialIds.get(component.materialName.trim().toLowerCase()) : undefined;
+      await tx.insert(seatComponents).values({ id: componentId, projectId: args.projectId, seatRevisionId: revisionId, name: component.name.trim(), componentType: component.componentType.trim(), materialId: materialId ?? null, quantity: component.quantity, createdAt });
+      await tx.insert(seatTraceLinks).values({ id: id("SEAT_TRACE"), projectId: args.projectId, sourceType: "SEAT_REVISION", sourceId: revisionId, targetType: "COMPONENT", targetId: componentId, relationship: "CONTAINS_COMPONENT", reason: "Component declared in successor revision", evidenceJson: JSON.stringify({ quantity: component.quantity }), createdAt });
+    }
+  });
+  await db.update(seatDesigns).set({ status: design.status === "CONCEPT" ? "REVIEW" : design.status, updatedAt: createdAt }).where(and(eq(seatDesigns.projectId, args.projectId), eq(seatDesigns.id, design.id)));
+  return getSeatDesign(args);
+}
+
+export async function releaseSeatRevision(args: Access & { seatDesignId: string; revisionId: string }) {
+  await authorize(args);
+  const db = await database();
+  const revision = (await db.select().from(seatRevisions).where(and(eq(seatRevisions.projectId, args.projectId), eq(seatRevisions.seatDesignId, args.seatDesignId), eq(seatRevisions.id, args.revisionId))).limit(1))[0];
+  if (!revision) throw new Error("SEAT_REVISION_NOT_FOUND");
+  if (revision.status === "RELEASED") return getSeatDesign(args);
+  const components = await db.select().from(seatComponents).where(and(eq(seatComponents.projectId, args.projectId), eq(seatComponents.seatRevisionId, revision.id)));
+  const materials = await db.select().from(seatMaterials).where(eq(seatMaterials.projectId, args.projectId));
+  const statusByMaterial = new Map(materials.map((material) => [material.id, material.validationStatus]));
+  const requirements = await db.select().from(seatRequirements).where(and(eq(seatRequirements.projectId, args.projectId), eq(seatRequirements.seatDesignId, args.seatDesignId)));
+  if (!components.length || components.some((component) => !component.materialId || statusByMaterial.get(component.materialId) !== "VALID")) throw new Error("SEAT_RELEASE_REQUIRES_APPROVED_MATERIALS");
+  if (!requirements.length || requirements.some((requirement) => requirement.status !== "VERIFIED")) throw new Error("SEAT_RELEASE_REQUIRES_VERIFIED_REQUIREMENTS");
+  await db.transaction(async (tx) => {
+    await tx.update(seatRevisions).set({ status: "RELEASED" }).where(and(eq(seatRevisions.projectId, args.projectId), eq(seatRevisions.id, revision.id)));
+    await tx.update(seatDesigns).set({ status: "RELEASED", updatedAt: new Date() }).where(and(eq(seatDesigns.projectId, args.projectId), eq(seatDesigns.id, args.seatDesignId)));
+  });
+  return getSeatDesign(args);
+}
+
 export async function getSeatDesign(args: Access & { seatDesignId: string }) {
   await authorize(args);
   const db = await database();

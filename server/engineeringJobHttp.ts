@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 
 import { getEngineeringJob, listEngineeringJobs, submitEngineeringJob } from "./engineeringJob";
 import { openPersistentProject } from "./persistentMemory";
-import { createSeatDesign, createSeatEngineeringReport, getSeatDesign, listSeatDesigns } from "./seatEngineering";
+import { createSeatDesign, createSeatEngineeringReport, createSeatRevision, getSeatDesign, listSeatDesigns, releaseSeatRevision } from "./seatEngineering";
 
 type ProjectAccess = { projectId: string; accessKey: string };
 
@@ -93,6 +93,28 @@ export function registerEngineeringJobHttp(app: Express) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "SEAT_DESIGN_READ_FAILED";
       return res.status(isAccessFailure(message) ? 403 : message === "SEAT_DESIGN_NOT_FOUND" ? 404 : 503).json({ error: message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/seat-designs/:seatDesignId/revisions", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try {
+      return res.status(201).json(await createSeatRevision({ projectId: req.params.projectId, accessKey, seatDesignId: req.params.seatDesignId, input: req.body }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SEAT_REVISION_REJECTED";
+      return res.status(message === "PERSISTENT_DATABASE_REQUIRED" ? 503 : isAccessFailure(message) ? 403 : message === "SEAT_DESIGN_NOT_FOUND" ? 404 : 422).json({ error: message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/seat-designs/:seatDesignId/revisions/:revisionId/release", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try {
+      return res.json(await releaseSeatRevision({ projectId: req.params.projectId, accessKey, seatDesignId: req.params.seatDesignId, revisionId: req.params.revisionId }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SEAT_RELEASE_REJECTED";
+      return res.status(message === "PERSISTENT_DATABASE_REQUIRED" ? 503 : isAccessFailure(message) ? 403 : message.includes("NOT_FOUND") ? 404 : 422).json({ error: message });
     }
   });
 
