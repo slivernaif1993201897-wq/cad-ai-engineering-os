@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { signRuntimeEvidence } from "../../server/signedRuntimeEvidence";
@@ -38,7 +38,9 @@ async function main() {
     },
     resultHash: String(binding.resultHash),
   });
-  await writeFile(join(root, "provenance", "signed-runtime-evidence.json"), `${JSON.stringify(envelope, null, 2)}\n`, "utf8");
+  const provenanceDirectory = join(root, "provenance");
+  await mkdir(provenanceDirectory, { recursive: true });
+  await writeFile(join(provenanceDirectory, "signed-runtime-evidence.json"), `${JSON.stringify(envelope, null, 2)}\n`, "utf8");
 }
 
 main().catch((error) => { console.error(error instanceof Error ? error.message : "SIGNED_EVIDENCE_GENERATION_FAILED"); process.exitCode = 1; });
