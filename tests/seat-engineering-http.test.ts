@@ -72,6 +72,14 @@ describe("seat engineering product API", () => {
     expect(blockedRelease.status).toBe(422);
     await expect(blockedRelease.json()).resolves.toMatchObject({ error: "SEAT_RELEASE_REQUIRES_APPROVED_MATERIALS" });
 
+    const blockedVerification = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}/revisions/${revisedSeat.revisions[0].id}/verification`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ seatModel: { seatRevisionId: revisedSeat.revisions[0].id } }),
+    });
+    expect(blockedVerification.status).toBe(422);
+    await expect(blockedVerification.json()).resolves.toMatchObject({ error: "SEAT_VERIFICATION_REQUIRES_RELEASED_REVISION" });
+
     const listResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs`, { headers });
     expect(listResponse.status).toBe(200);
     await expect(listResponse.json()).resolves.toMatchObject([{ id: seat.id, name: "Front seat assembly", status: "REVIEW" }]);

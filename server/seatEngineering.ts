@@ -4,7 +4,8 @@ import { createHash } from "node:crypto";
 import { seatComponents, seatDesigns, seatMaterials, seatRequirements, seatRevisions, seatTraceLinks } from "../drizzle/schema";
 import { getEngineeringJob } from "./engineeringJob";
 import { getDb } from "./db";
-import { openPersistentProject } from "./persistentMemory";
+import { appendPersistentMemory, openPersistentProject, projectMemorySnapshot } from "./persistentMemory";
+import { buildSeatDesignVerificationCase, type SeatDesignVerificationCase, type SeatDesignVerificationRequest } from "./seatDesignVerification";
 
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -151,6 +152,52 @@ export async function getSeatDesign(args: Access & { seatDesignId: string }) {
   };
 }
 
+function readVerification(content: string): SeatDesignVerificationCase | undefined {
+  try {
+    const value = JSON.parse(content) as SeatDesignVerificationCase;
+    return value?.verificationId && value?.seatRevisionId && value?.cadArtifact?.artifactHash ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function createSeatDesignVerification(args: Access & { seatDesignId: string; revisionId: string; input: SeatDesignVerificationRequest }) {
+  await authorize(args);
+  const db = await database();
+  const revision = (await db.select().from(seatRevisions).where(and(eq(seatRevisions.projectId, args.projectId), eq(seatRevisions.seatDesignId, args.seatDesignId), eq(seatRevisions.id, args.revisionId))).limit(1))[0];
+  if (!revision) throw new Error("SEAT_REVISION_NOT_FOUND");
+  if (revision.status !== "RELEASED") throw new Error("SEAT_VERIFICATION_REQUIRES_RELEASED_REVISION");
+  if (args.input.seatModel.seatRevisionId !== revision.id) throw new Error("SEAT_VERIFICATION_REVISION_ID_MISMATCH");
+  const verification = await buildSeatDesignVerificationCase(args.input);
+  await appendPersistentMemory({
+    projectId: args.projectId,
+    accessKey: args.accessKey,
+    record: {
+      kind: "CAE_READINESS",
+      title: `Seat verification · ${verification.verificationId} · ${verification.state}`,
+      content: JSON.stringify(verification),
+      truthStatus: verification.state === "REQUIRED_INPUT" ? "UNVERIFIED" : "DERIVED",
+      validationStage: "GEOMETRICALLY_VALIDATED",
+      sourceRecordId: revision.id,
+      relatedConfigurationId: verification.cadArtifact.cadRevisionHash,
+      authorSource: "SYSTEM",
+    },
+  });
+  return verification;
+}
+
+export async function getSeatDesignVerification(args: Access & { seatDesignId: string; revisionId: string }) {
+  await authorize(args);
+  const db = await database();
+  const revision = (await db.select().from(seatRevisions).where(and(eq(seatRevisions.projectId, args.projectId), eq(seatRevisions.seatDesignId, args.seatDesignId), eq(seatRevisions.id, args.revisionId))).limit(1))[0];
+  if (!revision) throw new Error("SEAT_REVISION_NOT_FOUND");
+  const records = (await projectMemorySnapshot(args)).records;
+  return records
+    .filter((record) => record.kind === "CAE_READINESS" && record.sourceRecordId === revision.id)
+    .map((record) => readVerification(record.content))
+    .find((verification): verification is SeatDesignVerificationCase => Boolean(verification));
+}
+
 export async function listSeatDesigns(args: Access) {
   await authorize(args);
   const db = await database();
@@ -162,6 +209,8 @@ export async function createSeatEngineeringReport(args: Access & { seatDesignId:
   const seat = await getSeatDesign(args);
   const job = args.jobId ? await getEngineeringJob({ ...args, jobId: args.jobId }) : undefined;
   if (args.jobId && !job) throw new Error("ENGINEERING_JOB_NOT_FOUND");
+  const latestRevision = seat.revisions[0];
+  const verification = latestRevision ? await getSeatDesignVerification({ ...args, revisionId: latestRevision.id }) : undefined;
   return {
     reportId: id("SEAT_REPORT"),
     generatedAt: new Date().toISOString(),
@@ -176,6 +225,11 @@ export async function createSeatEngineeringReport(args: Access & { seatDesignId:
       runtimeEvidence: job.runtimeEvidence ?? null,
       resultAvailability: job.runtimeEvidence ? "VERIFIED_RESULT_AVAILABLE" : "VERIFIED_RESULT_UNAVAILABLE",
     } : null,
-    disclaimer: job?.runtimeEvidence ? "Runtime evidence is verified by the persisted canonical evidence source." : "No solver or result statement is made until a matching verified runtime-evidence record is reconciled.",
+    seatVerification: verification ?? null,
+    disclaimer: job?.runtimeEvidence
+      ? "Runtime evidence is verified by the persisted canonical evidence source."
+      : verification?.state === "REQUIRED_INPUT"
+        ? "The own-seat verification case is blocked by explicit required engineering inputs. No solver or validation claim is made."
+        : "No solver or result statement is made until a matching verified runtime-evidence record is reconciled.",
   };
 }

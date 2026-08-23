@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 
 import { getEngineeringJob, listEngineeringJobs, submitEngineeringJob } from "./engineeringJob";
 import { openPersistentProject } from "./persistentMemory";
-import { createSeatDesign, createSeatEngineeringReport, createSeatRevision, getSeatDesign, listSeatDesigns, releaseSeatRevision } from "./seatEngineering";
+import { createSeatDesign, createSeatDesignVerification, createSeatEngineeringReport, createSeatRevision, getSeatDesign, getSeatDesignVerification, listSeatDesigns, releaseSeatRevision } from "./seatEngineering";
 
 type ProjectAccess = { projectId: string; accessKey: string };
 
@@ -115,6 +115,29 @@ export function registerEngineeringJobHttp(app: Express) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "SEAT_RELEASE_REJECTED";
       return res.status(message === "PERSISTENT_DATABASE_REQUIRED" ? 503 : isAccessFailure(message) ? 403 : message.includes("NOT_FOUND") ? 404 : 422).json({ error: message });
+    }
+  });
+
+  app.post("/api/projects/:projectId/seat-designs/:seatDesignId/revisions/:revisionId/verification", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try {
+      return res.status(201).json(await createSeatDesignVerification({ projectId: req.params.projectId, accessKey, seatDesignId: req.params.seatDesignId, revisionId: req.params.revisionId, input: req.body }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SEAT_VERIFICATION_REJECTED";
+      return res.status(message === "PERSISTENT_DATABASE_REQUIRED" ? 503 : isAccessFailure(message) ? 403 : message.includes("NOT_FOUND") ? 404 : 422).json({ error: message });
+    }
+  });
+
+  app.get("/api/projects/:projectId/seat-designs/:seatDesignId/revisions/:revisionId/verification", async (req, res) => {
+    const accessKey = req.header("x-engineering-access-key")?.trim();
+    if (!accessKey) return sendAccessRequired(res);
+    try {
+      const verification = await getSeatDesignVerification({ projectId: req.params.projectId, accessKey, seatDesignId: req.params.seatDesignId, revisionId: req.params.revisionId });
+      return verification ? res.json(verification) : res.status(404).json({ error: "SEAT_VERIFICATION_NOT_FOUND" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SEAT_VERIFICATION_READ_FAILED";
+      return res.status(isAccessFailure(message) ? 403 : message.includes("NOT_FOUND") ? 404 : 503).json({ error: message });
     }
   });
 
