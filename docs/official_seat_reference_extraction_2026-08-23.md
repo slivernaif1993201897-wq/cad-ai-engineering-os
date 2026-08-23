@@ -128,3 +128,20 @@ The strongest single static Seat structural/FE source in the uploaded corpus is 
 The attempted reconstruction path therefore stops before CAD/FE construction. `GMSH`, independent mesh verification, `CalculiX`, result extraction, and reference comparison are **not executed**. Execution would require all of the following from this same static-backrest study or a cryptographically validated reference package for that study: `SOURCE_GEOMETRY_DIMENSIONS`, `MATERIAL_GRADE_AND_CURVE`, `FIXTURE_COORDINATES`, `BOUNDARY_DOF_REPRESENTATION`, `R_POINT_COORDINATE`, `LOAD_APPLICATION_COORDINATE`, `MESH_SPECIFICATION`, `MEASUREMENT_POINT_COORDINATES`, `MEASUREMENT_MAPPING`, and `PUBLISHED_ACCEPTANCE_TOLERANCE`.
 
 No values from DOT/FMVS 207, the modal Nastran study, the RADIOSS sustainability study, the dynamic integrated-belt study, regulations, ADAS research, or driver-behavior studies are combined with this reference. That would create a cross-study synthetic model rather than a defensible reference reconstruction.
+
+## Backrest Reference Model Recovery Search
+
+| Source inspected | File or URL | Search result | Recovered study-specific engineering input | Evidence type |
+|---|---|---|---|---|
+| Uploaded corpus | `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf`, PDF pp. 1–6 | Complete published article only. | The already recorded shell/beam idealization, 530 N·m / 1,058 N case, results, and Table 1 data. No attached CAD/FE deck, drawings, material card, fixture coordinates, mesh specification, or acceptance tolerance. | `EXPLICIT` for published statements; `MISSING` for reconstruction fields. |
+| Uploaded archive | `cad-ai-requirements-agent.zip` | Archive inventory contains a prior mobile application source tree and configuration files. | No `.step`, `.stp`, `.iges`, `.igs`, `.stl`, `.obj`, `.msh`, `.inp`, `.k`, `.key`, `.bdf`, `.nas`, `.fem`, `.dat`, `.op2`, `.unv`, or comparable engineering artifact. | `EXPLICIT` inventory finding. |
+| Publisher record | `https://www.scientific.net/AMM.16-19.178` | Article metadata, abstract, citation export, and paid/read-preview controls only. | No supplementary-data, model, CAD, FE, mesh, or test-file link. | `EXPLICIT` public-record finding. |
+| Publisher author record | `https://www.scientific.net/author-papers/hong-hong-zhang` | Lists only this publication for Hong Hong Zhang. | No author-provided data attachment, repository link, or model file. | `EXPLICIT` public-record finding. |
+| Author-facing publication record | `https://www.researchgate.net/publication/253141070_Car_Seat_Backrest_Static_Strength_Experiment_and_Simulation` | Public page reports “No full-text available”; it offers a request-full-text action only. | No full text, supplement, CAD/FE file, or measurement export exposed publicly. | `EXPLICIT` public-record finding. |
+| Cited thesis metadata | `http://223.220.252.164:888/KCMS/detail/detail.aspx?filename=2006155632.nh&dbcode=CMFD&dbname=CMFD2006` | Public abstract for H. H. Zhang’s 2006 Northeastern University thesis; full download redirects to authenticated login. | Abstract states a related automotive-seat model with 84,391 nodes and 82,679 elements and strain-gauge stress testing. The public abstract does not establish that it is the identical 2009 article model, and does not disclose geometry, material card, fixtures, coordinates, mesh size, or tolerance. This information is not imported into the 2009 reference case. | `EXPLICIT` metadata, but `NOT_ADMISSIBLE` for the 2009 case due to unproven identity and inaccessible full source. |
+
+### Recovery Outcome
+
+`MODEL_NOT_RECOVERABLE_WITH_CURRENT_EVIDENCE`.
+
+No unchanged CAD or FE artifact was discovered. The only potentially related extended source is the cited 2006 thesis metadata, but its public record neither supplies the required model files or reconstruction fields nor proves it is the exact 2009 backrest case. The authenticated-download boundary was not bypassed.
