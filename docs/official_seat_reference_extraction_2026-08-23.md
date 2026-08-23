@@ -33,3 +33,43 @@
 - Detailed UN Regulation No. 17 test clauses, if UN R17 compliance applicability is intended.
 
 > The extracted values are stored as source requirements only. They do not constitute a regulatory-compliance claim or authorize CalculiX execution until all listed required inputs are supplied and traceably bound.
+
+## Additional Study: Car Seat Backrest Static Strength Experiment and Simulation
+
+| Requirement ID | Source document | Section or page | Value | Unit | Applicability |
+|---|---|---:|---|---|---|
+| `BACKREST-FE-MODEL-001` | `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf` | PDF p. 2, *Seats Static Strength Analysis Model* | Seat-frame static model uses shell and beam elements; welded, bolted, and other connections are represented as rigid/beam connections. | N/A | Published study model; not the current OpenCascade compound seat geometry. |
+| `BACKREST-TEST-FIXTURE-001` | `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf` | PDF p. 2, *Seat Backrest Static Strength Experiment* | Test is developed under cited Chinese standards; this page does not supply fixture coordinates or CAD geometry. | N/A | Physical experiment reference only. |
+| `BACKREST-LOAD-001` | `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf` | PDF p. 3, *Experiment and Simulation Analysis* | A 530 Nm torque based on the R-point is imposed in a horizontal rearward direction; the published model converts it to a 1,058 N load at the backrest-frame beam midpoint. | Nm; N | Specific published Chinese-seat backrest model, not automatically applicable to the current seat geometry. |
+| `BACKREST-STRESS-001` | `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf` | PDF p. 4, *Experiment and Simulation Analysis* | Reported maximum simulated stress is 254.9 MPa at the angle-transfer-device/backrest connection. | MPa | Specific detailed Nastran model and material/yield assumptions; cannot transfer to current geometry without material and connection equivalence. |
+| `BACKREST-DISPLACEMENT-001` | `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf` | PDF p. 4, *Experiment and Simulation Analysis* | Reported maximum displacement is 17.68 mm at the strengthened board/upper backrest. | mm | Specific detailed Nastran model and fixture; no direct transfer to current geometry. |
+| `BACKREST-CORRELATION-001` | `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf` | PDF p. 4, Table 1 | Table reports maximum experiment-versus-simulation error of 14.94% and average error of 8.83% for its measured stresses. | percent | Published correlation data, but the measurement-point geometry and detailed model are not supplied in a directly importable form. |
+
+### Additional Required Inputs for Reuse of This Study
+
+- `SOURCE_SEAT_GEOMETRY_AND_CONNECTION_MODEL_EQUIVALENCE` between the published backrest and the current Seat CAD artifact.
+- `R_POINT_LOCATION_AND_BACKREST_BEAM_MIDPOINT_REGION` in the current Seat CAD coordinate system.
+- `MATERIAL_YIELD_LIMIT_AND_CONSTITUTIVE_PROPERTIES` for every modeled current-seat component.
+- `PUBLISHED_TEST_FIXTURE_COORDINATES_AND_BOUNDARY_REPRESENTATION`.
+- `MEASUREMENT_POINT_MAPPING` required to reproduce the Table 1 correlation metric.
+- `AUTHORITATIVE_ACCEPTANCE_DECISION` confirming that the published 530 Nm/1,058 N case is applicable to the current seat revision.
+
+## Additional Study: Integrated Safety Belts with Full-Scale Experiments
+
+| Requirement ID | Source document | Section or page | Value | Unit | Applicability |
+|---|---|---:|---|---|---|
+| `INTEGRATED-BELT-TEST-001` | `Evaluationoffiniteelementmodelsofseatstructureswithintegratedsafety.pdf` | PDF p. 2, abstract | FE models of simplified seats with integrated three-point belts are evaluated against full-scale experiments. | N/A | Dynamic integrated-belt/sled research; not a static current-seat reference. |
+| `INTEGRATED-BELT-OCCUPANT-001` | `Evaluationoffiniteelementmodelsofseatstructureswithintegratedsafety.pdf` | PDF p. 2, abstract | A 50th-percentile Hybrid III dummy is used as occupant. | N/A | Requires complete dummy, restraint, and dynamic-model data. |
+| `INTEGRATED-BELT-SLED-001` | `Evaluationoffiniteelementmodelsofseatstructureswithintegratedsafety.pdf` | PDF p. 3, Method | Study uses crash sled tests; sled support includes a foot plate and feet are fastened; no dashboard, steering wheel, or airbag is used. | N/A | Crash/sled scenario; unsupported by the existing static CalculiX seat path. |
+| `INTEGRATED-BELT-MASS-001` | `Evaluationoffiniteelementmodelsofseatstructureswithintegratedsafety.pdf` | PDF p. 3, Method | Complete sled, seat, dummy, and measurement equipment mass is approximately 2,115 kg. | kg | Published complete test rig, not current Seat CAD mass or load input. |
+
+### Applicability Decision
+
+The integrated-belt paper is classified `EXPERIMENTAL_REFERENCE` and `FE_MODEL_REFERENCE`, but `NOT_APPLICABLE` to the current static Seat CAE reference case. It requires a crash-sled/dummy/restraint/contact model and dynamic material behavior that the existing static Gmsh → CalculiX path does not implement. No values from this paper are used to admit static seat solver execution.
+
+### Classification of the New Studies
+
+| Document | Classification | Current static Seat CAE applicability |
+|---|---|---|
+| `CarSeatBackrestStaticStrengthExperimentandSimulation.pdf` | `EXPERIMENTAL_REFERENCE`, `FE_MODEL_REFERENCE`, `NUMERICAL_VALIDATION_REFERENCE` | Candidate published backrest reference only. Its detailed source geometry, fixture coordinates, material/yield data, and measurement-point mapping are absent for the current Seat CAD revision. |
+| `Evaluationoffiniteelementmodelsofseatstructureswithintegratedsafety.pdf` | `EXPERIMENTAL_REFERENCE`, `FE_MODEL_REFERENCE`, `NOT_APPLICABLE` | Dynamic integrated-belt crash-sled/dummy study. The current static solver configuration does not represent the documented dynamic test system. |
