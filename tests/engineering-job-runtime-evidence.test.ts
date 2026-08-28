@@ -31,7 +31,12 @@ async function admittedJob() {
   return { project, job };
 }
 
-function signedEnvelope(job: Awaited<ReturnType<typeof admittedJob>>["job"], overrides: Record<string, string> = {}) {
+function signedEnvelope(
+  project: Awaited<ReturnType<typeof admittedJob>>["project"],
+  job: Awaited<ReturnType<typeof admittedJob>>["job"],
+  overrides: Record<string, string> = {},
+  bindingOverrides: Record<string, string> = {},
+) {
   const now = new Date();
   return signRuntimeEvidence({
     version: "runtime-evidence/v1",
@@ -39,6 +44,16 @@ function signedEnvelope(job: Awaited<ReturnType<typeof admittedJob>>["job"], ove
     issuedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + 60_000).toISOString(),
     ...trust,
+    binding: {
+      projectId: project.id,
+      operationId: job.jobId,
+      runtimeAdmissionId: job.manifest!.manifestHash,
+      artifactIdentity: job.cad!.artifactHash,
+      engineIdentity: "test-calculix-runtime",
+      provenanceIdentity: "test-provenance",
+      lineageIdentity: "test-lineage",
+      ...bindingOverrides,
+    },
     artifactHashes: {
       jobId: job.jobId,
       manifestHash: job.manifest!.manifestHash,
@@ -56,28 +71,44 @@ function signedEnvelope(job: Awaited<ReturnType<typeof admittedJob>>["job"], ove
       ...overrides,
     },
     resultHash: overrides.resultHash ?? sha("solver-result-binding-test"),
-  }, key);
+  });
 }
 
 describe("engineering job trusted runtime evidence reconciliation", () => {
   it("completes an admitted job only after a cryptographically verified complete binding", async () => {
     process.env.RUNTIME_EVIDENCE_HMAC_KEY = key;
     const { project, job } = await admittedJob();
-    const result = await reconcileEngineeringJobRuntimeEvidence({ projectId: project.id, accessKey: project.accessKey, jobId: job.jobId, envelope: signedEnvelope(job), trust });
+    const result = await reconcileEngineeringJobRuntimeEvidence({ projectId: project.id, accessKey: project.accessKey, jobId: job.jobId, envelope: signedEnvelope(project, job), trust });
     expect(result).toMatchObject({ status: "RECONCILED", job: { state: "SUCCEEDED", runtimeEvidence: { meshHash: expect.stringMatching(/^[a-f0-9]{64}$/), calculixHash: expect.stringMatching(/^[a-f0-9]{64}$/) } } });
   }, 25_000);
 
   it("rejects a signed foreign job binding and keeps it from becoming a completed result", async () => {
     process.env.RUNTIME_EVIDENCE_HMAC_KEY = key;
     const { project, job } = await admittedJob();
-    const result = await reconcileEngineeringJobRuntimeEvidence({ projectId: project.id, accessKey: project.accessKey, jobId: job.jobId, envelope: signedEnvelope(job, { jobId: "FOREIGN-JOB" }), trust });
+    const result = await reconcileEngineeringJobRuntimeEvidence({ projectId: project.id, accessKey: project.accessKey, jobId: job.jobId, envelope: signedEnvelope(project, job, { jobId: "FOREIGN-JOB" }), trust });
+    expect(result).toEqual({ status: "BLOCKED", reason: "ENGINEERING_JOB_EVIDENCE_BINDING_MISMATCH" });
+  }, 25_000);
+
+  it("rejects a validly signed foreign CAD artifact binding before it can complete the admitted job", async () => {
+    process.env.RUNTIME_EVIDENCE_HMAC_KEY = key;
+    const { project, job } = await admittedJob();
+    const envelope = signedEnvelope(project, job, { cadArtifactHash: "f".repeat(64) }, { artifactIdentity: "f".repeat(64) });
+    const result = await reconcileEngineeringJobRuntimeEvidence({ projectId: project.id, accessKey: project.accessKey, jobId: job.jobId, envelope, trust });
+    expect(result).toEqual({ status: "BLOCKED", reason: "ENGINEERING_JOB_EVIDENCE_BINDING_MISMATCH" });
+  }, 25_000);
+
+  it("rejects a validly signed foreign project binding before it can complete the admitted job", async () => {
+    process.env.RUNTIME_EVIDENCE_HMAC_KEY = key;
+    const { project, job } = await admittedJob();
+    const envelope = signedEnvelope(project, job, {}, { projectId: "FOREIGN-PROJECT" });
+    const result = await reconcileEngineeringJobRuntimeEvidence({ projectId: project.id, accessKey: project.accessKey, jobId: job.jobId, envelope, trust });
     expect(result).toEqual({ status: "BLOCKED", reason: "ENGINEERING_JOB_EVIDENCE_BINDING_MISMATCH" });
   }, 25_000);
 
   it("rejects a replayed evidence envelope instead of recording duplicate runtime completion", async () => {
     process.env.RUNTIME_EVIDENCE_HMAC_KEY = key;
     const { project, job } = await admittedJob();
-    const envelope = signedEnvelope(job);
+    const envelope = signedEnvelope(project, job);
     await expect(reconcileEngineeringJobRuntimeEvidence({ projectId: project.id, accessKey: project.accessKey, jobId: job.jobId, envelope, trust })).resolves.toMatchObject({ status: "RECONCILED" });
     await expect(reconcileEngineeringJobRuntimeEvidence({ projectId: project.id, accessKey: project.accessKey, jobId: job.jobId, envelope, trust })).resolves.toEqual({ status: "BLOCKED", reason: "REPLAYED_EVIDENCE" });
   }, 25_000);

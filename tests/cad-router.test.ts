@@ -10,9 +10,9 @@ const ctx = {
 } as TrpcContext;
 
 describe("cad.generateMountingBlock", () => {
-  it("exposes validated kernel evidence through the mobile API", async () => {
+  it("fails closed because direct geometry generation has been retired pending executor migration", async () => {
     const caller = appRouter.createCaller(ctx);
-    const result = await caller.cad.generateMountingBlock({
+    await expect(caller.cad.generateMountingBlock({
       input: {
         width: 100,
         depth: 50,
@@ -23,9 +23,6 @@ describe("cad.generateMountingBlock", () => {
         approveAssumption: true,
       },
       prompt: "Create the verified mounting block.",
-    });
-
-    expect(result.artifact?.validationStatus).toBe("VALID");
-    expect(result.artifact?.stepByteLength).toBeGreaterThan(0);
+    })).rejects.toThrow("MOUNTING_BLOCK_DIRECT_EXECUTION_RETIRED");
   });
 });

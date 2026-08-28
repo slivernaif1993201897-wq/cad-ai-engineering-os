@@ -6,6 +6,7 @@ import { applyRequirementRevision, parseRequirements } from "./requirementsAgent
 import type { MountingBlockInput } from "../shared/cad";
 import type { CADAgentResult, CADConfiguration, CADExport, CADModelStatus } from "../shared/cadAgent";
 import type { RequirementSet } from "../shared/requirements";
+import { runWithOpenCascadeAdmission } from "./runtimeAdmission";
 
 const configurations = new Map<string, CADConfiguration>();
 
@@ -66,7 +67,7 @@ export async function createMountingBlockConfiguration(args: {
   }
   if (configurations.has(id)) return conceptualResult(baseConfiguration, `Configuration ${id} already exists; create a new configuration name rather than overwriting it.`);
 
-  const kernelResult = await generateMountingBlock(args.input, canonicalMountingPrompt(args.input));
+  const kernelResult = await runWithOpenCascadeAdmission({ projectId: id, resourceClass: "CAD_AUTHORING" }, () => generateMountingBlock(args.input, canonicalMountingPrompt(args.input)));
   const modelStatus: CADModelStatus = kernelResult.artifact?.validationStatus === "VALID" && kernelResult.viewerMesh ? "VALIDATED" : "INVALID";
   plan.model_status = modelStatus;
   plan.features = plan.features.map((feature) => ({
@@ -102,7 +103,7 @@ export async function reviseMountingBlockConfiguration(args: {
     configurations.set(id, conceptualConfiguration);
     return conceptualResult(conceptualConfiguration, initialReview.gate === "BLOCKED" ? `CAD Agent stopped: ${initialReview.verdictReason}` : `CAD Agent stopped: RequirementSet is ${revisedRequirementSet.validation_status}.`);
   }
-  const kernelResult = await generateMountingBlock(input, canonicalMountingPrompt(input));
+  const kernelResult = await runWithOpenCascadeAdmission({ projectId: id, resourceClass: "CAD_AUTHORING" }, () => generateMountingBlock(input, canonicalMountingPrompt(input)));
   const modelStatus: CADModelStatus = kernelResult.artifact?.validationStatus === "VALID" && kernelResult.viewerMesh ? "VALIDATED" : "INVALID";
   plan.model_status = modelStatus;
   plan.revision = revision;
@@ -131,7 +132,7 @@ export async function previewMountingBlockConfiguration(args: {
   const initialReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: previewId });
   const base: CADConfiguration = { id: previewId, name: `${previous.name} · Preview`, revision: previous.revision + 1, createdAt: new Date().toISOString(), sourceText, input, requirementSet, engineeringReview: initialReview, plan, modelStatus: "CONCEPTUAL" };
   if (requirementSet.validation_status !== "VALIDATED" || initialReview.gate === "BLOCKED") return conceptualResult(base, initialReview.gate === "BLOCKED" ? `Proposal preview blocked: ${initialReview.verdictReason}` : `Proposal preview remains conceptual because RequirementSet is ${requirementSet.validation_status}.`);
-  const kernelResult = await generateMountingBlock(input, canonicalMountingPrompt(input));
+  const kernelResult = await runWithOpenCascadeAdmission({ projectId: previewId, resourceClass: "CAD_AUTHORING" }, () => generateMountingBlock(input, canonicalMountingPrompt(input)));
   const modelStatus: CADModelStatus = kernelResult.artifact?.validationStatus === "VALID" && kernelResult.viewerMesh ? "VALIDATED" : "INVALID";
   plan.model_status = modelStatus; plan.revision = base.revision;
   plan.features = plan.features.map((feature) => ({ ...feature, executionStatus: modelStatus === "VALIDATED" ? "EXECUTED" : "FAILED" }));
@@ -162,7 +163,7 @@ export async function executeMountingBlockConfigurationAtomically(args: {
   const initialReview = runRuthlessEngineeringReview({ sourceText, geometryStatus: "NOT_GENERATED", requirementSetId: requirementSet.id, configurationId: id });
   const base: CADConfiguration = { id, name: args.name, revision, createdAt: new Date().toISOString(), sourceText, input, requirementSet, engineeringReview: initialReview, plan, modelStatus: "CONCEPTUAL" };
   if (requirementSet.validation_status !== "VALIDATED" || initialReview.gate === "BLOCKED") return conceptualResult(base, initialReview.gate === "BLOCKED" ? `Kernel execution blocked before start: ${initialReview.verdictReason}` : `Kernel execution blocked before start because RequirementSet is ${requirementSet.validation_status}.`);
-  const kernelResult = await generateMountingBlock(input, canonicalMountingPrompt(input));
+  const kernelResult = await runWithOpenCascadeAdmission({ projectId: id, resourceClass: "CAD_AUTHORING" }, () => generateMountingBlock(input, canonicalMountingPrompt(input)));
   const modelStatus: CADModelStatus = kernelResult.artifact?.validationStatus === "VALID" && kernelResult.viewerMesh ? "VALIDATED" : "INVALID";
   plan.model_status = modelStatus; plan.revision = revision;
   plan.features = plan.features.map((feature) => ({ ...feature, executionStatus: modelStatus === "VALIDATED" ? "EXECUTED" : "FAILED" }));

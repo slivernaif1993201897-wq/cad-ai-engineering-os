@@ -7,6 +7,7 @@ import { admitCadAgentRuntimeJob, buildCadAgentRuntimeManifest, calculateCadRevi
 import type { EngineeringJob, EngineeringJobComposition, EngineeringJobEvent, EngineeringJobRequest } from "../shared/engineeringJob";
 import { verifyRuntimeEvidence, type RuntimeEvidenceTrust, type SignedRuntimeEvidenceEnvelope } from "./signedRuntimeEvidence";
 import { readAuthoritativeRuntimeEvidence } from "./runtimeEvidenceApi";
+import { executeAuthorizedMountingBlock } from "./sourceLessCadExecution";
 
 type Access = { projectId: string; accessKey: string };
 const now = () => new Date().toISOString();
@@ -30,14 +31,16 @@ function event(state: EngineeringJob["state"], reason: string, evidenceReference
  * It deliberately cannot invoke shell, Gmsh, CalculiX, or arbitrary executables; execution belongs only
  * to the existing admitted GitHub/Docker runtime workflow.
  */
-export async function composeEngineeringJobRequest(request: EngineeringJobRequest): Promise<EngineeringJobComposition> {
+export async function composeEngineeringJobRequest(args: Access & { request: EngineeringJobRequest }): Promise<EngineeringJobComposition> {
+  const request = args.request;
   const cad = await createMountingBlockConfiguration({ name: request.name, input: request.mountingBlock, sourceText: request.sourceText });
   if (cad.error || cad.configuration.requirementSet.validation_status !== "VALIDATED") throw new Error(`REQUIREMENTS_NOT_VALIDATED:${cad.error ?? cad.configuration.requirementSet.validation_status}`);
   if (cad.configuration.modelStatus !== "VALIDATED" || cad.configuration.artifact?.validationStatus !== "VALID") throw new Error(`CAD_AGENT_ARTIFACT_NOT_VALIDATED:${cad.configuration.modelStatus}`);
   const stepExport = getValidatedStepExport(cad.configuration.id);
   const stepBytes = Buffer.from(stepExport.stepBase64, "base64");
+  const mountingExecution = await executeAuthorizedMountingBlock({ projectId: args.projectId, accessKey: args.accessKey, configurationId: cad.configuration.id, parameters: { width: cad.configuration.input.width, depth: cad.configuration.input.depth, height: cad.configuration.input.height, holeDiameter: cad.configuration.input.holeDiameter, holeEdgeOffset: cad.configuration.input.holeEdgeOffset, filletRadius: cad.configuration.input.filletRadius }, stepBytes, generatorHash: hash(stepBytes) });
   const cadRevisionHash = calculateCadRevisionHash(cad.configuration);
-  const cadArtifactHash = hash(stepBytes);
+  const cadArtifactHash = mountingExecution.completion.artifact.sha256;
   const caeConfiguration = buildAuthorizedRuntimeCAEConfiguration({
     cadRevision: cad.configuration.id,
     cadRevisionHash,
@@ -58,7 +61,7 @@ export async function submitEngineeringJob(args: Access & { request: Engineering
   try {
     lifecycle.push(event("VALIDATING", "Requirements Agent validation started."));
     lifecycle.push(event("CAD_GENERATING", "OpenCascade CAD Agent generation started."));
-    const composition = await composeEngineeringJobRequest(args.request);
+    const composition = await composeEngineeringJobRequest({ projectId: args.projectId, accessKey: args.accessKey, request: args.request });
     lifecycle.push(event("CAD_VALIDATED", "Validated STEP artifact produced by OpenCascade.", [composition.configuration.id, composition.stepExport.fileName]));
     lifecycle.push(event("CAE_CONFIGURED", "CAE Agent configuration cryptographically bound to the CAD revision and artifact.", [composition.caeConfiguration.caeConfigurationHash]));
     lifecycle.push(event("ADMITTED", "Immutable manifest admitted to the fixed authoritative Docker runtime boundary.", [composition.manifest.manifestHash]));
@@ -112,7 +115,11 @@ async function reconcileVerifiedEngineeringJobRuntimeEvidence(args: Access & { j
     && hashes.cadRevisionHash === job.cad.revisionHash
     && hashes.cadArtifactHash === job.cad.artifactHash
     && hashes.caeConfigurationHash === job.caeConfiguration.caeConfigurationHash
-    && hashes.resultHash === evidence.resultHash;
+    && hashes.resultHash === evidence.resultHash
+    && evidence.binding.projectId === args.projectId
+    && evidence.binding.operationId === job.jobId
+    && evidence.binding.runtimeAdmissionId === job.manifest.manifestHash
+    && evidence.binding.artifactIdentity === job.cad.artifactHash;
   if (!matches) {
     await persistEvent(args, job, event("SECURITY_BLOCKED", "Runtime evidence binding does not match the admitted engineering job."), job.cad.revisionId);
     return { status: "BLOCKED", reason: "ENGINEERING_JOB_EVIDENCE_BINDING_MISMATCH" };
@@ -160,6 +167,15 @@ function verifiedEvidence() {
     environmentIdentity: "",
     commit: "",
     workflowRun: "",
+    binding: {
+      projectId: "",
+      operationId: "",
+      runtimeAdmissionId: "",
+      artifactIdentity: "",
+      engineIdentity: "",
+      provenanceIdentity: "",
+      lineageIdentity: "",
+    },
     artifactHashes: {} as Record<string, string>,
     evidenceHash: "",
     resultHash: "",

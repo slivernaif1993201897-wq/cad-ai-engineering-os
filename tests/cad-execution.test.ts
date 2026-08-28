@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { TrpcContext } from "../server/_core/context";
 import { appRouter } from "../server/routers";
+import { createMountingBlockConfiguration } from "../server/cadAgent";
 
 const ctx = { user: null, req: { protocol: "https", headers: {} }, res: {} } as TrpcContext;
 const mountingInput = { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true };
@@ -10,7 +11,7 @@ const prompt = "Create a 100 mm x 50 mm x 20 mm mounting block with four 10 mm h
 describe("Phase 4.5 controlled CAD Execution Engine", () => {
   it("plans, previews, applies, validates, and persists an immutable real-kernel parameter revision only after approval", async () => {
     const caller = appRouter.createCaller(ctx); const project = await caller.persistentMemory.openProject({ name: "CAD execution real kernel" });
-    const created = await caller.cadAgent.createConfiguration({ name: `Execution ${Date.now()}`, input: mountingInput, sourceText: prompt });
+    const created = await createMountingBlockConfiguration({ name: `Execution ${Date.now()}`, input: mountingInput, sourceText: prompt });
     const plan = await caller.cadExecution.plan({ projectId: project.id, accessKey: project.accessKey, configurationId: created.configuration.id, requestedParameter: { name: "width", value: 120, unit: "mm" } });
     expect(plan).toMatchObject({ operationType: "SET_MOUNTING_BLOCK_PARAMETER", state: "DRAFT", provenance: "INFERRED" });
     expect(plan.parameters[0]).toMatchObject({ name: "width", priorValue: 100, value: 120, unit: "mm" });
@@ -32,7 +33,7 @@ describe("Phase 4.5 controlled CAD Execution Engine", () => {
 
   it("blocks invalid parameters and imported opaque references before execution, preserves the source, exposes recovery, and records no false success", async () => {
     const caller = appRouter.createCaller(ctx); const project = await caller.persistentMemory.openProject({ name: "CAD execution invalids" });
-    const created = await caller.cadAgent.createConfiguration({ name: `Invalid ${Date.now()}`, input: mountingInput, sourceText: prompt }); const before = await caller.cadAgent.listConfigurations();
+    const created = await createMountingBlockConfiguration({ name: `Invalid ${Date.now()}`, input: mountingInput, sourceText: prompt }); const before = await caller.cadAgent.listConfigurations();
     const invalid = await caller.cadExecution.plan({ projectId: project.id, accessKey: project.accessKey, configurationId: created.configuration.id, requestedParameter: { name: "width", value: 0, unit: "mm" } });
     const invalidPreview = await caller.cadExecution.preview({ projectId: project.id, accessKey: project.accessKey, operationId: invalid.operationId });
     expect(invalid).toMatchObject({ state: "OPERATION_INVALID", issue: { code: "OPERATION_INVALID", invalidParameter: "width" } }); expect(invalidPreview.preview.state).toBe("OPERATION_INVALID");
@@ -48,7 +49,7 @@ describe("Phase 4.5 controlled CAD Execution Engine", () => {
 
   it("supports explicit reject, proposal-to-plan conversion, prevents applying without preview, and enforces project capability isolation", async () => {
     const caller = appRouter.createCaller(ctx); const project = await caller.persistentMemory.openProject({ name: "CAD execution control" }); const other = await caller.persistentMemory.openProject({ name: "CAD execution other" });
-    const created = await caller.cadAgent.createConfiguration({ name: `Control ${Date.now()}`, input: mountingInput, sourceText: prompt });
+    const created = await createMountingBlockConfiguration({ name: `Control ${Date.now()}`, input: mountingInput, sourceText: prompt });
     const plan = await caller.cadExecution.plan({ projectId: project.id, accessKey: project.accessKey, configurationId: created.configuration.id, proposal: { id: "PROPOSAL-WIDTH", parameters: [{ name: "width", after: "125", unit: "mm" }] } });
     await expect(caller.cadExecution.applyOperation({ projectId: project.id, accessKey: project.accessKey, operationId: plan.operationId })).rejects.toThrow(/PREVIEW_READY/);
     const rejected = await caller.cadExecution.reject({ projectId: project.id, accessKey: project.accessKey, operationId: plan.operationId });

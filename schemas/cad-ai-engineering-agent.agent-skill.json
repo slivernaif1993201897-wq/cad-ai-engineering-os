@@ -1,0 +1,43 @@
+{
+  "name": "cad-ai-engineering-agent",
+  "type": "agent-skill",
+  "description": "تحليل المتطلبات الهندسية والتقنية المعقدة وتحويلها إلى مواصفات تنفيذية دقيقة، وخطط بناء، وأوامر برمجية قابلة للتنفيذ لتطوير CAD-AGENT وCAD-AI Engineering OS، مع التحقق من التكامل بين AI وCAD وCAE وCAM وقواعد البيانات والواجهات البرمجية، ومنع الحلول الوهمية أو غير القابلة للتنفيذ.",
+  "url": "https://awamer.ai/.well-known/agent-skills/cad-ai-engineering-agent/SKILL.md",
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Building a CAD-AI Engineering Agent",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "cad_ai_engineering_os_cad_agent_manus_cad_step_stl_dxf_api",
+      "revision",
+      "cad_cae_cam",
+      "ai_cad_cae_cam_ui_bypass"
+    ],
+    "properties": {
+      "cad_ai_engineering_os_cad_agent_manus_cad_step_stl_dxf_api": {
+        "type": "string",
+        "description": "متطلبات CAD-AI Engineering OS، مواصفات CAD-AGENT، كود المصدر، بنية المشروع، تقارير Manus، نتائج الاختبارات، سجلات الأخطاء، ملفات CAD/STEP/STL/DXF، مخططات المعمارية، واجهات API، قرارات التصميم السابقة، ومعايير القبول الهندسية."
+      },
+      "revision": {
+        "type": "string",
+        "description": "تاريخية + الحالة الحالية + آخر نسخة/Revision متاحة للمشروع، مع إعطاء الأولوية لأحدث حالة موثقة."
+      },
+      "cad_cae_cam": {
+        "type": "string",
+        "description": "المستخدمون الهندسيون: مهندسو CAD/CAE/CAM، مهندسو التصميم الميكانيكي، مهندسو السيارات، المطورون، مهندسو الذكاء الاصطناعي، وفرق الهندسة والتصنيع."
+      },
+      "ai_cad_cae_cam_ui_bypass": {
+        "type": "string",
+        "description": "تحليل المتطلبات والمشكلات التقنية والهندسية، اكتشاف الفجوات والتناقضات ونقاط الفشل، تحديد ما هو منفذ فعليًا وما هو ناقص أو وهمي، وتحويل النتائج إلى مواصفات تنفيذية وأوامر تطوير واختبارات ومعايير قبول قابلة للتحقق، مع الحفاظ على التكامل بين AI وCAD وCAE وCAM وقاعدة البيانات والـ UI ومنع أي bypass أو تنفيذ غير موثق."
+      }
+    }
+  },
+  "metadata": {
+    "humanName": "Building a CAD-AI Engineering Agent",
+    "category": "برمجة وتطوير",
+    "language": "ar",
+    "outputFormat": "code-spec",
+    "provider": "awamer.ai"
+  }
+}

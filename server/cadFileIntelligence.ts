@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import initOpenCascade from "opencascade.js/dist/node.js";
+import { importDxf, validateDesign2D } from "./cad2d";
 
 import { engineeringCadFiles } from "../drizzle/schema";
 import {
@@ -19,6 +20,7 @@ import {
 import { appendPersistentMemory, openPersistentProject } from "./persistentMemory";
 import { getDb } from "./db";
 import { storagePut } from "./storage";
+import { storageGetSignedUrl } from "./storage";
 
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 let kernelPromise: ReturnType<typeof initOpenCascade> | undefined;
@@ -35,7 +37,7 @@ function parserFailure(status: Extract<CADFileParserStatus, "PARSE_FAILED" | "CO
 }
 function normalizedName(name: string) { return name.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").slice(0, 255) || "unnamed"; }
 function extension(name: string) { return name.toLowerCase().split(".").pop() ?? ""; }
-function formatFromName(name: string): CADFileFormat { const ext = extension(name); return ext === "step" || ext === "stp" ? "STEP" : ext === "stl" ? "STL" : "UNSUPPORTED"; }
+export function formatFromName(name: string): CADFileFormat { const ext = extension(name); return ext === "step" || ext === "stp" ? "STEP" : ext === "stl" ? "STL" : ext === "dxf" ? "DXF" : "UNSUPPORTED"; }
 function opaqueId(value: string) { return value.replace(/[^a-zA-Z0-9_-]/g, "_"); }
 function safeBase64(input: string): Buffer {
   const raw = input.replace(/\s/g, "");
@@ -139,7 +141,16 @@ function parseStl(bytes: Buffer): ParseOutcome {
   const stl: StlGeometryStatistics = { triangles: property(parsed.triangles.length, "PARSED"), surfaceArea: property(surfaceArea, "CALCULATED"), signedVolume: watertight ? property(Math.abs(signedVolume), "CALCULATED") : property<number>(undefined, "UNKNOWN", "Volume is withheld because the edge-incidence calculation did not confirm a watertight mesh."), watertight: property(watertight, "CALCULATED"), normals: property(parsed.normalsPresent ? "PRESENT" : "UNAVAILABLE", "PARSED") };
   return { format: "STL", parser: "Native STL Scanner", parserVersion: "Phase 3.9", parseStatus: "PARSED", validationStatus: "VALID", units: { status: "UNKNOWN", provenance: "UNKNOWN", note: "STL does not carry a reliable universal unit declaration." }, boundingBox: bbox(points), stl, limitations: ["STL is a triangle mesh; feature history, solids, assemblies, materials, and exact CAD surfaces are not present.", "Watertight status is derived from coordinate-matched triangle edge incidence and does not certify manufacturability or physical integrity."] };
 }
-export async function parseCadFileBytes(fileName: string, bytes: Buffer): Promise<ParseOutcome> { const format = formatFromName(fileName); if (format === "UNSUPPORTED") return parserFailure("UNSUPPORTED", format, `.${extension(fileName) || "unknown"} is not a Phase 3.9 geometry parser target.`, "Upload STEP/STP or STL, or retain the file as unsupported metadata only."); return format === "STEP" ? parseStep(bytes) : parseStl(bytes); }
+function parseDxf(bytes: Buffer): ParseOutcome {
+  try {
+    const design = importDxf(bytes);
+    const validation = validateDesign2D(design);
+    if (validation.status !== "PASS") return parserFailure("PARSE_FAILED", "DXF", validation.failures.join(", "), "Upload a supported LINE/CIRCLE DXF design with a closed outer profile and valid millimetre entities.");
+    const points: Array<[number, number, number]> = design.entities.flatMap((entity) => entity.type === "LINE" ? [[entity.x1, entity.y1, 0], [entity.x2, entity.y2, 0]] : [[entity.cx - entity.radius, entity.cy - entity.radius, 0], [entity.cx + entity.radius, entity.cy + entity.radius, 0]]);
+    return { format: "DXF", parser: "NONE", parserVersion: "CAD2D DXF subset", parseStatus: "PARSED", validationStatus: "VALID", units: { status: "KNOWN", value: "mm", provenance: "PARSED" }, boundingBox: bbox(points), limitations: ["Only LINE and CIRCLE entities are admitted by the authoritative DXF subset parser.", "No CAM toolpath, machining, tolerance, material, or manufacturability result is claimed from DXF validation."] };
+  } catch (error) { return parserFailure("PARSE_FAILED", "DXF", error instanceof Error ? error.message : "DXF parse failed.", "Upload a supported LINE/CIRCLE DXF design."); }
+}
+export async function parseCadFileBytes(fileName: string, bytes: Buffer): Promise<ParseOutcome> { const format = formatFromName(fileName); if (format === "UNSUPPORTED") return parserFailure("UNSUPPORTED", format, `.${extension(fileName) || "unknown"} is not a Phase 3.9 geometry parser target.`, "Upload STEP/STP, STL, or a supported LINE/CIRCLE DXF file, or retain the file as unsupported metadata only."); return format === "STEP" ? parseStep(bytes) : format === "STL" ? parseStl(bytes) : parseDxf(bytes); }
 function rowToContext(row: typeof engineeringCadFiles.$inferSelect): CADFileContext { return JSON.parse(row.contextJson) as CADFileContext; }
 async function authorize(projectId: string, accessKey: string) { return openPersistentProject({ name: "", projectId, accessKey }); }
 async function database() { const db = await getDb(); if (!db) throw new Error("CAD file intelligence database is unavailable; no session-only file fallback is used."); return db; }
@@ -157,5 +168,16 @@ export async function ingestCadFile(input: CADFileUploadInput): Promise<CADFileU
 }
 export async function listCadFiles(args: { projectId: string; accessKey: string; conversationId?: string; includeRemoved?: boolean }) { await authorize(args.projectId, args.accessKey); const db = await database(); const rows = await db.select().from(engineeringCadFiles).where(eq(engineeringCadFiles.projectId, args.projectId)).orderBy(desc(engineeringCadFiles.createdAt)); return rows.filter((row) => (args.includeRemoved || !row.removedAt) && (!args.conversationId || row.conversationId === args.conversationId)).map(rowToContext); }
 export async function getCadFileContext(args: { projectId: string; accessKey: string; fileId: string }) { await authorize(args.projectId, args.accessKey); const db = await database(); const rows = await db.select().from(engineeringCadFiles).where(and(eq(engineeringCadFiles.projectId, args.projectId), eq(engineeringCadFiles.id, args.fileId))).limit(1); if (!rows[0] || rows[0].removedAt) throw new Error("CAD file is not available in the authorized project."); return rowToContext(rows[0]); }
+export async function loadVerifiedCadFileBytes(args: { projectId: string; accessKey: string; fileId: string }) {
+  const file = await getCadFileContext(args);
+  const signedUrl = await storageGetSignedUrl(file.storage.key);
+  const response = await fetch(signedUrl);
+  if (!response.ok) throw new Error(`Managed CAD source retrieval failed (${response.status}).`);
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length !== file.fileSizeBytes) throw new Error("Managed CAD source byte length does not match the persisted artifact context.");
+  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  if (sha256 !== file.sha256) throw new Error("Managed CAD source SHA-256 does not match the persisted artifact context.");
+  return { file, bytes };
+}
 export async function removeCadFile(args: { projectId: string; accessKey: string; fileId: string }) { const context = await getCadFileContext(args); const db = await database(); const removed = { ...context, parseStatus: "REMOVED" as const, validationStatus: "UNKNOWN" as const, limitations: [...context.limitations, "The project reference was removed. Managed object storage does not expose a direct delete operation in this environment." ] }; await db.update(engineeringCadFiles).set({ removedAt: new Date(), parseStatus: "REMOVED", validationStatus: "UNKNOWN", contextJson: JSON.stringify(removed) }).where(and(eq(engineeringCadFiles.projectId, args.projectId), eq(engineeringCadFiles.id, args.fileId))); return removed; }
 export async function analyzeCadFile(args: { projectId: string; accessKey: string; fileId: string }): Promise<CADFileAnalysisContext> { const file = await getCadFileContext(args); const facts = [file.format, file.boundingBox ? `Bounding box: ${file.boundingBox.size.join(" × ")} (${file.boundingBox.provenance}).` : "Bounding box: UNKNOWN.", file.step ? `Topology: ${file.step.solids.value ?? 0} solids, ${file.step.faces.value ?? 0} faces, ${file.step.edges.value ?? 0} edges.` : file.stl ? `Mesh: ${file.stl.triangles.value ?? 0} triangles; watertight: ${file.stl.watertight.value ?? "UNKNOWN"}.` : "Geometry statistics: UNKNOWN."]; return { file, facts, inferences: ["No design-strength, mass, manufacturability, or safety inference is asserted from file parsing alone."], unknowns: file.limitations, requiresCAE: ["Structural performance, loads, stresses, vibration, fatigue, thermal behavior, and optimization require a future CAE workflow."], requiresPhysicalTesting: ["Safety, regulatory compliance, material properties, durability, and manufacturing qualification require physical evidence." ] }; }

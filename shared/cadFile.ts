@@ -1,9 +1,9 @@
 import type { EngineeringTruthStatus } from "./engineeringTruth";
 
 export const CAD_FILE_MAX_BYTES = 10 * 1024 * 1024;
-export const CAD_FILE_SUPPORTED_EXTENSIONS = ["step", "stp", "stl"] as const;
+export const CAD_FILE_SUPPORTED_EXTENSIONS = ["step", "stp", "stl", "dxf"] as const;
 
-export type CADFileFormat = "STEP" | "STL" | "UNSUPPORTED";
+export type CADFileFormat = "STEP" | "STL" | "DXF" | "UNSUPPORTED";
 export type CADFileParserStatus = "UPLOADED" | "VALIDATING" | "PARSED" | "PARTIALLY_PARSED" | "PARSE_FAILED" | "UNSUPPORTED" | "CORRUPTED" | "REMOVED";
 export type CADFileProvenance = "PARSED" | "CALCULATED" | "INFERRED" | "ASSUMED" | "UNKNOWN";
 export type CADFileUnitsStatus = "KNOWN" | "UNKNOWN" | "ASSUMED";

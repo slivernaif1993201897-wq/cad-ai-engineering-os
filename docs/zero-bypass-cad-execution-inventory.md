@@ -1,0 +1,23 @@
+# Zero-Bypass CAD Execution Inventory
+
+**Audit date:** 25 August 2026. **Basis:** full source-tree inventory plus the current Common Feature Executor implementation. A path is not marked compliant because it has a route, UI, type check, or prior test; the classification below describes the active architecture boundary.
+
+| Path ID | File / function | Operation | Mutates geometry or creates CAD artifact | Executor used | Status | Evidence and repair state |
+|---|---|---|---|---|---|---|
+| CAD-OP-001 | `server/cadArtifactOperations.ts:previewCylindricalHole` / `approveCylindricalHole` | Explicit cylindrical hole | Yes | `CAD-AGENT.COMMON_FEATURE_EXECUTOR` definition, preview, approval, output provenance | VERIFIED_COMMON_EXECUTOR | Real OpenCascade preview and approval are source hash/revision bound; authoritative output is ingested and validated. |
+| CAD-OP-002 | `server/cadArtifactOperations.ts:previewBooleanCut` / `approveBooleanCut` | Boolean Cut | Yes | `CAD-AGENT.COMMON_FEATURE_EXECUTOR` definition, preview, approval, output provenance | VERIFIED_COMMON_EXECUTOR | Real source/cutter B-Rep cut, approval binding, artifact ingestion, and validation remain verified. |
+| CAD-OP-003 | `server/externalTextToCadAdapter.ts` via `cadAgentSkills.ts` | Pinned external rectangular plate | Yes | Adapter-specific execution followed by managed ingestion | EXTERNAL_ADAPTER | Structured inputs and artifact validation are enforced, but the adapter output has not yet entered the Common Feature Executor; this is an open migration requirement, not verified zero-bypass compliance. |
+| CAD-OP-004 | `server/seatConceptCadEngine.ts` / `server/seatDesignAuthoring.ts` | Concept backrest STEP generation | Yes | Direct controlled OpenCascade generation and ingestion | LEGACY_DIRECT_PATH | Existing source/revision/hash controls remain active; migration to a registered common feature operation is outstanding. |
+| CAD-OP-005 | `server/cadKernel.ts:generateMountingBlock`, `server/cadAgent.ts`, `server/cadExecution.ts` | Mounting block generation / plan execution | Yes | Existing legacy CAD execution path | LEGACY_DIRECT_PATH | Preserved verified historic path; it must be inventoried and migrated or explicitly retired before a zero-bypass claim. |
+| CAD-OP-006 | `server/featureHistory.ts`, `server/mirrorFeature.ts`, `server/rectangularPattern.ts` | Controlled sketch/extrude/pattern/mirror regeneration | Yes | Feature-history-specific execution | LEGACY_DIRECT_PATH | Has its own revisions and validation but does not yet invoke the common executor. |
+| CAD-OP-007 | `server/cadFileIntelligence.ts:ingestCadFile` | Authoritative STEP import/ingestion | Creates CAD-file record, not derived geometry | Managed ingestion / OpenCascade parse | VALIDATION_ONLY | Project authorization, SHA-256, bounded bytes, and kernel parsing are required. It is an import boundary, not a feature execution path. |
+| CAD-OP-008 | `server/cadArtifactOperations.ts:createCadValidation` | Kernel geometry validation | No | OpenCascade read/validation | VALIDATION_ONLY | Validates a verified source artifact; creates an evidence record but no geometry. |
+| CAD-OP-009 | `server/cadArtifactOperations.ts:createOrthographicDrawing` | Tessellation-derived SVG drawing export | No CAD geometry mutation | OpenCascade read / export | READ_ONLY | The drawing is provenance-bound to verified artifact and validation evidence. It does not require feature execution because it does not modify CAD geometry. |
+| CAD-OP-010 | `server/engineeringViewer.ts`, `server/cadKernel.ts:extractKernelViewerMesh` | Viewer mesh / selection support | No | OpenCascade read/tessellation | READ_ONLY | Viewer triangles remain non-authoritative display data. |
+| CAD-OP-011 | `server/artifactAssembly.ts` | Assembly component transforms and BOM | No B-Rep mutation | Persistent transform model | READ_ONLY | Component placement is explicit user transform state; mates, collision solving, and generic assembly B-Rep edits remain unsupported. |
+
+## Immediate Architectural Result
+
+The zero-bypass gate is **not yet passed**. Two native derived-geometry operations are compliant, but the external adapter, concept generator, historic mounting-block executor, and feature-history mutation routes are still legacy or external paths. They remain visible and are not relabeled as verified Common Feature Executor paths.
+
+The next repair sequence is therefore constrained: migrate the pinned external adapter output through the executor, then wrap/retire legacy geometry-producing paths one at a time with regression proof. No new geometry-changing features should be added until this inventory has no unclassified geometry-producing paths.

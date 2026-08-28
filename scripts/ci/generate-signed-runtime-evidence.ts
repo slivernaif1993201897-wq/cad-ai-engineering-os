@@ -21,6 +21,15 @@ async function main() {
     environmentIdentity: "GITHUB-DOCKER-INTERNAL-TEST",
     commit: process.env.GITHUB_SHA ?? "unknown",
     workflowRun: process.env.GITHUB_RUN_ID ?? "unknown",
+    binding: {
+      projectId: String(provenance.projectId ?? "GITHUB-DOCKER-CI"),
+      operationId: String(binding.jobId),
+      runtimeAdmissionId: String(binding.environmentHash),
+      artifactIdentity: String(provenance.cadArtifactHash),
+      engineIdentity: String(binding.environmentHash),
+      provenanceIdentity: String(provenance.manifestHash),
+      lineageIdentity: String(provenance.cadRevisionHash),
+    },
     artifactHashes: {
       cadRevisionHash: String(provenance.cadRevisionHash),
       cadArtifactHash: String(provenance.cadArtifactHash),

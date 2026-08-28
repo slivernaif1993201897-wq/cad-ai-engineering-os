@@ -8,6 +8,7 @@ import {
   VIEWER_SCENE_MAX_TRIANGLES,
 } from "../shared/engineeringViewer";
 import { extractKernelViewerMesh, getOpenCascadeKernel } from "./cadKernel";
+import { runWithOpenCascadeAdmission } from "./runtimeAdmission";
 import { getCadFileContext, parseStlTriangles } from "./cadFileIntelligence";
 import { appendLineageNode, appendPersistentMemory } from "./persistentMemory";
 import { storageGetSignedUrl } from "./storage";
@@ -52,14 +53,16 @@ function stlMesh(file: CADFileContext, bytes: Buffer): NonNullable<EngineeringVi
 }
 
 async function stepMesh(file: CADFileContext, bytes: Buffer): Promise<NonNullable<EngineeringViewerScene["mesh"]>> {
-  const oc = await getOpenCascadeKernel(); const path = `/viewer-${crypto.randomUUID()}.step`; let reader: any;
+  return runWithOpenCascadeAdmission({ projectId: file.projectId, resourceClass: "VIEWER" }, async () => {
+  const oc = await getOpenCascadeKernel(); const path = `/viewer-${crypto.randomUUID()}.step`; let reader: any; let progress: any; let shape: any;
   try {
     (oc as any).FS.writeFile(path, bytes);
     reader = new (oc as any).STEPControl_Reader_1();
     reader.ReadFile(path);
     const roots = Number(reader.NbRootsForTransfer());
-    const transferred = Number(reader.TransferRoots(new (oc as any).Message_ProgressRange_1()));
-    const shape = reader.OneShape();
+    progress = new (oc as any).Message_ProgressRange_1();
+    const transferred = Number(reader.TransferRoots(progress));
+    shape = reader.OneShape();
     if (!roots || !transferred || shape.IsNull()) throw new Error("OpenCascade could not transfer the authorized STEP source into a viewer BRep.");
     let mesh = extractKernelViewerMesh(oc, shape, `FILE-${file.fileId}`);
     let complete = true; let performanceNote = "Every displayed triangle is tessellated from the imported OpenCascade BRep.";
@@ -69,9 +72,9 @@ async function stepMesh(file: CADFileContext, bytes: Buffer): Promise<NonNullabl
       performanceNote = "The interactive display mesh uses a coarser OpenCascade BRep tessellation because the original tessellation exceeded the Phase 4 interactive triangle limit. The STEP BRep remains authoritative.";
     }
     if (mesh.triangles.length > VIEWER_SCENE_MAX_TRIANGLES) throw new Error(`The imported BRep remains too dense for the ${VIEWER_SCENE_MAX_TRIANGLES.toLocaleString()}-triangle interactive limit, even after an explicitly labeled coarse kernel tessellation.`);
-    shape.delete?.();
     return { vertices: mesh.vertices, triangles: mesh.triangles, faceRanges: mesh.faceRanges, representation: "KERNEL_BREP_TESSELLATION", tessellation: complete ? mesh.tessellation : `${mesh.tessellation} (coarse)`, sourceHash: file.sha256, triangleLimit: VIEWER_SCENE_MAX_TRIANGLES, complete, performanceNote };
-  } finally { try { reader?.delete?.(); (oc as any).FS.unlink(path); } catch { /* virtual source cleanup is best effort */ } }
+  } finally { try { shape?.delete?.(); progress?.delete?.(); reader?.delete?.(); (oc as any).FS.unlink(path); } catch { /* virtual source cleanup is best effort */ } }
+  });
 }
 
 function sceneFromMesh(file: CADFileContext, mesh: NonNullable<EngineeringViewerScene["mesh"]>): EngineeringViewerScene {

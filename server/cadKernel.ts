@@ -18,6 +18,42 @@ export async function getOpenCascadeKernel() {
   return kernelPromise;
 }
 
+function normalizedStepBytes(raw: Uint8Array): Buffer {
+  if (!raw.length) throw new Error("INVALID_GEOMETRY_EXPORT: OpenCascade produced an empty STEP export.");
+  const text = Buffer.from(raw).toString("utf8");
+  if (!/ISO-10303-21/i.test(text) || !/END-ISO-10303-21/i.test(text)) {
+    throw new Error("INVALID_GEOMETRY_EXPORT: OpenCascade STEP bytes are structurally incomplete.");
+  }
+  return Buffer.from(text.replace(/(FILE_NAME\('[^']*',)'[^']*'/, "$1'1970-01-01T00:00:00'"), "utf8");
+}
+
+/** Server-only OpenCascade STEP export boundary. It validates the B-Rep, checks
+ * writer return values when the binding exposes them, validates exact bytes, and
+ * always releases the temporary in-memory file and writer. */
+export function exportValidatedStep(oc: any, shape: any, progress: any, filePrefix = "cad"): Buffer {
+  if (!shape || shape.IsNull?.()) throw new Error("INVALID_GEOMETRY_EXPORT: A non-null OpenCascade shape is required.");
+  const analyzer = new oc.BRepCheck_Analyzer(shape, true, false);
+  let writer: any;
+  const path = `/${filePrefix}-${Date.now()}-${Math.random().toString(16).slice(2)}.step`;
+  try {
+    if (!analyzer.IsValid_2()) throw new Error("INVALID_GEOMETRY_EXPORT: OpenCascade B-Rep validation failed before STEP export.");
+    writer = new oc.STEPControl_Writer_1();
+    const transfer = writer.Transfer(shape, oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
+    if (transfer === false || transfer === 0 || /fail|error/i.test(String(transfer))) throw new Error("INVALID_GEOMETRY_EXPORT: STEP writer transfer failed.");
+    const written = writer.Write(path);
+    if (written === false || written === 0 || /fail|error/i.test(String(written))) throw new Error("INVALID_GEOMETRY_EXPORT: STEP writer write failed.");
+    return normalizedStepBytes((oc as any).FS.readFile(path));
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("INVALID_GEOMETRY_EXPORT:")) throw error;
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`INVALID_GEOMETRY_EXPORT: OpenCascade STEP export failed: ${detail}`);
+  } finally {
+    try { (oc as any).FS.unlink(path); } catch { /* temporary file may not exist after a writer failure */ }
+    try { writer?.delete?.(); } catch { /* best-effort deterministic binding cleanup */ }
+    try { analyzer.delete?.(); } catch { /* best-effort deterministic binding cleanup */ }
+  }
+}
+
 function makeRequirement(input: MountingBlockInput, prompt: string): Requirement {
   const openQuestions: OpenQuestion[] = input.approveAssumption
     ? []
@@ -52,6 +88,31 @@ function feature(id: string, type: string, status: CADFeature["status"], depends
   return { id, type, status, dependsOn, parameters, ...(note ? { note } : {}) };
 }
 
+export const KERNEL_VIEWER_LIMITS = Object.freeze({
+  maxVertices: 100_000,
+  maxTriangles: 200_000,
+});
+
+function viewerBounds(vertices: KernelViewerMesh["vertices"]) {
+  if (!vertices.length) throw new Error("VIEWER_MESH_LIMIT: A non-empty mesh is required for bounds.");
+  let minX = vertices[0][0]; let minY = vertices[0][1]; let minZ = vertices[0][2];
+  let maxX = minX; let maxY = minY; let maxZ = minZ;
+  for (let index = 1; index < vertices.length; index += 1) {
+    const [x, y, z] = vertices[index];
+    minX = Math.min(minX, x); minY = Math.min(minY, y); minZ = Math.min(minZ, z);
+    maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); maxZ = Math.max(maxZ, z);
+  }
+  const min: [number, number, number] = [minX, minY, minZ];
+  const max: [number, number, number] = [maxX, maxY, maxZ];
+  const size: [number, number, number] = [maxX - minX, maxY - minY, maxZ - minZ];
+  return { min, max, size, diagonal: Math.hypot(size[0], size[1], size[2]) };
+}
+
+function assertViewerCapacity(kind: "vertices" | "triangles", count: number) {
+  const maximum = kind === "vertices" ? KERNEL_VIEWER_LIMITS.maxVertices : KERNEL_VIEWER_LIMITS.maxTriangles;
+  if (count > maximum) throw new Error(`VIEWER_MESH_LIMIT: ${kind} exceed the server-controlled limit of ${maximum}.`);
+}
+
 export function extractKernelViewerMesh(oc: any, shape: any, featureId: string, deflection = 0.8): KernelViewerMesh {
   const tessellator = new oc.BRepMesh_IncrementalMesh_2(shape, deflection, false, 0.5, false);
   const explorer = new oc.TopExp_Explorer_2(shape, oc.TopAbs_ShapeEnum.TopAbs_FACE, oc.TopAbs_ShapeEnum.TopAbs_SHAPE);
@@ -69,6 +130,7 @@ export function extractKernelViewerMesh(oc: any, shape: any, featureId: string, 
       const vertexOffset = vertices.length;
       const transformation = location.IsIdentity() ? undefined : location.Transformation();
       for (let nodeIndex = 1; nodeIndex <= triangulation.NbNodes(); nodeIndex += 1) {
+        assertViewerCapacity("vertices", vertices.length + 1);
         const point = triangulation.Node(nodeIndex);
         const transformed = transformation ? point.Transformed(transformation) : point;
         vertices.push([transformed.X(), transformed.Y(), transformed.Z()]);
@@ -76,6 +138,7 @@ export function extractKernelViewerMesh(oc: any, shape: any, featureId: string, 
       }
       const triangleStart = triangles.length;
       for (let triangleIndex = 1; triangleIndex <= triangulation.NbTriangles(); triangleIndex += 1) {
+        assertViewerCapacity("triangles", triangles.length + 1);
         const triangle = triangulation.Triangle(triangleIndex);
         triangles.push([
           vertexOffset + triangle.Value(1) - 1,
@@ -101,13 +164,7 @@ export function extractKernelViewerMesh(oc: any, shape: any, featureId: string, 
   tessellator.delete();
   if (!vertices.length || !triangles.length) throw new Error("OpenCascade.js did not produce a tessellated viewer mesh.");
 
-  const xs = vertices.map(([x]) => x);
-  const ys = vertices.map(([, y]) => y);
-  const zs = vertices.map(([, , z]) => z);
-  const min: [number, number, number] = [Math.min(...xs), Math.min(...ys), Math.min(...zs)];
-  const max: [number, number, number] = [Math.max(...xs), Math.max(...ys), Math.max(...zs)];
-  const size: [number, number, number] = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
-  const diagonal = Math.hypot(...size);
+  const { min, max, size, diagonal } = viewerBounds(vertices);
 
   return {
     source: "OpenCascade.js",
@@ -130,12 +187,11 @@ export function mergeKernelViewerMeshes(items: Array<{ mesh: KernelViewerMesh; i
   const vertices: KernelViewerMesh["vertices"] = []; const triangles: KernelViewerMesh["triangles"] = []; const faceRanges: KernelViewerMesh["faceRanges"] = [];
   for (const { mesh, instanceKey, instanceIdentity } of items) {
     const vertexOffset = vertices.length; const triangleOffset = triangles.length;
-    vertices.push(...mesh.vertices);
-    triangles.push(...mesh.triangles.map((triangle) => [triangle[0] + vertexOffset, triangle[1] + vertexOffset, triangle[2] + vertexOffset] as [number, number, number]));
+    for (const vertex of mesh.vertices) { assertViewerCapacity("vertices", vertices.length + 1); vertices.push(vertex); }
+    for (const triangle of mesh.triangles) { assertViewerCapacity("triangles", triangles.length + 1); triangles.push([triangle[0] + vertexOffset, triangle[1] + vertexOffset, triangle[2] + vertexOffset]); }
     for (const range of mesh.faceRanges) faceRanges.push({ ...range, faceId: instanceKey ? `${instanceKey}:${range.faceId}` : range.faceId, triangleStart: triangleOffset + range.triangleStart, instanceKey, instanceIdentity });
   }
-  const xs = vertices.map(([x]) => x); const ys = vertices.map(([, y]) => y); const zs = vertices.map(([, , z]) => z);
-  const min: [number, number, number] = [Math.min(...xs), Math.min(...ys), Math.min(...zs)]; const max: [number, number, number] = [Math.max(...xs), Math.max(...ys), Math.max(...zs)]; const size: [number, number, number] = [max[0] - min[0], max[1] - min[1], max[2] - min[2]]; const diagonal = Math.hypot(...size);
+  const { min, max, size, diagonal } = viewerBounds(vertices);
   return { source: "OpenCascade.js", tessellation: "BRepMesh_IncrementalMesh", vertices, triangles, faceRanges, boundingBox: { min, max, size, diagonal }, measurements: { width: size[0], depth: size[1], height: size[2], boundingBoxDiagonal: diagonal } };
 }
 
@@ -245,16 +301,7 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
 
   const analyzer = new oc.BRepCheck_Analyzer(current, true, false);
   const valid = Boolean(analyzer.IsValid_2());
-  const stepPath = `/cad-ai-${Date.now()}.step`;
-  const writer = new oc.STEPControl_Writer_1();
-  writer.Transfer(current, (oc.STEPControl_StepModelType as any).STEPControl_AsIs, true, progress);
-  writer.Write(stepPath);
-  const rawStepBytes = Buffer.from((oc as any).FS.readFile(stepPath));
-  // OpenCascade writes the wall-clock export time in FILE_NAME. The timestamp is
-  // not geometric or engineering provenance and makes identical validated BReps
-  // hash differently, so normalize only that volatile STEP header field.
-  const stepBytes = Buffer.from(rawStepBytes.toString("utf8").replace(/(FILE_NAME\('[^']*',)'[^']*'/, "$1'1970-01-01T00:00:00'"), "utf8");
-  (oc as any).FS.unlink(stepPath);
+  const stepBytes = exportValidatedStep(oc, current, progress, "cad-ai");
   const viewerMesh = extractViewerMesh(oc, current, input, "FEATURE-005");
 
   const artifact: CADArtifact = {
@@ -272,7 +319,6 @@ export async function generateMountingBlock(input: MountingBlockInput, prompt: s
   };
 
   analyzer.delete();
-  writer.delete();
   if (fillet?.delete) fillet.delete();
   for (const item of cuts) item.delete?.();
   box.delete();

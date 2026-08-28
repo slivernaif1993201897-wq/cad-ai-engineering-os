@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
-import { extractKernelViewerMesh, getOpenCascadeKernel, mergeKernelViewerMeshes } from "./cadKernel";
+import { exportValidatedStep, extractKernelViewerMesh, getOpenCascadeKernel, mergeKernelViewerMeshes } from "./cadKernel";
+import { runWithOpenCascadeAdmission } from "./runtimeAdmission";
 
 export type SeatParametricModel = {
   seatRevisionId: string;
@@ -45,6 +46,7 @@ function assertSeatModel(model: SeatParametricModel) {
 /** Generates actual parameterized OpenCascade solids, validates the compound BRep, and exports a deterministic STEP artifact. */
 export async function generateSeatCadArtifact(model: SeatParametricModel): Promise<SeatCadArtifact> {
   assertSeatModel(model);
+  return runWithOpenCascadeAdmission({ projectId: model.seatRevisionId, resourceClass: "CAD_AUTHORING" }, async () => {
   const oc: any = await getOpenCascadeKernel();
   const d = model.dimensionsMm;
   const compound = new oc.TopoDS_Compound();
@@ -91,16 +93,12 @@ export async function generateSeatCadArtifact(model: SeatParametricModel): Promi
     const valid = Boolean(analyzer.IsValid_2());
     analyzer.delete?.();
     if (!valid) throw new Error("SEAT_OPEN_CASCADE_BREP_INVALID");
-    const writer = new oc.STEPControl_Writer_1();
-    const path = `/seat-${sha({ id: model.seatRevisionId, revision: model.identity.revisionNumber }).slice(0, 16)}.step`;
-    writer.Transfer(compound, oc.STEPControl_StepModelType.STEPControl_AsIs, true, progress);
-    writer.Write(path);
-    const raw = Buffer.from(oc.FS.readFile(path)); oc.FS.unlink(path); writer.delete?.();
-    const step = Buffer.from(raw.toString("utf8").replace(/(FILE_NAME\('[^']*',)'[^']*'/, "$1'1970-01-01T00:00:00'"), "utf8");
+    const step = exportValidatedStep(oc, compound, progress, `seat-${sha({ id: model.seatRevisionId, revision: model.identity.revisionNumber }).slice(0, 16)}`);
     const artifactHash = sha(step);
     const cadRevisionHash = sha({ seatRevisionId: model.seatRevisionId, identity: model.identity, dimensionsMm: model.dimensionsMm, materials: model.materials, constraints: model.constraints, artifactHash });
     return { seatRevisionId: model.seatRevisionId, cadRevisionHash, artifactHash, stepBase64: step.toString("base64"), stepByteLength: step.byteLength, kernel: "OpenCascade.js", validationStatus: "VALID", featureTree: features, viewerMesh: mergeKernelViewerMeshes(meshItems) };
   } finally {
     for (const resource of resources.reverse()) resource.delete?.();
   }
+  });
 }

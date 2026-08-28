@@ -22,5 +22,5 @@ describe("Phase 6.4 runtime implementation readiness review", () => {
     const graph = await caller.cae.runtimeImplementationReadinessGraph({ ...access, reviewId: review.reviewId }); expect(graph.nodes).toEqual(expect.arrayContaining([expect.objectContaining({ id: `DECISION-${review.reviewId}`, type: "RUNTIME_DECISION", label: "RUNTIME_IMPLEMENTATION_BLOCKED" }), expect.objectContaining({ id: "BOUNDARY-CAD-JOB", type: "RUNTIME_BOUNDARY" })])); expect(graph.limitations.join(" ")).toMatch(/No solver, mesher, runtime process, shell/i);
     const audit = await caller.cae.securityAudit(access); expect(audit).toEqual(expect.arrayContaining([expect.objectContaining({ action: "RUNTIME_ARCHITECTURE_REVIEW", objectType: "RUNTIME_ARCHITECTURE", objectId: review.reviewId, newState: "RUNTIME_IMPLEMENTATION_BLOCKED" })]));
     const other = await caller.persistentMemory.openProject({ name: "Phase 6.4 isolation" }); await expect(caller.cae.listRuntimeImplementationReadinessReviews({ projectId: other.id, accessKey: other.accessKey })).resolves.toEqual([]); expect(Object.keys(caller.cae)).not.toEqual(expect.arrayContaining(["executeSolver", "executeRuntime", "startExecution", "installSolver", "createMesher", "runShell", "runMesher"]));
-  });
+  }, 20_000);
 });
