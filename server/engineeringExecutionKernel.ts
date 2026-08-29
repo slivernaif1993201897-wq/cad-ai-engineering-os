@@ -1,6 +1,6 @@
 import { appendLineageNode, appendPersistentMemory, projectMemorySnapshot } from "./persistentMemory";
 
-export type EekOperation = "CREATE_PROJECT" | "CAD_AGENT_MESSAGE";
+export type EekOperation = string;
 export type EekLifecycle = "RECEIVED" | "AUTHORIZED" | "VALIDATED" | "EXECUTING" | "COMPLETED" | "FAILED" | "REPLAYED";
 
 export type EekCommand = {
@@ -31,7 +31,7 @@ const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 
 function validateCommand(command: EekCommand) {
   if (!/^[A-Za-z0-9._:-]{8,160}$/.test(command.commandId)) throw new Error("EEK_COMMAND_ID_INVALID");
-  if (!command.operation || !command.actor) throw new Error("EEK_COMMAND_INVALID");
+  if (!command.operation || !/^[A-Za-z0-9._:-]{3,160}$/.test(command.operation) || !command.actor) throw new Error("EEK_COMMAND_INVALID");
   if (command.operation !== "CREATE_PROJECT" && (!command.projectId || !command.accessKey)) throw new Error("EEK_AUTHORIZATION_REQUIRED");
 }
 
