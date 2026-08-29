@@ -7,9 +7,13 @@ const inputRoot = join(process.cwd(), "artifacts", "generic-job", "input");
 
 async function main() {
   const composition = await composeEngineeringJobRequest({
-    name: "Authoritative CAD Agent Runtime Mounting Block",
-    mountingBlock: { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true },
-    sourceText: "Create a 100 mm × 50 mm × 20 mm mounting block. Add four 10 mm holes near the corners using a 10 mm edge offset. Add a 3 mm fillet.",
+    projectId: "GITHUB-DOCKER-CI",
+    accessKey: "GITHUB-DOCKER-CI",
+    request: {
+      name: "Authoritative CAD Agent Runtime Mounting Block",
+      mountingBlock: { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true },
+      sourceText: "Create a 100 mm × 50 mm × 20 mm mounting block. Add four 10 mm holes near the corners using a 10 mm edge offset. Add a 3 mm fillet.",
+    },
   });
   await mkdir(inputRoot, { recursive: true });
   await writeFile(join(inputRoot, "cad-artifact.step"), composition.stepBytes);

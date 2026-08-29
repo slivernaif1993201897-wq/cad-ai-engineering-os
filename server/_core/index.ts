@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerEngineeringJobHttp } from "../engineeringJobHttp";
+import { registerProductionWebFrontend } from "../webFrontend";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -71,6 +72,9 @@ async function startServer() {
       createContext,
     }),
   );
+
+  const webFrontend = registerProductionWebFrontend(app);
+  console.log(`[web] production frontend ${webFrontend.enabled ? "enabled" : "not built"}`);
 
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);

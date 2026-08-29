@@ -1,4 +1,4 @@
-import { index, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -115,7 +115,7 @@ export const engineeringCadFiles = mysqlTable("engineering_cad_files", {
   conversationId: varchar("conversationId", { length: 96 }),
   fileName: varchar("fileName", { length: 255 }).notNull(),
   normalizedName: varchar("normalizedName", { length: 255 }).notNull(),
-  format: mysqlEnum("format", ["STEP", "STL", "UNSUPPORTED"]).notNull(),
+  format: mysqlEnum("format", ["STEP", "STL", "DXF", "UNSUPPORTED"]).notNull(),
   mimeType: varchar("mimeType", { length: 128 }),
   sizeBytes: int("sizeBytes").notNull(),
   sha256: varchar("sha256", { length: 64 }).notNull(),
@@ -212,3 +212,97 @@ export type SeatMaterial = typeof seatMaterials.$inferSelect;
 export type SeatComponent = typeof seatComponents.$inferSelect;
 export type SeatRequirement = typeof seatRequirements.$inferSelect;
 export type SeatTraceLink = typeof seatTraceLinks.$inferSelect;
+
+/**
+ * Normalized SEKB records complement the existing authoritative seat, CAD, job,
+ * and evidence tables. They carry only user-supplied or tool-produced metadata;
+ * the OpenCascade and CAE runtimes remain the authoritative artifact producers.
+ */
+export const seatKnowledgeEntities = mysqlTable("seat_knowledge_entities", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  seatDesignId: varchar("seatDesignId", { length: 96 }),
+  seatRevisionId: varchar("seatRevisionId", { length: 96 }),
+  parentEntityId: varchar("parentEntityId", { length: 96 }),
+  entityType: mysqlEnum("entityType", [
+    "ASSEMBLY", "GEOMETRY", "DIMENSION", "CONSTRAINT", "LOAD_CASE",
+    "CAE_CONFIGURATION", "MESH", "SOLVER_RUN", "RESULT", "VALIDATION",
+    "TEST", "REPORT", "EVIDENCE", "PROVENANCE",
+  ]).notNull(),
+  externalKey: varchar("externalKey", { length: 128 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  valueText: text("valueText"),
+  unit: varchar("unit", { length: 64 }),
+  toleranceText: text("toleranceText"),
+  coordinateReference: varchar("coordinateReference", { length: 255 }),
+  sourceType: mysqlEnum("sourceType", ["USER_PROVIDED", "TOOL_GENERATED", "REFERENCE", "CERTIFICATE", "TEST", "IMPORT"]).notNull(),
+  sourceReference: text("sourceReference").notNull(),
+  evidenceReference: varchar("evidenceReference", { length: 512 }),
+  artifactHash: varchar("artifactHash", { length: 64 }),
+  status: mysqlEnum("status", ["DRAFT", "REVIEW", "APPROVED", "RELEASED", "STALE", "SUPERSEDED", "REJECTED", "REQUIRED_INPUT", "COMPUTED", "VALIDATED"]).notNull(),
+  approvalStatus: mysqlEnum("approvalStatus", ["UNREVIEWED", "PROPOSED", "APPROVED", "REJECTED"]).default("UNREVIEWED").notNull(),
+  revision: int("revision").notNull(),
+  supersedesEntityId: varchar("supersedesEntityId", { length: 96 }),
+  recordHash: varchar("recordHash", { length: 64 }).notNull(),
+  createdBy: varchar("createdBy", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  releasedAt: timestamp("releasedAt"),
+}, (table) => [
+  uniqueIndex("seat_knowledge_entity_identity_idx").on(table.projectId, table.entityType, table.externalKey, table.revision),
+  index("seat_knowledge_project_type_status_idx").on(table.projectId, table.entityType, table.status),
+  index("seat_knowledge_revision_idx").on(table.seatRevisionId),
+  index("seat_knowledge_parent_idx").on(table.projectId, table.parentEntityId),
+]);
+
+export const seatKnowledgeRelations = mysqlTable("seat_knowledge_relations", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  sourceEntityId: varchar("sourceEntityId", { length: 96 }).notNull(),
+  targetEntityId: varchar("targetEntityId", { length: 96 }).notNull(),
+  relationship: varchar("relationship", { length: 96 }).notNull(),
+  reason: text("reason").notNull(),
+  evidenceReference: varchar("evidenceReference", { length: 512 }),
+  status: mysqlEnum("status", ["ACTIVE", "STALE", "SUPERSEDED", "REJECTED"]).default("ACTIVE").notNull(),
+  createdBy: varchar("createdBy", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("seat_knowledge_relation_identity_idx").on(table.projectId, table.sourceEntityId, table.targetEntityId, table.relationship),
+  index("seat_knowledge_relation_source_idx").on(table.projectId, table.sourceEntityId),
+  index("seat_knowledge_relation_target_idx").on(table.projectId, table.targetEntityId),
+]);
+
+export const seatKnowledgeAttachments = mysqlTable("seat_knowledge_attachments", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  entityId: varchar("entityId", { length: 96 }).notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  mediaType: varchar("mediaType", { length: 128 }).notNull(),
+  storageReference: varchar("storageReference", { length: 768 }).notNull(),
+  sha256: varchar("sha256", { length: 64 }).notNull(),
+  sourceReference: text("sourceReference").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("seat_knowledge_attachment_hash_idx").on(table.projectId, table.entityId, table.sha256),
+  index("seat_knowledge_attachment_entity_idx").on(table.projectId, table.entityId),
+]);
+
+export const seatKnowledgeAuditEvents = mysqlTable("seat_knowledge_audit_events", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  projectId: varchar("projectId", { length: 96 }).notNull(),
+  entityId: varchar("entityId", { length: 96 }).notNull(),
+  action: mysqlEnum("action", ["CREATED", "UPDATED", "RELATED", "APPROVED", "RELEASED", "SUPERSEDED", "ATTACHED"]).notNull(),
+  actor: varchar("actor", { length: 128 }).notNull(),
+  reason: text("reason").notNull(),
+  priorHash: varchar("priorHash", { length: 64 }),
+  nextHash: varchar("nextHash", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [
+  index("seat_knowledge_audit_entity_idx").on(table.projectId, table.entityId, table.createdAt),
+]);
+
+export type SeatKnowledgeEntity = typeof seatKnowledgeEntities.$inferSelect;
+export type SeatKnowledgeRelation = typeof seatKnowledgeRelations.$inferSelect;
+export type SeatKnowledgeAttachment = typeof seatKnowledgeAttachments.$inferSelect;
+export type SeatKnowledgeAuditEvent = typeof seatKnowledgeAuditEvents.$inferSelect;

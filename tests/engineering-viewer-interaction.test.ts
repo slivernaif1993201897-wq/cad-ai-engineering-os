@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { angle3D, distance3D, hitTestViewerFace, presetCamera, projectViewerPoint } from "../lib/engineering-viewer-math";
 import type { TrpcContext } from "../server/_core/context";
 import { appRouter } from "../server/routers";
+import { createMountingBlockConfiguration, previewMountingBlockConfiguration } from "../server/cadAgent";
 
 const ctx = { user: null, req: { protocol: "https", headers: {} }, res: {} } as TrpcContext;
 
@@ -29,9 +30,9 @@ describe("Phase 4 viewer interaction state", () => {
   it("computes a kernel proposal preview without registering it as a saved configuration", async () => {
     const caller = appRouter.createCaller(ctx);
     const name = `Preview ${Date.now()}`;
-    const created = await caller.cadAgent.createConfiguration({ name, sourceText: "Create a 100 mm x 50 mm x 20 mm mounting block with four 10 mm holes near the corners using a 10 mm edge offset and a 3 mm fillet.", input: { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true } });
+    const created = await createMountingBlockConfiguration({ name, sourceText: "Create a 100 mm x 50 mm x 20 mm mounting block with four 10 mm holes near the corners using a 10 mm edge offset and a 3 mm fillet.", input: { width: 100, depth: 50, height: 20, holeDiameter: 10, holeEdgeOffset: 10, filletRadius: 3, approveAssumption: true } });
     const before = await caller.cadAgent.listConfigurations();
-    const preview = await caller.cadAgent.previewConfiguration({ configurationId: created.configuration.id, inputPatch: { width: 80 }, updateText: "Preview only: change width to 80 mm." });
+    const preview = await previewMountingBlockConfiguration({ configurationId: created.configuration.id, inputPatch: { width: 80 }, updateText: "Preview only: change width to 80 mm." });
     const after = await caller.cadAgent.listConfigurations();
     expect(preview.configuration.id).toMatch(/^PREVIEW-/);
     expect(preview.configuration.input.width).toBe(80);

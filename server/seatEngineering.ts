@@ -7,6 +7,8 @@ import { getDb } from "./db";
 import { appendPersistentMemory, openPersistentProject, projectMemorySnapshot } from "./persistentMemory";
 import { buildSeatDesignVerificationCase, type SeatDesignVerificationCase, type SeatDesignVerificationRequest } from "./seatDesignVerification";
 import { listSeatInputPackages } from "./seatInputPackage";
+import { listPhysicalEngineeringVerifications } from "./physicalVerification";
+import { listCrashSafetyEvidence } from "./crashSafety";
 
 const id = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -229,8 +231,10 @@ export async function createSeatEngineeringReport(args: Access & { seatDesignId:
     } : null,
     seatVerification: verification ?? null,
     engineeringInputPackage: inputPackage ?? null,
+    physicalVerification: job ? (await listPhysicalEngineeringVerifications({ ...args, jobId: job.jobId }))[0] ?? null : null,
+    crashSafetyEvidence: latestRevision ? (await listCrashSafetyEvidence(args)).find((record) => record.seatRevisionHash === latestRevision.designSnapshotHash) ?? null : null,
     disclaimer: job?.runtimeEvidence
-      ? "Runtime evidence is verified by the persisted canonical evidence source."
+      ? "Runtime evidence is verified by the persisted canonical evidence source. Numerical verification, model validation, experimental correlation, engineering acceptance, and regulatory certification remain separate evidence-bound claims."
       : verification?.state === "REQUIRED_INPUT"
         ? "The own-seat verification case is blocked by explicit required engineering inputs. No solver or validation claim is made."
         : "No solver or result statement is made until a matching verified runtime-evidence record is reconciled.",

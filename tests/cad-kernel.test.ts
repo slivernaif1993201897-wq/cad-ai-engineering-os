@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { generateMountingBlock } from "../server/cadKernel";
+import { generateMountingBlock, KERNEL_VIEWER_LIMITS } from "../server/cadKernel";
 
 const prompt = "Create a mounting block with four through holes and an external edge fillet.";
 
@@ -15,6 +15,13 @@ const baseInput = {
 };
 
 describe("real CAD mounting-block vertical slice", () => {
+  it("keeps finite positive server-controlled viewer limits", () => {
+    expect(KERNEL_VIEWER_LIMITS.maxVertices).toBeGreaterThan(0);
+    expect(KERNEL_VIEWER_LIMITS.maxTriangles).toBeGreaterThan(0);
+    expect(Number.isFinite(KERNEL_VIEWER_LIMITS.maxVertices)).toBe(true);
+    expect(Number.isFinite(KERNEL_VIEWER_LIMITS.maxTriangles)).toBe(true);
+  });
+
   it("creates a valid STEP-backed solid with the real kernel", async () => {
     const result = await generateMountingBlock(baseInput, prompt);
 

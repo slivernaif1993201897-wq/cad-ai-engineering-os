@@ -1,0 +1,116 @@
+{
+  "projectId": "PROJECT-de352bd4-d55e-4885-bd52-20ce7a932ccc",
+  "createdAt": "2026-08-24T16:37:31.374Z",
+  "sources": [
+    {
+      "fileName": "1-EngineeringProblem.pdf",
+      "classification": "DYNAMIC_OCCUPANT_STUDY",
+      "evidenceCount": 17
+    },
+    {
+      "fileName": "2-ExhaustiveLiteratureReview.pdf",
+      "classification": "LITERATURE_REVIEW",
+      "evidenceCount": 13
+    },
+    {
+      "fileName": "2011-26-0047_260823_061236.pdf",
+      "classification": "STRUCTURAL_FE_STUDY",
+      "evidenceCount": 10
+    },
+    {
+      "fileName": "3-AutomotiveOccupantMotion.pdf",
+      "classification": "LITERATURE_REVIEW",
+      "evidenceCount": 6
+    },
+    {
+      "fileName": "4-5-ConceptExpansionEngineeringInfeasibilityAcceptance.pdf",
+      "classification": "LITERATURE_REVIEW",
+      "evidenceCount": 10
+    },
+    {
+      "fileName": "CarSeatBackrestStaticStrength.pdf",
+      "classification": "STRUCTURAL_FE_STUDY",
+      "evidenceCount": 10
+    },
+    {
+      "fileName": "CarSeatBackrestStaticStrengthExperiment.pdf",
+      "classification": "STRUCTURAL_FE_STUDY",
+      "evidenceCount": 12
+    },
+    {
+      "fileName": "CarSeatBackrestStaticStrengthExperimentandSimulation.pdf",
+      "classification": "STRUCTURAL_FE_STUDY",
+      "evidenceCount": 11
+    },
+    {
+      "fileName": "DEPARTMENTOFTRANSPORTATION.pdf",
+      "classification": "REGULATORY_REFERENCE",
+      "evidenceCount": 17
+    },
+    {
+      "fileName": "DesigningforSustainability.pdf",
+      "classification": "STRUCTURAL_FE_STUDY",
+      "evidenceCount": 11
+    },
+    {
+      "fileName": "DriverBehaviorRecognition.pdf",
+      "classification": "LITERATURE_REVIEW",
+      "evidenceCount": 8
+    },
+    {
+      "fileName": "Evaluationoffiniteelementmodelsofseatstruct.pdf",
+      "classification": "STRUCTURAL_FE_STUDY",
+      "evidenceCount": 15
+    },
+    {
+      "fileName": "Evaluationoffiniteelementmodelsofseatstructureswithintegratedsafety.pdf",
+      "classification": "STRUCTURAL_FE_STUDY",
+      "evidenceCount": 10
+    },
+    {
+      "fileName": "EvaluationoftheEffectsofRestraintConditions.pdf",
+      "classification": "DYNAMIC_OCCUPANT_STUDY",
+      "evidenceCount": 15
+    },
+    {
+      "fileName": "FMVSS207—SeatStructuralStrength.pdf",
+      "classification": "REGULATORY_REFERENCE",
+      "evidenceCount": 7
+    },
+    {
+      "fileName": "OccupantRestraintintheRearSeatATD.pdf",
+      "classification": "DYNAMIC_OCCUPANT_STUDY",
+      "evidenceCount": 12
+    },
+    {
+      "fileName": "OnDriverBehaviorRecognitionforIncreasedSafetyARoadmap.pdf",
+      "classification": "LITERATURE_REVIEW",
+      "evidenceCount": 5
+    },
+    {
+      "fileName": "UNECERegulationNo.pdf",
+      "classification": "REGULATORY_REFERENCE",
+      "evidenceCount": 10
+    },
+    {
+      "fileName": "VariationsinRearSeatCushionProperties.pdf",
+      "classification": "DYNAMIC_OCCUPANT_STUDY",
+      "evidenceCount": 17
+    },
+    {
+      "fileName": "pasted_content.txt",
+      "classification": "NON_ENGINEERING_INSTRUCTION",
+      "evidenceCount": 9
+    },
+    {
+      "fileName": "pasted_content_2.txt",
+      "classification": "NON_ENGINEERING_INSTRUCTION",
+      "evidenceCount": 0
+    },
+    {
+      "fileName": "ssrn-5624455.pdf",
+      "classification": "LITERATURE_REVIEW",
+      "evidenceCount": 5
+    }
+  ]
+}

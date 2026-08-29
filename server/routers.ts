@@ -21,6 +21,12 @@ import { createPersistentConversation, listPersistentConversations, openPersiste
 import { persistWorkbenchAttachment, recordPersistentConceptDecision, recordPersistentProposalDecision, restoreWorkbenchConversation, runPersistentWorkbenchMessage } from "./persistentWorkbench";
 import { applyRequirementRevision, normalizeUnit, parseRequirements } from "./requirementsAgent";
 import { createCAEPlan, getCAEPlan, listCAEPlans, requestCAEExecution, reviewCAEPlan } from "./caeAgent";
+import { inspectCaeEngine } from "./caeEngineAdmission";
+import { listManagedGmshMeshArtifacts } from "./gmshExecution";
+import { listManagedCalculiXResultArtifacts } from "./calculixExecution";
+import { inspectLocalCamEngine } from "./camEngine";
+import { listManagedCamArtifacts } from "./camExecution";
+import { evaluateMachineCamRelease, type MachineCamInput } from "./machineAwareCam";
 import { assessReadiness, assessUncertainty, buildEvidenceGraph, createExperimentalValidationPlan, getSolverAdapterContract, invalidateCadContext, listExperimentalValidationPlans, listMaterialEvidence, materialPropertyConflicts, negotiateSolver, registerMaterialEvidence } from "./caeEvidence";
 import { createDatasetProcessingRecord, ingestMeasurementDataset, listCalibrationRecords, listDatasetProcessing, listMeasurementDatasets, reconcileMaterialProperty, recordCalibration, recordEngineeringReviewDecision } from "./caeReconciliation";
 import { buildExtendedEvidenceGraph, createCalibrationCandidate, createSimulationMeasurementComparison, listComparisons, listExternalSolverAdapterRegistrations, registerExternalSolverAdapter } from "./caeIntegration";
@@ -44,6 +50,7 @@ import { assessRuntimeAssurance, buildRuntimeAssuranceReviewPackage, listRuntime
 import { evaluateRuntimeAdmission, listRuntimeAdmissionDecisions } from "./runtimeAdmission";
 import { readAuthoritativeRuntimeEvidence } from "./runtimeEvidenceApi";
 import { getEngineeringJob, listEngineeringJobs, reconcileEngineeringJobFromAuthoritativeEvidence, submitEngineeringJob } from "./engineeringJob";
+import { planTextToCad, textToCadInputSchema } from "./textToCad";
 
 const mountingBlockInput = z.object({
   width: z.number().positive(),
@@ -229,6 +236,39 @@ export const appRouter = router({
   }),
 
   cae: router({
+    localGmshStatus: publicProcedure
+      .input(caeAccess)
+      .query(async ({ input }) => {
+        await openPersistentProject({ projectId: input.projectId, accessKey: input.accessKey, name: "" });
+        const availability = await inspectCaeEngine("GMSH");
+        return {
+          status: availability.status,
+          diagnostics: availability.diagnostics,
+          identity: availability.identity ? {
+            kind: availability.identity.kind,
+            version: availability.identity.version,
+            environmentHash: availability.identity.environmentHash,
+            capabilities: availability.identity.capabilities,
+          } : undefined,
+        };
+      }),
+    localCalculiXStatus: publicProcedure
+      .input(caeAccess)
+      .query(async ({ input }) => {
+        await openPersistentProject({ projectId: input.projectId, accessKey: input.accessKey, name: "" });
+        const availability = await inspectCaeEngine("CALCULIX");
+        return {
+          status: availability.status,
+          diagnostics: availability.diagnostics,
+          identity: availability.identity ? { kind: availability.identity.kind, version: availability.identity.version, environmentHash: availability.identity.environmentHash, capabilities: availability.identity.capabilities } : undefined,
+        };
+      }),
+    listManagedGmshMeshes: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listManagedGmshMeshArtifacts(input)),
+    listManagedCalculiXResults: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listManagedCalculiXResultArtifacts(input)),
     createPlan: publicProcedure
       .input(z.object({ projectId: z.string().trim().min(1).max(96), accessKey: z.string().trim().min(16).max(128), input: caePlanInput }))
       .mutation(({ input }) => createCAEPlan(input)),
@@ -687,6 +727,36 @@ export const appRouter = router({
       .mutation(({ input }) => assessSecurityEvidenceTraceability(input)),
   }),
 
+  cam: router({
+    localStatus: publicProcedure
+      .input(caeAccess)
+      .query(async ({ input }) => {
+        await openPersistentProject({ projectId: input.projectId, accessKey: input.accessKey, name: "" });
+        const engine = inspectLocalCamEngine();
+        return { status: engine.status, engine: engine.engine, version: engine.version, runtime: engine.runtime, supportedOperations: engine.supportedOperations, supportedPostProcessors: engine.supportedPostProcessors };
+      }),
+    listManagedArtifacts: publicProcedure
+      .input(caeAccess)
+      .query(({ input }) => listManagedCamArtifacts(input)),
+    machineAwareRelease: publicProcedure
+      .input(z.object({
+        cadRevision: z.string().trim().min(1).max(160),
+        camOperation: z.string().trim().min(1).max(160),
+        machine: z.record(z.string(), z.unknown()),
+        tooling: z.record(z.string(), z.unknown()),
+        fixture: z.record(z.string(), z.unknown()),
+        selectedController: z.string().trim().min(1).max(160),
+        selectedPost: z.string().trim().min(1).max(160),
+        generatedToolpathHash: z.string().trim().min(1).max(160),
+        gcode: z.string().max(2_000_000),
+        gcodeHash: z.string().trim().min(1).max(160),
+        verification: z.record(z.string(), z.enum(["PASS", "FAIL", "BLOCKED", "NOT_RUN"])),
+        capturedMachineRevision: z.string().trim().min(1).max(160),
+        capturedToolProvenance: z.string().trim().min(1).max(512),
+      }))
+      .mutation(({ input }) => evaluateMachineCamRelease(input as unknown as MachineCamInput)),
+  }),
+
   intelligence: router({
     analyze: publicProcedure
       .input(z.object({
@@ -947,27 +1017,33 @@ export const appRouter = router({
           prompt: z.string().trim().min(1).max(2000),
         }),
       )
-      .mutation(({ input }) => generateMountingBlock(input.input, input.prompt)),
+      .mutation(() => { throw new Error("MOUNTING_BLOCK_DIRECT_EXECUTION_RETIRED: direct geometry generation is disabled until it is migrated through the authorized Common Feature Executor lifecycle."); }),
   }),
 
+  textToCad: router({
+    plan: publicProcedure
+      .input(textToCadInputSchema)
+      .mutation(({ input }) => planTextToCad(input.prompt)),
+  }),
   cadAgent: router({
     createConfiguration: publicProcedure
       .input(z.object({ name: z.string().trim().min(1).max(80), input: mountingBlockInput, sourceText: z.string().trim().min(1).max(5000), conceptual: z.boolean().optional() }))
-      .mutation(({ input }) => createMountingBlockConfiguration(input)),
+      .mutation(() => retiredMountingBlock<Awaited<ReturnType<typeof createMountingBlockConfiguration>>>("createConfiguration is disabled until it can provide project authorization and invoke the Common Feature Executor lifecycle.")),
     reviseConfiguration: publicProcedure
       .input(z.object({ configurationId: z.string().trim().min(1), name: z.string().trim().min(1).max(80).optional(), inputPatch: mountingBlockInputPatch, updateText: z.string().trim().min(1).max(2000) }))
-      .mutation(({ input }) => reviseMountingBlockConfiguration(input)),
+      .mutation(() => retiredMountingBlock<Awaited<ReturnType<typeof reviseMountingBlockConfiguration>>>("reviseConfiguration is disabled until it can provide project authorization and invoke the Common Feature Executor lifecycle.")),
     previewConfiguration: publicProcedure
       .input(z.object({ configurationId: z.string().trim().min(1), inputPatch: mountingBlockInputPatch, updateText: z.string().trim().min(1).max(2000) }))
-      .mutation(({ input }) => previewMountingBlockConfiguration(input)),
+      .mutation(() => retiredMountingBlock<Awaited<ReturnType<typeof previewMountingBlockConfiguration>>>("previewConfiguration is disabled because this public route has no authorized preview boundary.")),
     listConfigurations: publicProcedure.query(() => listConfigurations()),
     markStale: publicProcedure
       .input(z.object({ configurationId: z.string().trim().min(1) }))
       .mutation(({ input }) => markConfigurationStale(input.configurationId)),
     exportStep: publicProcedure
       .input(z.object({ configurationId: z.string().trim().min(1) }))
-      .mutation(({ input }) => getValidatedStepExport(input.configurationId)),
+      .mutation(() => retiredMountingBlock<ReturnType<typeof getValidatedStepExport>>("exportStep is disabled until it reads only an authorized managed CAD artifact.")),
   }),
 });
 
 export type AppRouter = typeof appRouter;
+function retiredMountingBlock<T>(reason: string): T { throw new Error(`MOUNTING_BLOCK_DIRECT_EXECUTION_RETIRED: ${reason}`); }

@@ -1,11 +1,47 @@
 import { createHash, randomUUID } from "node:crypto";
 
+import { AsyncLocalStorage } from "node:async_hooks";
 import type { RuntimeAdmissionDecision, RuntimeAdmissionReasonCode } from "../shared/runtimeAdmission";
 import { listCAEJobContracts } from "./caeJobContract";
 import { assessRuntimeAssurance, listRuntimeAssuranceEnvironments } from "./runtimeAssurance";
 import { listSolverConfigurationRegistry } from "./solverConfigurationGovernance";
 import { listSolverInputPackages } from "./solverInputPackage";
 import { appendPersistentMemory, openPersistentProject, projectMemorySnapshot } from "./persistentMemory";
+
+export type OpenCascadeResourceClass = "CAD_AUTHORING" | "CAD_OPERATION" | "VIEWER" | "REFERENCE" | "FEATURE_HISTORY";
+type OpenCascadeAdmissionContext = { projectId: string; resourceClass: OpenCascadeResourceClass };
+const openCascadeContext = new AsyncLocalStorage<OpenCascadeAdmissionContext>();
+let activeOpenCascadeConcurrency = 0;
+
+function openCascadeConcurrencyLimit() {
+  const configured = process.env.OPEN_CASCADE_MAX_CONCURRENT;
+  if (!configured) return 1;
+  const value = Number(configured);
+  if (!Number.isInteger(value) || value < 1 || value > 8) throw new Error("OPEN_CASCADE_ADMISSION_CONFIG_INVALID");
+  return value;
+}
+
+/** The only OpenCascade permit boundary. Nested kernel helpers inherit the active
+ * async context and do not consume a second permit. */
+export async function runWithOpenCascadeAdmission<T>(input: { projectId: string; resourceClass: OpenCascadeResourceClass }, work: () => Promise<T> | T): Promise<T> {
+  if (!input.projectId) throw new Error("OPEN_CASCADE_ADMISSION_PROJECT_REQUIRED");
+  if (openCascadeContext.getStore()) return work();
+  if (activeOpenCascadeConcurrency >= openCascadeConcurrencyLimit()) throw new Error("OPEN_CASCADE_ADMISSION_CAPACITY_EXHAUSTED");
+  activeOpenCascadeConcurrency += 1;
+  try {
+    return await openCascadeContext.run({ projectId: input.projectId, resourceClass: input.resourceClass }, work);
+  } finally {
+    activeOpenCascadeConcurrency -= 1;
+  }
+}
+
+export function openCascadeAdmissionSnapshot() {
+  return { activeConcurrency: activeOpenCascadeConcurrency, maxConcurrency: openCascadeConcurrencyLimit(), inherited: Boolean(openCascadeContext.getStore()) };
+}
+
+export function assertOpenCascadeAdmission() {
+  if (!openCascadeContext.getStore()) throw new Error("OPEN_CASCADE_ADMISSION_REQUIRED");
+}
 
 type Access = { projectId: string; accessKey: string };
 type AdmissionInput = { requestedAction: RuntimeAdmissionDecision["requestedAction"]; canonicalJobId: string; solverInputPackageId: string; configurationId: string; environmentId: string };

@@ -43,7 +43,7 @@ describe("seat engineering product API", () => {
       }),
     });
     expect(createResponse.status).toBe(201);
-    const seat = await createResponse.json() as { id: string; revisions: Array<{ revisionNumber: number; designSnapshotHash: string }>; requirements: unknown[]; components: unknown[]; materials: unknown[]; traceLinks: unknown[] };
+    const seat = await createResponse.json() as { id: string; revisions: Array<{ id: string; revisionNumber: number; designSnapshotHash: string }>; requirements: unknown[]; components: unknown[]; materials: unknown[]; traceLinks: unknown[] };
     expect(seat.revisions).toHaveLength(1);
     expect(seat.revisions[0].revisionNumber).toBe(1);
     expect(seat.revisions[0].designSnapshotHash).toMatch(/^[a-f0-9]{64}$/);
@@ -84,11 +84,38 @@ describe("seat engineering product API", () => {
     expect(listResponse.status).toBe(200);
     await expect(listResponse.json()).resolves.toMatchObject([{ id: seat.id, name: "Front seat assembly", status: "REVIEW" }]);
 
+    const traceResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}/traceability?revisionId=${revisedSeat.revisions[0].id}`, { headers });
+    expect(traceResponse.status).toBe(200);
+    await expect(traceResponse.json()).resolves.toMatchObject({
+      projectId: project.projectId,
+      seatDesignId: seat.id,
+      revisionId: revisedSeat.revisions[0].id,
+      stale: false,
+      nodes: expect.arrayContaining([
+        expect.objectContaining({ type: "SEAT_DESIGN", id: seat.id }),
+        expect.objectContaining({ type: "SEAT_REVISION", id: revisedSeat.revisions[0].id }),
+        expect.objectContaining({ type: "REQUIREMENT", title: "SEAT-REQ-002" }),
+      ]),
+    });
+
+    const staleTraceResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}/traceability?revisionId=${seat.revisions[0].id}`, { headers });
+    expect(staleTraceResponse.status).toBe(200);
+    await expect(staleTraceResponse.json()).resolves.toMatchObject({ stale: true });
+
+    const searchResponse = await fetch(`${base}/api/projects/${project.projectId}/engineering-search?q=recliner`, { headers });
+    expect(searchResponse.status).toBe(200);
+    await expect(searchResponse.json()).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({ entityType: "COMPONENT", title: "Recliner bracket" }),
+      expect.objectContaining({ entityType: "REQUIREMENT", title: "SEAT-REQ-002" }),
+    ]));
+
     const reportResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}/report`, { headers });
     expect(reportResponse.status).toBe(200);
     await expect(reportResponse.json()).resolves.toMatchObject({ seat: { id: seat.id }, engineeringJob: null, disclaimer: expect.stringContaining("No solver") });
 
     const foreignResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}`, { headers: { "x-engineering-access-key": "wrong-access-key" } });
     expect(foreignResponse.status).toBe(403);
-  });
+    const foreignTraceResponse = await fetch(`${base}/api/projects/${project.projectId}/seat-designs/${seat.id}/traceability`, { headers: { "x-engineering-access-key": "wrong-access-key" } });
+    expect(foreignTraceResponse.status).toBe(403);
+  }, 20_000);
 });

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { parseCadFileBytes } from "../server/cadFileIntelligence";
+import { formatFromName, parseCadFileBytes } from "../server/cadFileIntelligence";
 import { getCadFileContext, ingestCadFile, listCadFiles, removeCadFile } from "../server/cadFileIntelligence";
 import { createPersistentConversation, openPersistentProject } from "../server/persistentMemory";
 import { runPersistentWorkbenchMessage } from "../server/persistentWorkbench";
@@ -10,6 +10,30 @@ import { runPersistentWorkbenchMessage } from "../server/persistentWorkbench";
 const fixture = (name: string) => readFile(join(process.cwd(), "tests", "fixtures", name));
 
 describe("Phase 3.9 real CAD file intelligence", () => {
+  it("detects canonical CAD formats case-insensitively through the authoritative filename dispatcher", () => {
+    expect(formatFromName("plate.dxf")).toBe("DXF");
+    expect(formatFromName("PLATE.DXF")).toBe("DXF");
+    expect(formatFromName("Plate.Dxf")).toBe("DXF");
+    expect(formatFromName("plate.step")).toBe("STEP");
+    expect(formatFromName("plate.stp")).toBe("STEP");
+    expect(formatFromName("plate.stl")).toBe("STL");
+    expect(formatFromName("unknown.xyz")).toBe("UNSUPPORTED");
+  });
+
+  it("persists a DXF-classified file through the authoritative project CAD ingestion path", async () => {
+    const project = await openPersistentProject({ name: "DXF format persistence project" });
+    const persisted = await ingestCadFile({
+      projectId: project.id,
+      accessKey: project.accessKey,
+      fileName: "plate.dxf",
+      mimeType: "application/dxf",
+      base64: Buffer.from("0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF\n").toString("base64"),
+    });
+
+    expect(persisted.file.format).toBe("DXF");
+    expect((await getCadFileContext({ projectId: project.id, accessKey: project.accessKey, fileId: persisted.file.fileId })).format).toBe("DXF");
+  });
+
   it("imports a real OpenCascade-generated STEP file through OpenCascade with truthful topology and extents", async () => {
     const result = await parseCadFileBytes("minimal-box.step", await fixture("minimal-box.step"));
 

@@ -36,6 +36,15 @@ const basePayload: Omit<RuntimeEvidencePayload, "evidenceHash"> = {
   issuedAt: new Date(now.getTime() - 60_000).toISOString(),
   expiresAt: new Date(now.getTime() + 60_000).toISOString(),
   ...trust,
+  binding: {
+    projectId: "test-project",
+    operationId: "test-operation",
+    runtimeAdmissionId: "test-admission",
+    artifactIdentity: binding.cadArtifactHash,
+    engineIdentity: "test-engine",
+    provenanceIdentity: "test-provenance",
+    lineageIdentity: "test-lineage",
+  },
   artifactHashes: binding,
   resultHash: binding.resultHash,
 };
@@ -60,7 +69,7 @@ describe("canonical runtime evidence store", () => {
   });
 
   it("stores and exposes only a complete verified envelope through the server-side API", async () => {
-    const envelope = signRuntimeEvidence(basePayload, key);
+    const envelope = signRuntimeEvidence(basePayload);
     await expect(storeCanonicalRuntimeEvidence(envelope, trust, storeDirectory, now)).resolves.toMatchObject({ status: "VERIFIED" });
     await expect(storeCanonicalRuntimeEvidence(envelope, trust, storeDirectory, now)).resolves.toMatchObject({ status: "BLOCKED", rejectionCode: "REPLAYED_EVIDENCE" });
     await expect(readCanonicalRuntimeEvidence(storeDirectory, trust)).resolves.toMatchObject({ status: "VERIFIED", evidence: { resultHash: binding.resultHash } });
@@ -69,19 +78,19 @@ describe("canonical runtime evidence store", () => {
   });
 
   it("rejects incomplete bindings, tampered storage, stale evidence, foreign evidence, and missing canonical sources", async () => {
-    const incomplete = signRuntimeEvidence({ ...basePayload, evidenceId: "incomplete", artifactHashes: { resultHash: binding.resultHash } }, key);
+    const incomplete = signRuntimeEvidence({ ...basePayload, evidenceId: "incomplete", artifactHashes: { resultHash: binding.resultHash } });
     await expect(storeCanonicalRuntimeEvidence(incomplete, trust, storeDirectory, now)).resolves.toMatchObject({ status: "BLOCKED", rejectionCode: "INCOMPLETE_RESULT_BINDING" });
 
-    const valid = signRuntimeEvidence({ ...basePayload, evidenceId: "tamper" }, key);
+    const valid = signRuntimeEvidence({ ...basePayload, evidenceId: "tamper" });
     await storeCanonicalRuntimeEvidence(valid, trust, storeDirectory, now);
     const stored = JSON.parse(readFileSync(join(storeDirectory, "active.json"), "utf8"));
     stored.envelope.payload.resultHash = "d".repeat(64);
     writeFileSync(join(storeDirectory, "active.json"), JSON.stringify(stored), "utf8");
     await expect(readCanonicalRuntimeEvidence(storeDirectory, trust)).resolves.toMatchObject({ status: "BLOCKED", rejectionCode: "HMAC_MISMATCH" });
 
-    const stale = signRuntimeEvidence({ ...basePayload, evidenceId: "stale", issuedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(), expiresAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString() }, key);
+    const stale = signRuntimeEvidence({ ...basePayload, evidenceId: "stale", issuedAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(), expiresAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString() });
     await expect(storeCanonicalRuntimeEvidence(stale, trust, storeDirectory, now)).resolves.toMatchObject({ status: "BLOCKED", rejectionCode: "STALE_OR_INVALID_TIMESTAMP" });
-    const foreign = signRuntimeEvidence({ ...basePayload, evidenceId: "foreign", environmentIdentity: "FOREIGN-ENVIRONMENT" }, key);
+    const foreign = signRuntimeEvidence({ ...basePayload, evidenceId: "foreign", environmentIdentity: "FOREIGN-ENVIRONMENT" });
     await expect(storeCanonicalRuntimeEvidence(foreign, trust, storeDirectory, now)).resolves.toMatchObject({ status: "BLOCKED", rejectionCode: "FOREIGN_EVIDENCE" });
     rmSync(storeDirectory, { recursive: true, force: true });
     await expect(readAuthoritativeRuntimeEvidence()).resolves.toMatchObject({ status: "BLOCKED", rejectionCode: "INVALID_EVIDENCE_SOURCE" });
