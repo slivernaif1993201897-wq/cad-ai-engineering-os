@@ -1018,7 +1018,7 @@ export const appRouter = router({
           prompt: z.string().trim().min(1).max(2000),
         }),
       )
-      .mutation(() => { throw new Error("MOUNTING_BLOCK_DIRECT_EXECUTION_RETIRED: direct geometry generation is disabled until it is migrated through the authorized Common Feature Executor lifecycle."); }),
+      .mutation(() => retiredMountingBlock("direct geometry generation is disabled until it is migrated through the authorized Common Feature Executor lifecycle.")),
   }),
 
   textToCad: router({
