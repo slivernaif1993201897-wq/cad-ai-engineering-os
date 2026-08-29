@@ -26,6 +26,7 @@ import { listManagedGmshMeshArtifacts } from "./gmshExecution";
 import { listManagedCalculiXResultArtifacts } from "./calculixExecution";
 import { inspectLocalCamEngine } from "./camEngine";
 import { listManagedCamArtifacts } from "./camExecution";
+import { evaluateMachineCamRelease, type MachineCamInput } from "./machineAwareCam";
 import { assessReadiness, assessUncertainty, buildEvidenceGraph, createExperimentalValidationPlan, getSolverAdapterContract, invalidateCadContext, listExperimentalValidationPlans, listMaterialEvidence, materialPropertyConflicts, negotiateSolver, registerMaterialEvidence } from "./caeEvidence";
 import { createDatasetProcessingRecord, ingestMeasurementDataset, listCalibrationRecords, listDatasetProcessing, listMeasurementDatasets, reconcileMaterialProperty, recordCalibration, recordEngineeringReviewDecision } from "./caeReconciliation";
 import { buildExtendedEvidenceGraph, createCalibrationCandidate, createSimulationMeasurementComparison, listComparisons, listExternalSolverAdapterRegistrations, registerExternalSolverAdapter } from "./caeIntegration";
@@ -736,6 +737,23 @@ export const appRouter = router({
     listManagedArtifacts: publicProcedure
       .input(caeAccess)
       .query(({ input }) => listManagedCamArtifacts(input)),
+    machineAwareRelease: publicProcedure
+      .input(z.object({
+        cadRevision: z.string().trim().min(1).max(160),
+        camOperation: z.string().trim().min(1).max(160),
+        machine: z.record(z.string(), z.unknown()),
+        tooling: z.record(z.string(), z.unknown()),
+        fixture: z.record(z.string(), z.unknown()),
+        selectedController: z.string().trim().min(1).max(160),
+        selectedPost: z.string().trim().min(1).max(160),
+        generatedToolpathHash: z.string().trim().min(1).max(160),
+        gcode: z.string().max(2_000_000),
+        gcodeHash: z.string().trim().min(1).max(160),
+        verification: z.record(z.string(), z.enum(["PASS", "FAIL", "BLOCKED", "NOT_RUN"])),
+        capturedMachineRevision: z.string().trim().min(1).max(160),
+        capturedToolProvenance: z.string().trim().min(1).max(512),
+      }))
+      .mutation(({ input }) => evaluateMachineCamRelease(input as unknown as MachineCamInput)),
   }),
 
   intelligence: router({
